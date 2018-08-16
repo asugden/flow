@@ -1,7 +1,7 @@
 from future.moves.collections import UserList
 
-from . import core 
-from ... import metadata
+from . import core
+from .. import metadata
 
 class RunSorter(UserList):
     def __init__(self, runs):

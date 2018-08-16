@@ -1,0 +1,14 @@
+version: '2'
+services:
+    flowdocs:
+        build:
+            context: .
+            dockerfile: Dockerfile
+            # network: host
+        image: flowdocs
+        container_name: flowdocs
+        restart: "always"
+        volumes:
+            - "../build/html:/usr/local/apache2/htdocs:rw"
+        ports:
+            - 8081:80

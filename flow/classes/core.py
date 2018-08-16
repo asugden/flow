@@ -1,6 +1,6 @@
 from builtins import object
 
-from ... import hardcodedpaths, metadata
+from .. import paths, metadata
 
 class Day(object):
     """A Day."""
@@ -72,7 +72,7 @@ class Run(object):
     @property
     def t2p(self):
         if self._t2p is None:
-            self._t2p = hardcodedpaths.gett2p(
+            self._t2p = paths.gett2p(
                 self.mouse, self.date, self.run)
         return self._t2p
 

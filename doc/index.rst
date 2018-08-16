@@ -1,16 +1,19 @@
-.. Flow documentation master file, created by
-   sphinx-quickstart on Tue Aug 14 15:34:50 2018.
+.. Andermann Lab Analysis Package documentation master file, created by
+   sphinx-quickstart on Wed Aug  8 20:01:27 2018.
    You can adapt this file completely to your liking, but it should at least
    contain the root `toctree` directive.
 
-Welcome to Flow's documentation!
-================================
+Welcome to the Andermann Lab Analysis Package's documentation!
+==============================================================
+
+Contents:
 
 .. toctree::
    :maxdepth: 2
-   :caption: Contents:
 
-
+   intro
+   install
+   api/index
 
 Indices and tables
 ==================
@@ -18,3 +21,4 @@ Indices and tables
 * :ref:`genindex`
 * :ref:`modindex`
 * :ref:`search`
+

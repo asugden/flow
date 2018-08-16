@@ -1,0 +1,19 @@
+{
+    "backends": {
+        "backend": "memory",
+        "couch_options": {
+            "port": 5984,
+            "server": "localhost"
+        },
+        "supported_backends": [
+            "memory",
+            "shelve",
+            "couch"
+        ]
+    },
+    "paths": {
+        "data": "/data",
+        "graph": "/graphs",
+        "output": "/output"
+    }
+}
