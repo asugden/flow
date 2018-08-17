@@ -129,12 +129,13 @@ class Trace2P:
             padf = int(round(pads * self.framerate))
             return int(round(self.d['onsets'][-1])) + padf
 
-    def cstraces(self, cs, args):
+    def cstraces(self, cs, args=None):
         """
-        Return the onsets for a particular cs with flexibility. Ouptut
+        Return the onsets for a particular cs with flexibility. Output
         is in the order ncells, frames, nstimuli/onsets.
         """
-
+        if args is None:
+            args = {}
         # Set arguments and convert to framerate
         defaults = {
             'start-s': -1,
@@ -158,7 +159,7 @@ class Trace2P:
         out[:, :, :] = np.nan
 
         # Iterate through onsets, find the beginning and end, and add
-        # the appropirate trace type to the output
+        # the appropriate trace type to the output
         for i, onset in enumerate(ons):
             start = defaults['start-fr'] + onset
             end = defaults['end-fr'] + onset

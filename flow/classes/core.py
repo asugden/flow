@@ -2,17 +2,26 @@ from builtins import object
 
 from .. import paths, metadata
 
-class Day(object):
+class Date(object):
     """A Day."""
-    def __init__(self, mouse, date, runs=None):
+    def __init__(self, mouse, date):
         self.mouse = mouse
         self.date = date
-        self.runs = runs if runs is not None else []
 
     def __repr__(self):
         """Return repr of Day."""
         return "Day(mouse={}, date={}, n_runs={})".format(
             self.mouse, self.date, len(self.runs))
+
+    def __lt__(self, other):
+        """Make dates sortable."""
+        assert isinstance(other, type(self))
+        return self.mouse <= other.mouse and self.date < other.date
+
+    def __eq__(self, other):
+        """Test equivalence."""
+        return isinstance(other, type(self)) and self.mouse == other.mouse \
+            and self.date == other.date
 
     @classmethod
     def allruns(
@@ -58,9 +67,9 @@ class Run(object):
     """A run."""
 
     def __init__(self, mouse, date, run):
-        self.mouse = mouse
-        self.date = date
-        self.run = run
+        self.mouse = str(mouse)
+        self.date = int(date)
+        self.run = int(run)
 
         self._t2p, self._classifier = None, None
 
@@ -68,6 +77,17 @@ class Run(object):
         """Return repr of Run."""
         return 'Run(mouse={}, date={}, run={})'.format(
             self.mouse, self.date, self.run)
+
+    def __lt__(self, other):
+        """Make runs sortable."""
+        assert isinstance(other, type(self))
+        return self.mouse <= other.mouse and self.date <= other.date \
+            and self.run < other.run
+
+    def __eq__(self, other):
+        """Test equivalence."""
+        return isinstance(other, type(self)) and self.mouse == other.mouse \
+            and self.date == other.date and self.run == other.run
 
     @property
     def t2p(self):

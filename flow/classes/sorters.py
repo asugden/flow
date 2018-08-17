@@ -3,8 +3,32 @@ from future.moves.collections import UserList
 from . import core
 from .. import metadata
 
+
+class DateSorter(UserList):
+    def __init__(self, dates=None):
+        if dates is None:
+            dates = []
+        self.data = sorted(dates)
+
+    @classmethod
+    def frommice(cls, mice):
+        """Initialize a new RunSorter from a list of mice.
+
+        Parameters
+        ----------
+        mice : list of str
+            List of mice to include.
+
+        """
+        meta = metadata.dataframe(mice=mice)
+
+        return cls(
+            core.Date(m, d) for _, (m, d) in meta[['mouse', 'date']].groupby(
+                ['mouse', 'date'], as_index=False).first().iterrows())
+
+
 class RunSorter(UserList):
-    def __init__(self, runs):
+    def __init__(self, runs=None):
         if runs is None:
             runs = []
         self.data = sorted(runs)

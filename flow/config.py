@@ -89,47 +89,6 @@ _settings = {
     }
 }
 
-_colors = {
-    'plus': '#47D1A8',  # mint
-    'neutral': '#47AEED',  # blue
-    'minus': '#D61E21',  # red
-    'plus-neutral': '#8CD7DB',  # aqua
-    'plus-minus': '#F2E205',  # yellow
-    'neutral-minus': '#C880D1',  # purple
-    'other': '#7C7C7C',  # gray
-    'other-running': '#333333',  # dark gray
-    'pavlovian': '#47D1A8',  # green
-    'real': '#47D1A8',  # yellow
-    'circshift': '#8CD7DB',  # aqua
-    'run-onset': '#C880D1',  # purple
-    'motion-onset': '#D61E21',  # red
-    'popact': '#333333',  # dark gray
-    'disengaged1': '#F2E205',  # yellow
-    'disengaged2': '#E86E0A',  # orange
-    'ensure': '#5E5AE6',  # indigo
-    'quinine': '#E86E0A',  # orange
-
-    'plus-only': '#47D1A8',  # mint
-    'neutral-only': '#47AEED',  # blue
-    'minus-only': '#D61E21',  # red
-    'ensure-only': '#5E5AE6',  # indigo
-    'quinine-only': '#E86E0A',  # orange
-    'ensure-multiplexed': '#5E5AE6',  # indigo
-    'quinine-multiplexed': '#E86E0A',  # orange
-    'plus-ensure': '#5E5AE6',  # indigo
-    'minus-quinine': '#E86E0A',  # orange
-
-    'lick': '#F2E205',  # yellow
-    'undefined': '#7C7C7C',  # gray
-    'multiplexed': '#000000',  # black
-    'combined': '#000000',  # black
-    'temporal-prior': '#C880D1',  # purple
-
-    'inhibited': '#7C7C7C',  # gray
-
-    'reward-cluster-1': '#5E5AE6',  # indigo
-    'reward-cluster-exclusive-1': '#C880D1',  # purple
-}
 
 _params = None
 
@@ -181,44 +140,6 @@ def reconfigure():
     if len(output_path):
         config['paths']['graph'] = os.path.normpath(graph_path)
 
-    print('ANALYSIS BACKEND')
-    print(' memory: stores values in memory, not persistent')
-    print(' shelve: stores values in a shelve database file')
-    print(' couch: store values in a CouchDB (should already be running)')
-
-    backend = None
-    while backend not in config['backends']['supported_backends']:
-        backend = raw_input(
-            'Enter backend type: [{}] '.format(
-                config['backends']['backend']))
-        if not len(backend):
-            backend = config['backends']['backend']
-    config['backends']['backend'] = backend
-
-    if backend == 'couch':
-        if 'couch_options' not in config['backends']:
-            config['backends']['couch_options'] = {}
-        host = raw_input("Enter ip or hostname of CouchDB: [{}] ".format(
-            config['backends']['couch_options'].get('host', None)))
-        if len(host):
-            config['backends']['couch_options']['host'] = host
-        port = raw_input("Enter port for CouchDB: [{}] ".format(
-            config['backends']['couch_options'].get('port', None)))
-        if len(port):
-            config['backends']['couch_options']['port'] = port
-        database = raw_input("Enter name of analysis database: [{}] ".format(
-            config['backends']['couch_options'].get('database', None)))
-        if len(database):
-            config['backends']['couch_options']['database'] = database
-        user = raw_input("Enter username to authenticate with CouchDB (optional): [{}] ".format(
-            config['backends']['couch_options'].get('user', None)))
-        if len(user):
-            config['backends']['couch_options']['user'] = user
-        password = raw_input("Enter password to authenticate with CouchDB (optional): [{}] ".format(
-            config['backends']['couch_options'].get('password', None)))
-        if len(password):
-            config['backends']['couch_options']['password'] = password
-
     with open(config_path, 'w') as f:
         json.dump(config, f, sort_keys=True, indent=4, separators=(',', ': '))
 
@@ -231,37 +152,14 @@ def defaults():
     return p['defaults']
 
 
-def colors(clr=None):
-    """Return default color pairings.
-
-    Parameters
-    ----------
-    clr : str, optional
-        If not None, return the default colors for a specific group.
-        Otherwise return all color pairings.
-
-    """
-    p = params()
-    if colors is None:
-        return p['colors']
-    else:
-        return p['colors'].get(clr, '#7C7C7C')
-
-
 def _load_config():
     global _settings, _colors
     config_path = _find_config()
-    if config_path is None:
-        config_path = _initialize_config()
-        print("Configuration initialized to: {}".format(config_path))
-        print("Run `import flow.config as cfg; cfg.reconfigure()` to update.")
     with open(config_path, 'r') as f:
         loaded_config = json.load(f)
-        config = {'defaults': copy.copy(_settings),
-                  'colors': copy.copy(_colors)}
+        config = {'defaults': copy.copy(_settings)}
         for key in loaded_config:
-            # Just add keys in the config file other than
-            # 'defaults' and 'colors'
+            # Just add keys in the config file other than 'defaults'
             if key not in config:
                 config[key] = loaded_config[key]
             else:
@@ -277,7 +175,8 @@ def _find_config():
             continue
         if os.path.isfile(os.path.join(path, CONFIG_FILE)):
             return os.path.join(path, CONFIG_FILE)
-    return None
+    config_path = _initialize_config()
+    return config_path
 
 
 def _initialize_config():
@@ -292,9 +191,14 @@ def _initialize_config():
         f = os.path.join(os.path.dirname(__file__), DEFAULT_FILE)
         try:
             shutil.copy(f, os.path.join(path, CONFIG_FILE))
-            return os.path.join(path, CONFIG_FILE)
         except IOError:
             continue
+        else:
+            config_path = os.path.join(path, CONFIG_FILE)
+            print("Configuration initialized to: {}".format(config_path))
+            print("Run `import flow.config as cfg; cfg.reconfigure()` " +
+                  "to update.")
+            return config_path
     print("Unable to find writable location.")
     return DEFAULT_FILE
 

@@ -5,7 +5,7 @@ from glob import glob
 import os
 import platform
 
-# Specifiy specific compliler on Mac
+# Specify specific compiler on Mac
 if platform.system() == 'Darwin':
     os.environ["CC"] = "gcc-mp-5"
 
