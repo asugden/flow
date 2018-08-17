@@ -78,12 +78,14 @@ def getmetadata(args):
     date = args['date'] if 'date' in args else args['training-date']
     mouse = args['mouse']
 
-    if 'noauto' in args: return args
-    if mouse not in metadata.spontaneous: return args
+    if 'noauto' in args:
+        return args
+    if mouse not in metadata.spontaneous:
+        return args
 
     md = metadata.spontaneous[mouse]
 
-    out = {p:args[p] for p in args}
+    out = {p: args[p] for p in args}
 
     for group in md:
         if str(date) in md[group]:
@@ -104,14 +106,16 @@ def parsekv(args, defaults=True):
     pars = p.keyvals(argstr)
 
     # Don't add metadata or default parameters
-    if not defaults: return pars
+    if not defaults:
+        return pars
 
     pars = getmetadata(pars)
 
     # Format correctly
-    fpars = configs.default()
+    fpars = config.default()
     for p in pars:
-        if p in fpars: fpars[p] = pars[p]
+        if p in fpars:
+            fpars[p] = pars[p]
 
         if p == 'date':
             fpars['training-date'] = str(pars[p])
@@ -155,8 +159,10 @@ def go(args, defaults={}, classifier=False, trace=False, force=False):
 
     # Account for the various output possibilities
     if not classifier:
-        if not trace: return (pars, lpars)
-        else: return (pars, lpars, trace2p(pars))
+        if not trace:
+            return (pars, lpars)
+        else:
+            return (pars, lpars, trace2p(pars))
     else:
         randomize = random(args)
         cf = classifier(pars, randomize, force)

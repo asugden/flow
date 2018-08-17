@@ -1,6 +1,9 @@
 from copy import deepcopy
 import pandas as pd
 
+# This is used to cache the metadata parsed as a dataframe.
+_dataframe = None
+
 spontaneous = {
     'CB173': {
         'group-6-8-sated': {
@@ -962,17 +965,19 @@ def sortedall():
     return out
 
 
-def dataframe(mice=None, dates=None, groups=None, runtypes=None, sort=False):
+def dataframe(mice=None, dates=None, tags=None, runtypes=None, sort=False, groups=None):
     """Return a dataframe containing all metadata.
 
     Parameters
     ----------
     mice : list of str
         Mice to include.
-    dates : list of str
+    dates : list of int
         Dates to include.
     groups : list of str
-        Groups to include.
+        Deprecated. Groups to include.
+    tags : list of str
+        Tags to include.
     runtypes : list of str
         Runtypes to include.
     sort : bool
@@ -983,23 +988,31 @@ def dataframe(mice=None, dates=None, groups=None, runtypes=None, sort=False):
     pd.DataFrame
 
     """
-    out = []
-    for mouse in spontaneous:
-        for group in spontaneous[mouse]:
-            groupdates = [
-                date for date in spontaneous[mouse][group] if date.isdigit()]
-            for date in groupdates:
-                for run in spontaneous[mouse][group][date]:
-                    out.append((mouse, date, run, group, 'spontaneous'))
+    global _dataframe
+    if _dataframe is None:
+        out = []
+        for mouse in spontaneous:
+            for group in spontaneous[mouse]:
+                groupdates = [
+                    date for date in spontaneous[mouse][group] if date.isdigit()]
+                for date in groupdates:
+                    for run in spontaneous[mouse][group][date]:
+                        out.append((mouse, date, run, group, 'spontaneous'))
 
-            for extra in ['train', 'running', 'sated-stim']:
-                if extra in spontaneous[mouse][group]:
-                    for run in spontaneous[mouse][group][extra]:
-                        for date in groupdates:
-                            out.append((mouse, date, run, group, extra))
+                for extra in ['train', 'running', 'sated-stim']:
+                    if extra in spontaneous[mouse][group]:
+                        for run in spontaneous[mouse][group][extra]:
+                            for date in groupdates:
+                                out.append((mouse, date, run, group, extra))
+        _dataframe = pd.DataFrame(
+            out, columns=['mouse', 'date', 'run', 'group', 'runtype'])
 
-    df = pd.DataFrame(
-        out, columns=['mouse', 'date', 'run', 'group', 'runtype'])
+    df = _dataframe.copy(deep=False)
+
+    # Convert to numeric columns...should this happen?
+    # If not, should probably do it in at least temporarily in the sort.
+    df.date = pd.to_numeric(df.date)
+    df.run = pd.to_numeric(df.run)
 
     # Start filtering
     if mice is not None:
@@ -1010,11 +1023,6 @@ def dataframe(mice=None, dates=None, groups=None, runtypes=None, sort=False):
         df = df[df.group.isin(groups)]
     if runtypes is not None:
         df = df[df.runtype.isin(runtypes)]
-
-    # Convert to numeric columns...should this happen?
-    # If not, should probably do it in at least temporarily in the sort.
-    df.date = pd.to_numeric(df.date)
-    df.run = pd.to_numeric(df.run)
 
     if sort:
         df = df.sort_values(by=['mouse', 'date', 'run']).reset_index(drop=True)
