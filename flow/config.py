@@ -146,7 +146,7 @@ def reconfigure():
     params(reload_=True)
 
 
-def defaults():
+def default():
     """Return default parameters."""
     p = params()
     return p['defaults']
