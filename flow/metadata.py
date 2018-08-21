@@ -797,6 +797,27 @@ spontaneous = {
             '180726': [9, 10, 11],
             '180728': [9, 10, 11],
             '180730': [9, 10, 11],
+            # '180801': [9, 10, 11],
+            '180803': [9, 10, 11],
+            '180807': [9, 10, 11],
+            '180809': [9, 10, 11],
+            '180813': [9, 10, 11],
+            '180815': [9, 10, 11],
+        },
+    },
+
+    'OA192': {
+        'sated': {
+            'train': [2, 3],  # [2, 3, 4],
+            'running': [1],
+            '180731': [9, 10, 11],
+            '180802': [9, 10, 11],
+            '180806': [9, 10, 11],
+            '180808': [9, 10, 11],
+            '180810': [9, 10, 11],
+            '180814': [9, 10, 11],
+            '180816': [9, 10, 11],
+            '180820': [9, 10, 11],
         },
     },
 }
@@ -851,26 +872,29 @@ reversals = {
     'OA178': '180702',
 }
 
+
 def reversal(mouse):
-    """
-    Return the date of the reversal of a given mouse
+    """Return the date of the reversal of a given mouse.
+
     :param mouse: mouse name, string
     :return: date of reversal, string
-    """
 
-    if mouse not in reversals: return None
+    """
+    if mouse not in reversals:
+        return None
     return reversals[mouse]
 
+
 def checkreversal(mouse, date, match='', optmatch=None):
-    """
-    Check whether a mouse and date are pre-reversal if match is pre, post if post, or either.
+    """Check whether a mouse and date are pre- or post-reversal.
+
     :param mouse: mouse name, str
     :param date: date, int or str
     :param match: match, str, 'pre', 'post', or anything else for both OR dict of kvargs to check if str optmatch exists
     :param optmatch: match, str, if match is a dict. Will be checked for in dict.
     :return: boolean
-    """
 
+    """
     if optmatch is not None:
         if optmatch not in match:
             return True
