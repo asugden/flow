@@ -6,6 +6,7 @@ from uuid import uuid1
 import warnings
 
 from . import config
+from .misc import loadmat
 
 
 class Trace2P:
@@ -14,7 +15,7 @@ class Trace2P:
     path to a simplified cellsort .mat file."""
 
     def __init__(self, path):
-        self.d = loadmatpy(path)
+        self.d = loadmat(path)
 
         # Instance variables
         self.ncells = np.shape(self.d['deconvolved'])[0]
@@ -897,7 +898,7 @@ class Trace2P:
         # TODO: remove
         mpath = path.replace('.simpcell', '-pupilrepmask.mat')
         if opath.exists(mpath):
-            masks = loadmatpy(mpath)
+            masks = loadmat(mpath)
             for key in masks:
                 self.d[key] = masks[key]
 
@@ -909,7 +910,7 @@ class Trace2P:
         path = opath.join(datad, 'onsets/%s' % mpath)
 
         if opath.exists(path):
-            offsets = loadmatpy(path)
+            offsets = loadmat(path)
             self.d['offsets'] = offsets['offsets']
 
     def _fixmistakes(self):
@@ -937,31 +938,31 @@ class Trace2P:
         """
         self._roi_ids = tuple(str(uuid1()) for _ in range(self.ncells))
 
+# Version implemented in flow.misc
+# def loadmatpy(filename):
+#     """
+#     A modified loadmat that can account for structs as dicts.
+#     """
 
-def loadmatpy(filename):
-    """
-    A modified loadmat that can account for structs as dicts.
-    """
+#     data = spio.loadmat(filename, struct_as_record=False, squeeze_me=True, appendmat=False)
+#     for key in data:
+#         if isinstance(data[key], spio.matlab.mio5_params.mat_struct):
+#             data[key] = _mattodict(data[key])
+#     return data
 
-    data = spio.loadmat(filename, struct_as_record=False, squeeze_me=True, appendmat=False)
-    for key in data:
-        if isinstance(data[key], spio.matlab.mio5_params.mat_struct):
-            data[key] = _mattodict(data[key])
-    return data
+# def _mattodict(matobj):
+#     """
+#     Recursively convert matobjs into dicts.
 
-def _mattodict(matobj):
-    """
-    Recursively convert matobjs into dicts.
+#     :param matobj: matlab object from _check_keys
+#     :return: dict
+#     """
 
-    :param matobj: matlab object from _check_keys
-    :return: dict
-    """
-
-    out = {}
-    for strg in matobj._fieldnames:
-        el = matobj.__dict__[strg]
-        if isinstance(el, spio.matlab.mio5_params.mat_struct):
-            out[strg] = _mattodict(el)
-        else:
-            out[strg] = el
-    return out
+#     out = {}
+#     for strg in matobj._fieldnames:
+#         el = matobj.__dict__[strg]
+#         if isinstance(el, spio.matlab.mio5_params.mat_struct):
+#             out[strg] = _mattodict(el)
+#         else:
+#             out[strg] = el
+#     return out

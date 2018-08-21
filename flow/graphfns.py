@@ -5,7 +5,7 @@ import numpy as np
 import os
 
 # This should really be removed
-import flow
+import pool
 
 from .misc import colors
 from . import outfns
@@ -62,7 +62,7 @@ def axheatmap(fig, ax, data, borders, tracetype='dff', cmax='auto'):
     # Get the sizes for plotting
     ncells = np.shape(data)[0]
     nframes = np.shape(data)[1]
-    clrs = flow.config.colors()
+    clrs = pool.config.colors()
 
     if 'dff' in tracetype:
         if isinstance(cmax, str):

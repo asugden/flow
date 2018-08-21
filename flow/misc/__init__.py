@@ -1,2 +1,2 @@
 from .misc import *
-from . import wordhash, colors
+from . import colors, legiblepars, wordhash
