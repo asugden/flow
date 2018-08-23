@@ -93,6 +93,7 @@ def peaks(result, trs, threshold, max=2, downfor=2, maxlen=-1, fmin=-1, saferang
 def classpeaks(result, threshold, max=2, downfor=2, maxlen=-1):
     """
     Return the times of peak classification of replay events found by counts
+
     :param result: classifier vector for a single cs, e.g. classifier['results']['plus']
     :param threshold: the minimum value above which it will be classified as a replay event
     :param max: the maximum value to allow
@@ -115,6 +116,7 @@ def classpeaks(result, threshold, max=2, downfor=2, maxlen=-1):
 def peakprobs(result, threshold, max=2, downfor=2, maxlen=-1):
     """
     Return the times of peak classification probability of replay events found by counts
+
     :param result: classifier vector for a single cs, e.g. classifier['results']['plus']
     :param threshold: the minimum value above which it will be classified as a replay event
     :param max: the maximum value to allow
@@ -138,6 +140,7 @@ def peakprobs(result, threshold, max=2, downfor=2, maxlen=-1):
 def counts(results, threshold, all=False, max=2):
     """
     Return count for each cs that is not other
+
     :param results: results dict from classifier, e.g. classifier['results']
     :param threshold: probability threshold above which one should count
     :param all: return all time points if True, otherwise just event onsets
