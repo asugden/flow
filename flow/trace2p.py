@@ -399,7 +399,7 @@ class Trace2P:
         # pupil_mask is based on the actual number of pixels,
         # calibrated relative to the eyeball diameter
 
-        # TODO : remove?
+        # TODO : remove
         if 'pupil_mask' not in self.d:
             if 'pupil' in self.d:
                 # print('WARNING: Mask not included in trace2p file.')
@@ -436,6 +436,7 @@ class Trace2P:
         lickbout = np.convolve(lickbout, conv, 'same')
         lickbout[lickbout > 0] = 1
         lickbout = lickbout[1:] - lickbout[:-1]
+
         return np.arange(len(lickbout))[lickbout > 0]
 
     def inactivity(self, nostim=True, runsec=10, motsec=3, licksec=10, run_min=4, mot_stdev=4):
@@ -517,8 +518,6 @@ class Trace2P:
             return self.pupil()
         elif var == 'photometry':
             return self.photometry(tracetype=tracetype)
-        elif var == 'pupilmask':
-            return self.pupilmask()
         elif var == 'ripple':
             return self.ripple()
         elif var == 'running':
@@ -804,8 +803,8 @@ class Trace2P:
         # so, higher X is anterior, higher Y is lateral
         # let's convert to higher X is lateral, higher Y is posterior
 
-        lateralness = self.d['centroid'][:, 1] / 512.0 - 0.5
-        posteriorness = 0.5 - self.d['centroid'][:, 0] / 796.0
+        lateralness = self.d['centroid'][:, 1]/512.0 - 0.5
+        posteriorness = 0.5 - self.d['centroid'][:, 0]/796.0
 
         # return self.d['centroid']
         return lateralness, posteriorness
@@ -868,6 +867,7 @@ class Trace2P:
 
     def _loadoffsets(self, path):
         """Load an extra mask file if necessary."""
+        # TODO: remove
         params = config.params()
         datad = params['paths'].get('data', '/data')
         mpath = opath.split(path)[1].replace('.simpcell', '.onsets')

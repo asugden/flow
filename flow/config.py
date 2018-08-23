@@ -298,6 +298,7 @@ def _initialize_config():
     print("Unable to find writable location.")
     return DEFAULT_FILE
 
+
 if __name__ == '__main__':
     params()
 # from pudb import set_trace; set_trace()
