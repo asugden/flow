@@ -3,23 +3,22 @@ import numpy as np
 import os
 import os.path as opath
 
-from replay.lib import analysis, classify, matdict
-from replay.lib.dep import Parser
+# This dependency should probably be removed if possible.
+# For now moved inside functions that need it
+# from pool import database
 
-from . import config, metadata, paths
-
-# from . import analysis
-# from . import classify
-# from . import hardcodedpaths
-# from . import matdict
-# from . import metadata
-# from . import settings
-# from .dep import Parser
+from . import config
+from . import metadata
+from . import paths
+from .classifier import classify
+from .misc import loadmat
+from .misc import Parser
 
 """
 Parse command-line inputs into easily readable versions to be used to 
 select a classifier.
 """
+
 
 class CommandInputs:
     def __init__(self, args):
@@ -78,12 +77,14 @@ def getmetadata(args):
     date = args['date'] if 'date' in args else args['training-date']
     mouse = args['mouse']
 
-    if 'noauto' in args: return args
-    if mouse not in metadata.spontaneous: return args
+    if 'noauto' in args:
+        return args
+    if mouse not in metadata.spontaneous:
+        return args
 
     md = metadata.spontaneous[mouse]
 
-    out = {p:args[p] for p in args}
+    out = {p: args[p] for p in args}
 
     for group in md:
         if str(date) in md[group]:
@@ -104,14 +105,16 @@ def parsekv(args, defaults=True):
     pars = p.keyvals(argstr)
 
     # Don't add metadata or default parameters
-    if not defaults: return pars
+    if not defaults:
+        return pars
 
     pars = getmetadata(pars)
 
     # Format correctly
-    fpars = configs.default()
+    fpars = config.default()
     for p in pars:
-        if p in fpars: fpars[p] = pars[p]
+        if p in fpars:
+            fpars[p] = pars[p]
 
         if p == 'date':
             fpars['training-date'] = str(pars[p])
@@ -155,8 +158,10 @@ def go(args, defaults={}, classifier=False, trace=False, force=False):
 
     # Account for the various output possibilities
     if not classifier:
-        if not trace: return (pars, lpars)
-        else: return (pars, lpars, trace2p(pars))
+        if not trace:
+            return (pars, lpars)
+        else:
+            return (pars, lpars, trace2p(pars))
     else:
         randomize = random(args)
         cf = classifier(pars, randomize, force)
@@ -278,7 +283,7 @@ def classifier(pars, randomize='', force=False):
         classify.classify(pars, randomize)
         return classifier(pars, randomize, False)
     else:
-        return matdict.load(out)
+        return loadmat(out)
 
 def classifiers(pars, randomize='', minclassifiers=1, check=False):
     """
@@ -319,7 +324,7 @@ def classifiers(pars, randomize='', minclassifiers=1, check=False):
     # Load and return all classifier results
     loaded = []
     for p in out:
-        cls = matdict.load(p)
+        cls = loadmat(p)
         loaded.append(cls)
     return loaded
 
@@ -388,9 +393,9 @@ class RunSorter():
         :param kvargs: key-value arguments from parsekv
         :return: None
         """
-
+        from pool import database
         if 'day-analysis' in kvargs:
-            self.andb = analysis.db()
+            self.andb = database.db()
             stringed = ''.join([str(v) for v in kvargs['day-analysis'][1:]])
             if '[' not in stringed or ']' not in stringed:
                 print 'ERROR: Variable required. Use square brackets, [], to surround variables.'
@@ -569,23 +574,23 @@ def matchvalorlist(args, key, val, strict=False):
 
     """
     # First, if the key is not present, everything matches
-    if key not in args: return True
+    if key not in args:
+        return True
 
     # If the key is present, check the type
     if isinstance(args[key], list) or isinstance(args[key], tuple):
-        if val in args[key]: return True
-        else: return False
+        return val in args[key]
     elif isinstance(args[key], str):
         if strict:
-            if val.lower() == args[key].lower(): return True
-            else: return False
+            return val.lower() == args[key].lower()
         else:
-            if val.lower() in args[key].lower(): return True
-            elif args[key].lower() in val.lower(): return True
-            else: return False
+            # if val.lower() in args[key].lower(): return True
+            # elif args[key].lower() in val.lower(): return True
+            # else: return False
+            return val.lower() in args[key].lower() or \
+                args[key].lower() in val.lower()
     else:
-        if val == args[key]: return True
-        else: return False
+        return val == args[key]
 
 
 class DaySorter():
@@ -626,9 +631,9 @@ class DaySorter():
         :param kvargs: key-value arguments from parsekv
         :return: None
         """
-
+        from pool import database
         if 'day-analysis' in kvargs:
-            self.andb = analysis.db()
+            self.andb = database.db()
             stringed = ''.join([str(v) for v in kvargs['day-analysis'][1:]])
             if '[' not in stringed or ']' not in stringed:
                 print 'ERROR: Variable required. Use square brackets, [], to surround variables.'
@@ -656,7 +661,8 @@ class DaySorter():
                         daypass = False
 
                 if daypass:
-                    if len(newmd) > 0 and newmd[-1][0] == mouse and newmd[-1][1] == date:
+                    if len(newmd) > 0 and newmd[-1][0] == mouse and \
+                            newmd[-1][1] == date:
                         newmd[-1][2].append(run)
                     else:
                         newmd.append([mouse, date, [run], group])

@@ -1,6 +1,9 @@
 from copy import deepcopy
 import pandas as pd
 
+# This is used to cache the metadata parsed as a dataframe.
+_dataframe = None
+
 spontaneous = {
     'CB173': {
         'group-6-8-sated': {
@@ -794,6 +797,27 @@ spontaneous = {
             '180726': [9, 10, 11],
             '180728': [9, 10, 11],
             '180730': [9, 10, 11],
+            # '180801': [9, 10, 11],
+            '180803': [9, 10, 11],
+            '180807': [9, 10, 11],
+            '180809': [9, 10, 11],
+            '180813': [9, 10, 11],
+            '180815': [9, 10, 11],
+        },
+    },
+
+    'OA192': {
+        'sated': {
+            'train': [2, 3],  # [2, 3, 4],
+            'running': [1],
+            '180731': [9, 10, 11],
+            '180802': [9, 10, 11],
+            '180806': [9, 10, 11],
+            '180808': [9, 10, 11],
+            '180810': [9, 10, 11],
+            '180814': [9, 10, 11],
+            '180816': [9, 10, 11],
+            '180820': [9, 10, 11],
         },
     },
 }
@@ -848,26 +872,29 @@ reversals = {
     'OA178': '180702',
 }
 
+
 def reversal(mouse):
-    """
-    Return the date of the reversal of a given mouse
+    """Return the date of the reversal of a given mouse.
+
     :param mouse: mouse name, string
     :return: date of reversal, string
-    """
 
-    if mouse not in reversals: return None
+    """
+    if mouse not in reversals:
+        return None
     return reversals[mouse]
 
+
 def checkreversal(mouse, date, match='', optmatch=None):
-    """
-    Check whether a mouse and date are pre-reversal if match is pre, post if post, or either.
+    """Check whether a mouse and date are pre- or post-reversal.
+
     :param mouse: mouse name, str
     :param date: date, int or str
     :param match: match, str, 'pre', 'post', or anything else for both OR dict of kvargs to check if str optmatch exists
     :param optmatch: match, str, if match is a dict. Will be checked for in dict.
     :return: boolean
-    """
 
+    """
     if optmatch is not None:
         if optmatch not in match:
             return True
@@ -962,17 +989,19 @@ def sortedall():
     return out
 
 
-def dataframe(mice=None, dates=None, groups=None, runtypes=None, sort=False):
+def dataframe(mice=None, dates=None, tags=None, runtypes=None, sort=False, groups=None):
     """Return a dataframe containing all metadata.
 
     Parameters
     ----------
     mice : list of str
         Mice to include.
-    dates : list of str
+    dates : list of int
         Dates to include.
     groups : list of str
-        Groups to include.
+        Deprecated. Groups to include.
+    tags : list of str
+        Tags to include.
     runtypes : list of str
         Runtypes to include.
     sort : bool
@@ -983,23 +1012,31 @@ def dataframe(mice=None, dates=None, groups=None, runtypes=None, sort=False):
     pd.DataFrame
 
     """
-    out = []
-    for mouse in spontaneous:
-        for group in spontaneous[mouse]:
-            groupdates = [
-                date for date in spontaneous[mouse][group] if date.isdigit()]
-            for date in groupdates:
-                for run in spontaneous[mouse][group][date]:
-                    out.append((mouse, date, run, group, 'spontaneous'))
+    global _dataframe
+    if _dataframe is None:
+        out = []
+        for mouse in spontaneous:
+            for group in spontaneous[mouse]:
+                groupdates = [
+                    date for date in spontaneous[mouse][group] if date.isdigit()]
+                for date in groupdates:
+                    for run in spontaneous[mouse][group][date]:
+                        out.append((mouse, date, run, group, 'spontaneous'))
 
-            for extra in ['train', 'running', 'sated-stim']:
-                if extra in spontaneous[mouse][group]:
-                    for run in spontaneous[mouse][group][extra]:
-                        for date in groupdates:
-                            out.append((mouse, date, run, group, extra))
+                for extra in ['train', 'running', 'sated-stim']:
+                    if extra in spontaneous[mouse][group]:
+                        for run in spontaneous[mouse][group][extra]:
+                            for date in groupdates:
+                                out.append((mouse, date, run, group, extra))
+        _dataframe = pd.DataFrame(
+            out, columns=['mouse', 'date', 'run', 'group', 'runtype'])
 
-    df = pd.DataFrame(
-        out, columns=['mouse', 'date', 'run', 'group', 'runtype'])
+    df = _dataframe.copy(deep=False)
+
+    # Convert to numeric columns...should this happen?
+    # If not, should probably do it in at least temporarily in the sort.
+    df.date = pd.to_numeric(df.date)
+    df.run = pd.to_numeric(df.run)
 
     # Start filtering
     if mice is not None:
@@ -1010,11 +1047,6 @@ def dataframe(mice=None, dates=None, groups=None, runtypes=None, sort=False):
         df = df[df.group.isin(groups)]
     if runtypes is not None:
         df = df[df.runtype.isin(runtypes)]
-
-    # Convert to numeric columns...should this happen?
-    # If not, should probably do it in at least temporarily in the sort.
-    df.date = pd.to_numeric(df.date)
-    df.run = pd.to_numeric(df.run)
 
     if sort:
         df = df.sort_values(by=['mouse', 'date', 'run']).reset_index(drop=True)

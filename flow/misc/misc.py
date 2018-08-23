@@ -1,10 +1,12 @@
 """Miscellaneous helper functions."""
 import argparse
+import collections
 import datetime
 import errno
 import matplotlib.pyplot as plt
 import os
 import pprint
+import scipy.io as spio
 import subprocess
 import time
 
@@ -120,3 +122,83 @@ def smart_parser(**kwargs):
     parser.parse_args = smart_parse_args
 
     return parser
+
+
+def layout_subplots(n_plots, height=11., width=8.5, **kwargs):
+    """Layout subplots to fit square axes on a fixed size figure.
+
+    Determines the optimal number of rows and columns to fit the given number
+    of square axes on a page.
+
+    Parameters
+    ----------
+    n_plots : int
+        Number of plots to fit.
+    height, width : float
+        Page dimensions, in inches.
+
+    Other parameters
+    ----------------
+    **kwargs
+        Everything else is passed to plt.subplots
+
+    """
+    rows = 0.
+    p = 0
+    while p < n_plots:
+        rows += 1.
+        cols = int(width / (height / rows))
+        p = rows * cols
+
+    fig, axs = plt.subplots(
+        int(rows), int(cols), figsize=(width, height), **kwargs)
+
+    for ax in axs.flatten()[n_plots:]:
+        ax.set_visible(False)
+
+    return fig, axs
+
+
+def loadmat(filename):
+    """Load mat files and convert structs to dicts.
+
+    Originally implemented by Francisco Luongo, see:
+    https://scanbox.org/2016/09/02/reading-scanbox-files-in-python/
+    Based in part onL
+    http://stackoverflow.com/questions/7008608/
+    scipy-io-loadmat-nested-structures-i-e-dictionaries
+
+    """
+    def check_keys(data):
+        """Check if entries in dictionary are mat-objects.
+
+        If yes, todict is called to change them to nested dictionaries
+
+        """
+        for key in data:
+            if isinstance(data[key], dict):
+                data[key] = check_keys(data[key])
+            elif isinstance(data[key], spio.matlab.mio5_params.mat_struct):
+                data[key] = todict(data[key])
+            elif isinstance(data[key], collections.Iterable) and \
+                    not isinstance(data[key], basestring) and \
+                    len(data[key]) and \
+                    isinstance(data[key][0],
+                               spio.matlab.mio5_params.mat_struct):
+                data[key] = [todict(item) for item in data[key]]
+        return data
+
+    def todict(matobj):
+        """Construct nested dictionaries from matobjects."""
+        data = {}
+        for strg in matobj._fieldnames:
+            elem = matobj.__dict__[strg]
+            if isinstance(elem, spio.matlab.mio5_params.mat_struct):
+                data[strg] = todict(elem)
+            else:
+                data[strg] = elem
+        return check_keys(data)
+
+    data = spio.loadmat(
+        filename, struct_as_record=False, squeeze_me=True, appendmat=False)
+    return check_keys(data)

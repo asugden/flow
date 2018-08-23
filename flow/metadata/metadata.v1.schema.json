@@ -1,0 +1,165 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#", 
+  "$id": "metadata.v1.schema.json",
+  "type": "object", 
+  "title": "The Root Metadata Schema", 
+  "description": "This defines a metadata format for use with flow.", 
+  "required": [
+    "mice", 
+    "version"
+  ], 
+  "properties": {
+    "mice": {
+      "$id": "#/properties/mice", 
+      "type": "array", 
+      "title": "The Mice Schema", 
+      "description": "Mice objects collect all runs from a single mouse.", 
+      "items": {
+        "$id": "#/properties/mice/items", 
+        "type": "object",
+        "required": [
+          "name", 
+          "dates"
+        ], 
+        "properties": {
+          "name": {
+            "$id": "#/properties/mice/items/properties/name", 
+            "type": "string", 
+            "title": "The Mouse Name Schema", 
+            "description": "The name of the mouse. Must be unique.", 
+            "examples": [
+              "CB173"
+            ]
+          }, 
+          "dates": {
+            "$id": "#/properties/mice/items/properties/dates", 
+            "type": "array", 
+            "title": "The Dates Schema", 
+            "description": "List of dates that experiments were run on this mouse.", 
+            "items": {
+              "$id": "#/properties/mice/items/properties/dates/items", 
+              "type": "object", 
+              "required": [
+                "date", 
+                "runs"
+              ], 
+              "properties": {
+                "date": {
+                  "$id": "#/properties/mice/items/properties/dates/items/properties/date", 
+                  "type": "integer", 
+                  "title": "The Date Schema", 
+                  "description": "The date, as a YYMMDD integer.", 
+                  "examples": [
+                    160503
+                  ]
+                }, 
+                "runs": {
+                  "$id": "#/properties/mice/items/properties/dates/items/properties/runs", 
+                  "type": "array", 
+                  "title": "The Runs Schema", 
+                  "description": "All the runs for this mouse on this date.", 
+                  "items": {
+                    "$id": "#/properties/mice/items/properties/dates/items/properties/runs/items", 
+                    "type": "object",
+                    "required": [
+                      "run", 
+                      "runtype"
+                    ], 
+                    "properties": {
+                      "run": {
+                        "$id": "#/properties/mice/items/properties/dates/items/properties/runs/items/properties/run", 
+                        "type": "integer", 
+                        "title": "The Run Schema", 
+                        "description": "The run number as an integer.", 
+                        "examples": [
+                          1
+                        ]
+                      }, 
+                      "runtype": {
+                        "$id": "#/properties/mice/items/properties/dates/items/properties/runs/items/properties/runtype", 
+                        "type": "string", 
+                        "title": "The Runtype Schema", 
+                        "description": "Label for the type of run.", 
+                        "examples": [
+                          "running",
+                          "training",
+                          "spontaneous"
+                        ]
+                      }, 
+                      "run_tags": {
+                        "$id": "#/properties/mice/items/properties/dates/items/properties/runs/items/properties/run_tags", 
+                        "type": "array", 
+                        "title": "The Run_tags Schema", 
+                        "description": "Any tags to apply to a single run. Can be used to sort and filter.",
+                        "items": {
+		                    	"$id": "#/properties/mice/items/properties/dates/items/properties/runs/items/properties/run_tags/items",
+		                    	"type": "string",
+		                    	"examples": [
+		                    	  "bad",
+		                    	  "error"
+		                    	]
+                        }
+                      }
+                    }
+                  }
+                }, 
+                "date_tags": {
+                  "$id": "#/properties/mice/items/properties/dates/items/properties/date_tags", 
+                  "type": "array", 
+                  "title": "The Date_tags Schema", 
+                  "description": "Any tags to apply to an entire date. Can be used to sort and filter.",
+                  "items": {
+	                	"$id": "#/properties/mice/items/properties/dates/items/properties/date_tags/items",
+	                	"type": "string",
+	                	"examples": [
+	                	  "bad",
+	                	  "error"
+	                	]
+	                }
+                }, 
+                "photometry": {
+                  "$id": "#/properties/mice/items/properties/dates/items/properties/photometry", 
+                  "type": "array", 
+                  "title": "The Photometry Schema", 
+                  "description": "The location of photometry recordings, if present.", 
+                  "items": {
+                    "$id": "#/properties/mice/items/properties/dates/items/properties/photometry/items", 
+                    "type": "string",
+                    "examples": [
+                      "nacc",
+                      "ca1"
+                    ]
+                  }
+                }
+              }
+            }
+          }, 
+          "mouse_tags": {
+            "$id": "#/properties/mice/items/properties/mouse_tags", 
+            "type": "array", 
+            "title": "The Mouse_tags Schema", 
+            "description": "Any tags to apply to an entire mouse. Can be used to sort and filter.",
+            "items": {
+            	"$id": "#/properties/mice/items/properties/mouse_tags/items",
+            	"type": "string",
+            	"examples": [
+            	  "jeff"
+            	]
+            }
+          }
+        }
+      }
+    }, 
+    "version": {
+      "$id": "#/properties/version", 
+      "type": "string", 
+      "title": "The Version Schema", 
+      "description": "The schema version that a metadata file should be parsed against.", 
+      "default": "v1", 
+      "examples": [
+        "v1"
+      ], 
+      "pattern": "^v(.*)$"
+    }
+  }
+}

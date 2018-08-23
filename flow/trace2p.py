@@ -6,6 +6,7 @@ from uuid import uuid1
 import warnings
 
 from . import config
+from .misc import loadmat
 
 
 class Trace2P:
@@ -14,7 +15,7 @@ class Trace2P:
     path to a simplified cellsort .mat file."""
 
     def __init__(self, path):
-        self.d = loadmatpy(path)
+        self.d = loadmat(path)
 
         # Instance variables
         self.ncells = np.shape(self.d['deconvolved'])[0]
@@ -129,41 +130,72 @@ class Trace2P:
             padf = int(round(pads * self.framerate))
             return int(round(self.d['onsets'][-1])) + padf
 
-    def cstraces(self, cs, args):
-        """
-        Return the onsets for a particular cs with flexibility. Ouptut
-        is in the order ncells, frames, nstimuli/onsets.
-        """
+    def cstraces(
+            self, cs, args=None, start_s=-1, end_s=2, trace_type='deconvolved',
+            cutoff_before_lick_ms=-1, error_trials=-1, baseline=None):
+        """Return the onsets for a particular cs with flexibility.
 
-        # Set arguments and convert to framerate
+        Parameters
+        ----------
+        cs : string
+            CS-type to return traces of, Should be one of values returned bvy
+            t2p.cses().
+        args : dict
+            Alternatively pass in arguments as a dict, with '-' instead of '_'.
+        start_s : int
+            Time before stim to include, in seconds.
+        end_s : int
+            Time after stim to include, in seconds.
+        trace_type : {'deconvolved', 'raw', 'dff'}
+            Type of trace to return.
+        cutoff_before_lick_ms : int
+            Exclude all time around licks by adding NaN's this many ms before
+            the first lick after the stim.
+        error_trials : {-1, 0, 1}
+            -1 is all trials, 0 is only correct trials, 1 is error trials
+        baseline : tuple of 2 ints, optional
+            Use this interval (in seconds) as a baseline to subtract off from
+            all traces each trial.
+
+        Returns
+        -------
+        ndarray
+            ncells x frames x nstimuli/onsets
+
+        """
         defaults = {
-            'start-s': -1,
-            'end-s': 2,
-            'trace-type': 'deconvolved',
-            'cutoff-before-lick-ms': -1,
-            'error-trials': -1,  # -1 is off, 0 is only correct trials, 1 is error trials
-            'baseline': (-1, -1),  # Baseline removed if these two are different
+            'start-s': start_s,
+            'end-s': end_s,
+            'trace-type': trace_type,
+            'cutoff-before-lick-ms': cutoff_before_lick_ms,
+            'error-trials': error_trials,
+            'baseline': baseline,
         }
 
+        if args is None:
+            args = {}
         for p in args:
             defaults[p] = args[p]
+
         defaults['start-fr'] = int(round(defaults['start-s']*self.framerate))
         defaults['end-fr'] = int(round(defaults['end-s']*self.framerate))
-        defaults['cutoff-fr'] = int(round(defaults['cutoff-before-lick-ms']/1000.0*self.framerate))
+        defaults['cutoff-fr'] = int(round(defaults['cutoff-before-lick-ms']/
+                                    1000.0*self.framerate))
 
         # Get lick times and onsets
         licks = self.d['licking'].flatten()
         ons = self.csonsets(cs, errortrials=defaults['error-trials'])
-        out = np.zeros((self.ncells, defaults['end-fr'] - defaults['start-fr'], len(ons)))
-        out[:, :, :] = np.nan
+        out = np.empty((self.ncells, defaults['end-fr'] - defaults['start-fr'],
+                        len(ons)))
+        out.fill(np.nan)
 
         # Iterate through onsets, find the beginning and end, and add
-        # the appropirate trace type to the output
+        # the appropriate trace type to the output
         for i, onset in enumerate(ons):
             start = defaults['start-fr'] + onset
             end = defaults['end-fr'] + onset
 
-            if i+start >= 0:
+            if i + start >= 0:
                 if defaults['cutoff-before-lick-ms'] > -1:
                     postlicks = licks[licks > onset]
                     if len(postlicks) > 0 and postlicks[0] < end:
@@ -174,10 +206,12 @@ class Trace2P:
                 if end > self.nframes:
                     end = self.nframes
                 if end > start:
-                    out[:, :end-start, i] = self.trace(defaults['trace-type'])[:, start:end]
+                    out[:, :end-start, i] = self.trace(
+                        defaults['trace-type'])[:, start:end]
 
         # Subtract the baseline, if desired
-        if defaults['baseline'][0] != defaults['baseline'][1]:
+        if baseline is not None and \
+                defaults['baseline'][0] != defaults['baseline'][1]:
             blargs = {key: defaults[key] for key in defaults}
             blargs['start-s'], blargs['end-s'] = blargs['baseline']
             blargs['baseline'] = (-1, -1)
@@ -846,6 +880,8 @@ class Trace2P:
         elif cs == 'punishment' or cs == 'quinine':
             out = np.copy(self.d['ensure'])
         else:
+            if cs not in self.codes:
+                return []
             out = np.copy(self.d['onsets'])
             out = out[self.d['condition'] == self.codes[cs]]
             if cs != 'pavlovian' and errortrials > -1:
@@ -861,7 +897,7 @@ class Trace2P:
         # TODO: remove
         mpath = path.replace('.simpcell', '-pupilrepmask.mat')
         if opath.exists(mpath):
-            masks = loadmatpy(mpath)
+            masks = loadmat(mpath)
             for key in masks:
                 self.d[key] = masks[key]
 
@@ -874,7 +910,7 @@ class Trace2P:
         path = opath.join(datad, 'onsets/%s' % mpath)
 
         if opath.exists(path):
-            offsets = loadmatpy(path)
+            offsets = loadmat(path)
             self.d['offsets'] = offsets['offsets']
 
     def _fixmistakes(self):
@@ -902,31 +938,31 @@ class Trace2P:
         """
         self._roi_ids = tuple(str(uuid1()) for _ in range(self.ncells))
 
+# Version implemented in flow.misc
+# def loadmatpy(filename):
+#     """
+#     A modified loadmat that can account for structs as dicts.
+#     """
 
-def loadmatpy(filename):
-    """
-    A modified loadmat that can account for structs as dicts.
-    """
+#     data = spio.loadmat(filename, struct_as_record=False, squeeze_me=True, appendmat=False)
+#     for key in data:
+#         if isinstance(data[key], spio.matlab.mio5_params.mat_struct):
+#             data[key] = _mattodict(data[key])
+#     return data
 
-    data = spio.loadmat(filename, struct_as_record=False, squeeze_me=True, appendmat=False)
-    for key in data:
-        if isinstance(data[key], spio.matlab.mio5_params.mat_struct):
-            data[key] = _mattodict(data[key])
-    return data
+# def _mattodict(matobj):
+#     """
+#     Recursively convert matobjs into dicts.
 
-def _mattodict(matobj):
-    """
-    Recursively convert matobjs into dicts.
+#     :param matobj: matlab object from _check_keys
+#     :return: dict
+#     """
 
-    :param matobj: matlab object from _check_keys
-    :return: dict
-    """
-
-    out = {}
-    for strg in matobj._fieldnames:
-        el = matobj.__dict__[strg]
-        if isinstance(el, spio.matlab.mio5_params.mat_struct):
-            out[strg] = _mattodict(el)
-        else:
-            out[strg] = el
-    return out
+#     out = {}
+#     for strg in matobj._fieldnames:
+#         el = matobj.__dict__[strg]
+#         if isinstance(el, spio.matlab.mio5_params.mat_struct):
+#             out[strg] = _mattodict(el)
+#         else:
+#             out[strg] = el
+#     return out
