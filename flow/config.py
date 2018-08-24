@@ -123,26 +123,28 @@ def reconfigure():
         config = json.load(f)
 
     print("PATHS")
+    if 'paths' not in config:
+        config['paths'] = {}
     data_path = raw_input(
-        'Enter path to data: [{}] '.format(config['paths']['data']))
+        'Enter path to data: [{}] '.format(config['paths'].get('data', '')))
     if len(data_path):
         config['paths']['data'] = os.path.normpath(data_path)
 
     output_path = raw_input(
         'Enter path to analyzed output files: [{}] '.format(
-            config['paths']['output']))
+            config['paths'].get('output', '')))
     if len(output_path):
         config['paths']['output'] = os.path.normpath(output_path)
 
     graph_path = raw_input(
         'Enter path to graphing directory: [{}] '.format(
-            config['paths']['graph']))
+            config['paths'].get('graph', '')))
     if len(graph_path):
         config['paths']['graph'] = os.path.normpath(graph_path)
 
     metadata_path = raw_input(
         'Enter path to metadata json file: [{}] '.format(
-            config['paths']['metadata']))
+            config['paths'].get('metadata', '')))
     if len(metadata_path):
         config['paths']['metadata'] = os.path.normpath(metadata_path)
 
