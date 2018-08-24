@@ -63,7 +63,7 @@
                     "type": "object",
                     "required": [
                       "run", 
-                      "runtype"
+                      "run_type"
                     ], 
                     "properties": {
                       "run": {
@@ -75,10 +75,10 @@
                           1
                         ]
                       }, 
-                      "runtype": {
-                        "$id": "#/properties/mice/items/properties/dates/items/properties/runs/items/properties/runtype", 
+                      "run_type": {
+                        "$id": "#/properties/mice/items/properties/dates/items/properties/runs/items/properties/run_type", 
                         "type": "string", 
-                        "title": "The Runtype Schema", 
+                        "title": "The Run_type Schema", 
                         "description": "Label for the type of run.", 
                         "examples": [
                           "running",

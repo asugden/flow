@@ -137,8 +137,14 @@ def reconfigure():
     graph_path = raw_input(
         'Enter path to graphing directory: [{}] '.format(
             config['paths']['graph']))
-    if len(output_path):
+    if len(graph_path):
         config['paths']['graph'] = os.path.normpath(graph_path)
+
+    metadata_path = raw_input(
+        'Enter path to metadata json file: [{}] '.format(
+            config['paths']['metadata']))
+    if len(metadata_path):
+        config['paths']['metadata'] = os.path.normpath(metadata_path)
 
     with open(config_path, 'w') as f:
         json.dump(config, f, sort_keys=True, indent=4, separators=(',', ': '))

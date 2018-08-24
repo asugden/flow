@@ -8,32 +8,32 @@
           "runs": [
             {
               "run": 1,
-              "runtype": "running"
+              "run_type": "running"
             },
             {
               "run": 5,
-              "runtype": "running",
+              "run_type": "running",
               "run_tags": ["hungry"]
             },
             {
               "run": 2,
-              "runtype": "train"
+              "run_type": "train"
             },
             {
               "run": 3,
-              "runtype": "train"
+              "run_type": "train"
             },
             {
               "run": 4,
-              "runtype": "train"
+              "run_type": "train"
             },
             {
               "run": 6,
-              "runtype": "spontaneous"
+              "run_type": "spontaneous"
             },
             {
               "run": 7,
-              "runtype": "sated-stim"
+              "run_type": "sated-stim"
             }
           ],
           "date_tags": [],

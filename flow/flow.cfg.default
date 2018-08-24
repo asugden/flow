@@ -2,6 +2,7 @@
     "paths": {
         "data": "/data",
         "graph": "/graphs",
-        "output": "/output"
+        "output": "/output",
+        "metadata": ""
     }
 }
