@@ -16,14 +16,18 @@ class Trace2P:
 
     def __init__(self, path):
         self.d = loadmat(path)
+        self._loadoffsets(path)
 
         # Instance variables
         self.ncells = np.shape(self.d['deconvolved'])[0]
         self.nframes = np.shape(self.d['deconvolved'])[1]
         self.framerate = 15.49 if 'framerate' not in self.d else self.d['framerate']
-        self.trials = np.copy(self.d['onsets']).astype(np.int32)
-        self.offsets = np.copy(self.d['offsets']).astype(np.int32)
-        self.conditions = np.copy(self.d['condition'])
+        if 'onsets' in self.d:
+            self.trials = np.copy(self.d['onsets']).astype(np.int32)
+        if 'offsets' in self.d:
+            self.offsets = np.copy(self.d['offsets']).astype(np.int32)
+        if 'conditions' in self.d:
+            self.conditions = np.copy(self.d['condition'])
         self.type = 'training' if 'onsets' in self.d else 'spontaneous'
 
         # Set some optional variables
@@ -32,7 +36,6 @@ class Trace2P:
 
         # Clean things up
         self._loadextramasks(path)
-        self._loadoffsets(path)
         self._fixmistakes()
         self._initalize_roi_ids()
 
@@ -82,6 +85,9 @@ class Trace2P:
         :return: vector of frames during which the stimulus turned off
         """
 
+        if cs not in self.codes:
+            return []
+
         out = np.copy(self.offsets)
         terr = np.copy(self.d['trialerror'])[:len(out)]
         cond = np.copy(self.d['condition'])[:len(out)]
@@ -97,24 +103,52 @@ class Trace2P:
 
         return out
 
-    def trialmask(self, cs, errortrials=-1):
+    def trialmask(self, cs='', errortrials=-1, fulltrial=False, padpre=0, padpost=0):
         """
-        Return a mask which is true only for trials of type cs
+        Return a mask which is true only for trials of type cs. Can return masks for stimuli or full trials.
 
-        :param cs: stimulus name, str
-        :param errortrials: whether to include all trials (-1), correct trials (0), or error trials (1)
-        :return: a vector mask of which times to include
+        Parameters
+        ----------
+        cs : str
+            Stimulus name, i.e. plus.
+        errortrials : int
+            All trials: -1, correct trials: 0, error trials: 1
+        fulltrial : bool
+            Mask between stimulus onsets if true, otherwise between stimulus onsets and offsets
+        padpre : float
+            Number of seconds to pad prior to stimulus onset
+        padpost : float
+            Number of seconds to pad post stimulus offset
+
+        Returns
+        -------
+        ndarray
+            Mask of length nframes in which True values mark the times of trials
+
         """
 
         out = np.zeros(self.nframes) > 1
         onsets = self._onsets(cs, errortrials)
-        tends = self.d['onsets'].flatten().astype(np.int32) - 1
-        # Add a value to the end to prevent fencepost problems
-        tends = np.append(tends, min(tends[-1] + np.nanmedian(tends).astype(np.int32), self.nframes))
+        if len(onsets) == 0:
+            return out
+
+        padpre, padpost = int(round(padpre*self.framerate)), int(round(padpost*self.framerate))
+
+        if fulltrial:
+            trial_length = int(np.nanmedian(self.trials[1:] - self.trials[:-1]))
+            all_offsets = np.append(self.trials, self.trials[-1] + trial_length) - 1
+        else:
+            if 'offsets' in self.d:
+                tends = self.d['offsets'].flatten().astype(np.int32)
+            else:
+                print('WARNING: Estimating trial offsets')
+                tends = onsets + int(round(2*self.framerate + 0.5))
+
+            all_offsets = np.append(tends, min(tends[-1] + np.nanmedian(tends).astype(np.int32), self.nframes))
 
         for ons in onsets:
-            offs = tends[np.argmax(tends > ons)]
-            out[ons:offs] = 1
+            offs = all_offsets[np.argmax(all_offsets > ons)]
+            out[ons - padpre:offs + padpost] = 1
 
         return out
 
@@ -433,7 +467,7 @@ class Trace2P:
         # pupil_mask is based on the actual number of pixels,
         # calibrated relative to the eyeball diameter
 
-        # TODO : remove?
+        # TODO : remove
         if 'pupil_mask' not in self.d:
             if 'pupil' in self.d:
                 # print('WARNING: Mask not included in trace2p file.')
@@ -470,6 +504,7 @@ class Trace2P:
         lickbout = np.convolve(lickbout, conv, 'same')
         lickbout[lickbout > 0] = 1
         lickbout = lickbout[1:] - lickbout[:-1]
+
         return np.arange(len(lickbout))[lickbout > 0]
 
     def inactivity(self, nostim=True, runsec=10, motsec=3, licksec=10, run_min=4, mot_stdev=4):
@@ -492,7 +527,10 @@ class Trace2P:
 
         runf = np.zeros(self.nframes)
         run = self.speed()[:self.nframes] > run_min
-        if len(run) < len(runf):
+        if isinstance(run, bool):
+            print('WARNING: Running not recorded')
+            run = runf
+        elif len(run) < len(runf):
             print('WARNING: Run lengths do not match')
             runf[-1*len(run):] = run
             run = runf
@@ -504,8 +542,10 @@ class Trace2P:
         mot = np.convolve(mot, np.ones(int(round(motsec*self.framerate)), dtype=np.float32), mode='same') > 0
 
         lck = np.zeros(self.nframes)
-        lck[self.licking()] = 1
-        lck = np.convolve(lck, np.ones(int(round(licksec*self.framerate)), dtype=np.float32), mode='same') > 0
+        if len(self.licking()) > 0:
+            lck[self.licking()] = 1
+            lck = np.convolve(lck, np.ones(int(round(licksec*self.framerate)), dtype=np.float32), mode='same')
+        lck = lck > 0
 
         return np.invert(np.bitwise_or(run, np.bitwise_or(mot, np.bitwise_or(lck, stm))))
 
@@ -551,8 +591,6 @@ class Trace2P:
             return self.pupil()
         elif var == 'photometry':
             return self.photometry(tracetype=tracetype)
-        elif var == 'pupilmask':
-            return self.pupilmask()
         elif var == 'ripple':
             return self.ripple()
         elif var == 'running':
@@ -727,6 +765,9 @@ class Trace2P:
     def licking(self):
         """Return the frames in which there was a lick onset."""
 
+        if isinstance(self.d['licking'], int):
+            self.d['licking'] = np.array([self.d['licking']])
+
         licks = self.d['licking'].flatten()
         licks = licks[licks < self.nframes]
         return licks
@@ -838,8 +879,8 @@ class Trace2P:
         # so, higher X is anterior, higher Y is lateral
         # let's convert to higher X is lateral, higher Y is posterior
 
-        lateralness = self.d['centroid'][:, 1] / 512.0 - 0.5
-        posteriorness = 0.5 - self.d['centroid'][:, 0] / 796.0
+        lateralness = self.d['centroid'][:, 1]/512.0 - 0.5
+        posteriorness = 0.5 - self.d['centroid'][:, 0]/796.0
 
         # return self.d['centroid']
         return lateralness, posteriorness
@@ -891,7 +932,7 @@ class Trace2P:
 
         out = out[(out > 0) & (out < self.nframes)]
 
-        return out
+        return out.astype(np.int32)
 
     def _loadextramasks(self, path):
         """Load an extra mask file if necessary."""
@@ -904,6 +945,7 @@ class Trace2P:
 
     def _loadoffsets(self, path):
         """Load an extra mask file if necessary."""
+        # TODO: remove
         params = config.params()
         datad = params['paths'].get('data', '/data')
         mpath = opath.split(path)[1].replace('.simpcell', '.onsets')
