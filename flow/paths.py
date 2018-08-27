@@ -5,6 +5,7 @@ from scipy.io import loadmat
 
 from .misc import wordhash
 from .trace2p import Trace2P
+from .classify2p import Classify2P
 from . import config
 
 params = config.params()
@@ -43,6 +44,24 @@ def gett2p(mouse, date, run):
     path = opath.join(datad, '%s/%s/%s_%s_%03i.simpcell' % (
         mouse, date, mouse, date, run))
     out = Trace2P(path)
+    return out
+
+def classifier2p(mouse, date, run, pars, randomize=''):
+    path = output(pars)
+    fs = os.listdir(path)[::-1]
+    out = []
+
+    # Change what you open whether real or random
+    if len(randomize) == 0:
+        for f in fs:
+            if f[:4] == 'real':
+                out.append(opath.join(path, f))
+    else:
+        for f in fs:
+            if f[:4] == 'rand' and f[5:5 + len(randomize)] == randomize:
+                out.append(opath.join(path, f))
+
+    out = Classify2P(out, pars, randomize)
     return out
 
 def getonsets(mouse, date=None, run=None):
