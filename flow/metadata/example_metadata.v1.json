@@ -1,46 +1,50 @@
 {
   "mice": [
     {
-      "name": "CB173",
       "dates": [
         {
           "date": 160503,
+          "date_tags": [],
+          "photometry": [
+            "nacc"
+          ],
           "runs": [
             {
               "run": 1,
-              "runtype": "running"
-            },
-            {
-              "run": 5,
-              "runtype": "running",
-              "run_tags": ["hungry"]
+              "run_type": "running"
             },
             {
               "run": 2,
-              "runtype": "train"
+              "run_type": "train"
             },
             {
               "run": 3,
-              "runtype": "train"
+              "run_type": "train"
             },
             {
               "run": 4,
-              "runtype": "train"
+              "run_type": "train"
+            },
+            {
+              "run": 5,
+              "run_tags": [
+                "hungry"
+              ],
+              "run_type": "running"
             },
             {
               "run": 6,
-              "runtype": "spontaneous"
+              "run_type": "spontaneous"
             },
             {
               "run": 7,
-              "runtype": "sated-stim"
+              "run_type": "sated-stim"
             }
-          ],
-          "date_tags": [],
-          "photometry": ["nacc"]
+          ]
         }
       ],
-      "mouse_tags": []
+      "mouse_tags": [],
+      "name": "CB173"
     }
   ],
   "version": "v1"
