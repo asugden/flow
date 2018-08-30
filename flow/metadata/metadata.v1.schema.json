@@ -86,13 +86,13 @@
                           "spontaneous"
                         ]
                       }, 
-                      "run_tags": {
-                        "$id": "#/properties/mice/items/properties/dates/items/properties/runs/items/properties/run_tags", 
+                      "tags": {
+                        "$id": "#/properties/mice/items/properties/dates/items/properties/runs/items/properties/tags", 
                         "type": "array", 
-                        "title": "The Run_tags Schema", 
+                        "title": "The Run Tags Schema", 
                         "description": "Any tags to apply to a single run. Can be used to sort and filter.",
                         "items": {
-		                    	"$id": "#/properties/mice/items/properties/dates/items/properties/runs/items/properties/run_tags/items",
+		                    	"$id": "#/properties/mice/items/properties/dates/items/properties/runs/items/properties/tags/items",
 		                    	"type": "string",
 		                    	"examples": [
 		                    	  "bad",
@@ -103,13 +103,13 @@
                     }
                   }
                 }, 
-                "date_tags": {
-                  "$id": "#/properties/mice/items/properties/dates/items/properties/date_tags", 
+                "tags": {
+                  "$id": "#/properties/mice/items/properties/dates/items/properties/tags", 
                   "type": "array", 
-                  "title": "The Date_tags Schema", 
+                  "title": "The Date Tags Schema", 
                   "description": "Any tags to apply to an entire date. Can be used to sort and filter.",
                   "items": {
-	                	"$id": "#/properties/mice/items/properties/dates/items/properties/date_tags/items",
+	                	"$id": "#/properties/mice/items/properties/dates/items/properties/tags/items",
 	                	"type": "string",
 	                	"examples": [
 	                	  "bad",
@@ -134,13 +134,13 @@
               }
             }
           }, 
-          "mouse_tags": {
-            "$id": "#/properties/mice/items/properties/mouse_tags", 
+          "tags": {
+            "$id": "#/properties/mice/items/properties/tags", 
             "type": "array", 
-            "title": "The Mouse_tags Schema", 
+            "title": "The Mouse Tags Schema", 
             "description": "Any tags to apply to an entire mouse. Can be used to sort and filter.",
             "items": {
-            	"$id": "#/properties/mice/items/properties/mouse_tags/items",
+            	"$id": "#/properties/mice/items/properties/tags/items",
             	"type": "string",
             	"examples": [
             	  "jeff"

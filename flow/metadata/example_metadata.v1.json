@@ -4,7 +4,7 @@
       "dates": [
         {
           "date": 160503,
-          "date_tags": [],
+          "tags": [],
           "photometry": [
             "nacc"
           ],
@@ -27,7 +27,7 @@
             },
             {
               "run": 5,
-              "run_tags": [
+              "tags": [
                 "hungry"
               ],
               "run_type": "running"
@@ -43,7 +43,7 @@
           ]
         }
       ],
-      "mouse_tags": [],
+      "tags": [],
       "name": "CB173"
     }
   ],
