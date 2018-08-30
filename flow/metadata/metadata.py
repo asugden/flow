@@ -119,7 +119,7 @@ def add_date(mouse, date, tags=None, photometry=None, overwrite=False):
     date_dict = {'date': date,
                  'runs': []}
     if tags is not None:
-        date_dict['date_tags'] = tags
+        date_dict['tags'] = tags
     if photometry is not None:
         date_dict['photometry'] = photometry
 
@@ -171,7 +171,7 @@ def add_run(
     run_dict = {'run': run,
                 'run_type': run_type}
     if tags is not None:
-        run_dict['run_tags'] = tags
+        run_dict['tags'] = tags
 
     date_dict['runs'].append(run_dict)
     mouse_dict['dates'].append(date_dict)
