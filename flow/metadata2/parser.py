@@ -58,23 +58,21 @@ def meta_df():
     meta = meta_dict()
     for mouse in meta['mice']:
         mouse_name = mouse.get('name')
-        mouse_tags = mouse.get('mouse_tags', [])
+        mouse_tags = set(mouse.get('tags', []))
         for date in mouse['dates']:
             date_num = date.get('date')
-            date_tags = date.get('date_tags', [])
+            date_tags = mouse_tags.union(date.get('tags', []))
             photometry = date.get('photometry', [])
             for run in date.get('runs'):
                 run_id = run.get('run')
                 run_type = run.get('run_type')
-                run_tags = run.get('run_tags', [])
+                run_tags = date_tags.union(run.get('tags', []))
                 out.append({
                     'mouse': mouse_name,
-                    'mouse_tags': mouse_tags,
                     'date': date_num,
-                    'date_tags': date_tags,
                     'photometry': photometry,
                     'run': run_id,
-                    'run_tags': run_tags,
+                    'tags': run_tags,
                     'run_type': run_type
                 })
     return pd.DataFrame(out)

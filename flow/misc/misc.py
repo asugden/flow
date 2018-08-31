@@ -124,6 +124,35 @@ def smart_parser(**kwargs):
     return parser
 
 
+def default_parser(arguments=('mouse', 'date'), **kwargs):
+    """Return a default parser that includes default arguments.
+
+    Parameters
+    ----------
+    arguments : list of str
+        List of default parameters to include.
+    **kwargs
+        Additional keyword arguments to pass to ArgumentParser.
+
+    Returns
+    -------
+    argparse.ArgumentParser
+
+    """
+    parser = argparse.ArgumentParser(**kwargs)
+
+    if 'mouse' in arguments:
+        parser.add_argument(
+            '-m', '--mouse', type=str, action='store',
+            help='Mouse to analyze.')
+    if 'date' in arguments:
+        parser.add_argument(
+            '-d', '--date', type=int, action='store',
+            help='Date to analyze.')
+
+    return parser
+
+
 def layout_subplots(n_plots, height=11., width=8.5, **kwargs):
     """Layout subplots to fit square axes on a fixed size figure.
 
