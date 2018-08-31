@@ -15,14 +15,6 @@ outd = params['paths'].get('output', '/output')
 graphd = params['paths'].get('graph', '/graphs')
 
 
-def extract_run_specific_pars(pars):
-    extracted = ['mouse', 'training-date', 'comparison-date', 'comparison-run']
-    out = {}
-    for p in pars:
-        if p not in extracted:
-            out[p] = pars[p]
-    return out
-
 def dataframe(name):
     """Save a pandas datafarme to a directory in output
 
@@ -118,7 +110,7 @@ def gettclassmarginals(pars):
     Return the path to the marginal probabilities measured from the time classifier.
     :return: path, str
     """
-    word = wordhash.word(extract_run_specific_pars(pars))
+    word = wordhash.word(pars)
     path = opath.join(outd, 'time-classifier-training')
     if not opath.exists(path): os.mkdir(path)
     return opath.join(path, '%s-time-classifier-marginals.mat'%word)
@@ -198,7 +190,7 @@ def udb(mouse, old=False):
     return path
 
 def graph(pars):
-    word = wordhash.word(extract_run_specific_pars(pars))
+    word = wordhash.word(pars)
     mouse = pars['mouse']
     date = pars['training-date']
     crun = pars['comparison-run']
@@ -229,7 +221,7 @@ def graphgroup(pars={}, group='', classifier=True):
     if not opath.exists(path): os.mkdir(path)
 
     if pars != {} and classifier:
-        word = wordhash.word(extract_run_specific_pars(pars))
+        word = wordhash.word(pars)
         path = opath.join(path, word)
         if not opath.exists(path): os.mkdir(path)
 
@@ -240,7 +232,7 @@ def graphgroup(pars={}, group='', classifier=True):
     return opath.join(path, '')
 
 def graphmdr(pars):
-    word = wordhash.word(extract_run_specific_pars(pars))
+    word = wordhash.word(pars)
     mouse = pars['mouse']
     date = pars['training-date']
     crun = pars['comparison-run']
@@ -267,10 +259,10 @@ def classifierword(pars):
     :return: word, str
     """
 
-    return wordhash.word(extract_run_specific_pars(pars))
+    return wordhash.word(pars)
 
 def output(pars):
-    word = wordhash.word(extract_run_specific_pars(pars))
+    word = wordhash.word(pars)
     # print 'Classifier %s' % (word)
     mouse = pars['mouse']
     date = pars['training-date']
@@ -289,7 +281,7 @@ def output(pars):
     return path
 
 def neuralnet(mouse, date, netpars={}):
-    word = wordhash.word(extract_run_specific_pars(netpars))
+    word = wordhash.word(netpars)
     # print 'Classifier %s' % (word)
 
     # Base/mouse
@@ -304,7 +296,7 @@ def neuralnet(mouse, date, netpars={}):
     return path
 
 def training(pars):
-    word = wordhash.word(extract_run_specific_pars(pars))
+    word = wordhash.word(pars)
     # print 'Classifier %s' % (word)
     mouse = pars['mouse']
     date = pars['training-date']
@@ -321,7 +313,7 @@ def training(pars):
     return path
 
 def ctraindump(pars):
-    word = wordhash.word(extract_run_specific_pars(pars))
+    word = wordhash.word(pars)
     # print 'Classifier %s' % (word)
     mouse = pars['mouse']
     date = pars['training-date']
