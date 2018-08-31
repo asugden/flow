@@ -165,8 +165,8 @@ class Trace2P:
             return int(round(self.d['onsets'][-1])) + padf
 
     def cstraces(
-            self, cs, args=None, start_s=-1, end_s=2, trace_type='deconvolved',
-            cutoff_before_lick_ms=-1, error_trials=-1, baseline=None):
+            self, cs, start_s=-1, end_s=2, trace_type='deconvolved',
+            cutoff_before_lick_ms=-1, errortrials=-1, baseline=None):
         """Return the onsets for a particular cs with flexibility.
 
         Parameters
@@ -174,18 +174,16 @@ class Trace2P:
         cs : string
             CS-type to return traces of, Should be one of values returned bvy
             t2p.cses().
-        args : dict
-            Alternatively pass in arguments as a dict, with '-' instead of '_'.
-        start_s : int
-            Time before stim to include, in seconds.
-        end_s : int
+        start_s : float
+            Time before stim to include, in seconds. For backward compatability, can also be arg dict.
+        end_s : float
             Time after stim to include, in seconds.
         trace_type : {'deconvolved', 'raw', 'dff'}
             Type of trace to return.
         cutoff_before_lick_ms : int
             Exclude all time around licks by adding NaN's this many ms before
             the first lick after the stim.
-        error_trials : {-1, 0, 1}
+        errortrials : {-1, 0, 1}
             -1 is all trials, 0 is only correct trials, 1 is error trials
         baseline : tuple of 2 ints, optional
             Use this interval (in seconds) as a baseline to subtract off from
@@ -198,18 +196,19 @@ class Trace2P:
 
         """
         defaults = {
-            'start-s': start_s,
+            'start-s': -1 if isinstance(start_s, dict) else start_s,
             'end-s': end_s,
             'trace-type': trace_type,
             'cutoff-before-lick-ms': cutoff_before_lick_ms,
-            'error-trials': error_trials,
+            'error-trials': errortrials,
             'baseline': baseline,
         }
 
-        if args is None:
-            args = {}
-        for p in args:
-            defaults[p] = args[p]
+        if isinstance(start_s, dict):
+            args = deepcopy(start_s)
+            start_s = defaults['start-s']
+            for p in args:
+                defaults[p] = args[p]
 
         defaults['start-fr'] = int(round(defaults['start-s']*self.framerate))
         defaults['end-fr'] = int(round(defaults['end-s']*self.framerate))

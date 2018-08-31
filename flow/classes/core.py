@@ -60,7 +60,7 @@ class Run(object):
         self.date = int(date)
         self.run = int(run)
 
-        self._t2p, self._classifier = None, None
+        self._t2p, self._c2p = None, None
 
     def __repr__(self):
         """Return repr of Run."""
@@ -78,15 +78,27 @@ class Run(object):
         return isinstance(other, type(self)) and self.mouse == other.mouse \
             and self.date == other.date and self.run == other.run
 
-    @property
-    def t2p(self):
+    def trace2p(self):
         if self._t2p is None:
             self._t2p = paths.gett2p(
                 self.mouse, self.date, self.run)
         return self._t2p
 
-    def classifier(self):
-        pass
+    def classify2p(self, newpars=None, randomize=''):
+        pars = config.default()
+
+        if newpars is None:
+            if self._c2p is None:
+                self._c2p = paths.classifier2p(
+                    self.mouse, self.date, self.run, pars, randomize)
+            return self._c2p
+        else:
+            for key in newpars:
+                pars[key] = newpars[key]
+
+            return paths.classifier2p(
+                    self.mouse, self.date, self.run, pars, randomize)
+
 
 
 class DateSorter(UserList):
