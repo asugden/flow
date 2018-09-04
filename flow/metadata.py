@@ -1,8 +1,101 @@
 from copy import deepcopy
 import pandas as pd
 
+from . import metadata2
+
 # This is used to cache the metadata parsed as a dataframe.
 _dataframe = None
+
+
+"""
+training, running always hungry
+sated-stim always sated
+
+dates are spontaneous, hungry/sated based on parsed group
+
+disengaged, naive as date tags
+
+skip-crossday added as date tag
+
+add replay1 mouse tag to:
+CB173
+AS20
+OA32
+OA34
+OA36
+OA37
+OA38
+AS41
+
+"""
+
+def parse_spontaneous():
+    replay1_mice = ['CB173', 'AS20', 'OA32', 'OA34', 'OA36', 'OA37', 'OA38', 'AS41']
+    for mouse in spontaneous:
+        mouse_tags = ['replay1'] if mouse in replay1_mice else []
+        print("Adding {}".format(mouse))
+        metadata2.add_mouse(mouse, tags=mouse_tags)
+        for group in spontaneous[mouse]:
+            date_tags = []
+            sated = 'sated' in group
+            hungry = 'hungry' in group
+            if 'disengaged' in group:
+                date_tags.append('disengaged')
+            if 'naive' in group:
+                date_tags.append('naive')
+            if spontaneous[mouse][group].get('skip-crossday', False):
+                date_tags.append('skip-crossday')
+            training_runs = spontaneous[mouse][group]['train']
+            running_runs = spontaneous[mouse][group]['running']
+            sated_stim_runs = spontaneous[mouse][group].get('sated-stim', [])
+            photometry = spontaneous[mouse][group].get('photometry', [])
+            for key in spontaneous[mouse][group]:
+                if key in ('train', 'running', 'sated-stim', 'photometry',
+                           'skip-crossday'):
+                    continue
+                date = int(key)
+                print('Adding {}-{}'.format(mouse, date))
+                try:
+                    metadata2.add_date(
+                        mouse, date, photometry=photometry, tags=date_tags)
+                except metadata2.metadata.AlreadyPresentError:
+                    pass
+
+                for run in training_runs:
+                    run_tags = ['hungry']
+                    try:
+                        metadata2.add_run(
+                            mouse, date, run, run_type='training', tags=run_tags)
+                    except metadata2.metadata.AlreadyPresentError:
+                        pass
+
+                for run in running_runs:
+                    run_tags = ['hungry']
+                    try:
+                        metadata2.add_run(
+                            mouse, date, run, run_type='running', tags=run_tags)
+                    except metadata2.metadata.AlreadyPresentError:
+                        pass
+
+                for run in sated_stim_runs:
+                    run_tags = ['sated']
+                    try:
+                        metadata2.add_run(
+                            mouse, date, run, run_type='sated-stim', tags=run_tags)
+                    except metadata2.metadata.AlreadyPresentError:
+                        pass
+
+                for run in spontaneous[mouse][group][key]:
+                    assert (sated or hungry) and not (sated and hungry)
+                    if sated:
+                        run_tags = ['sated']
+                    elif hungry:
+                        run_tags = ['hungry']
+                    metadata2.add_run(
+                        mouse, date, run, run_type='spontaneous', tags=run_tags)
+
+    return metadata2.dataframe(sort=True)
+
 
 spontaneous = {
     'CB173': {
@@ -248,9 +341,9 @@ spontaneous = {
             'photometry': ['nacc'],
             '170328': [5],
             '170330': [5],
-            '170331': [5],
+            # '170331': [5],
             '170403': [5],
-            '170404': [5],
+            # '170404': [5],
             '170406': [5],
             '170407': [5],
             '170410': [5],
@@ -263,7 +356,7 @@ spontaneous = {
         'group-5-hungry-ca1': {
             'train': [2, 3, 4],
             'running': [1],
-            'photometry': ['ca1'],
+            'photometry': ['nacc', 'ca1'],
             '170331': [5],
             '170404': [5],
         },
