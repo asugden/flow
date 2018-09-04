@@ -48,10 +48,20 @@ def sortlist(obj):
     else:
         return obj
 
+def extract_run_specific_pars(pars):
+    extracted = ['mouse', 'training-date', 'comparison-date', 'comparison-run']
+    out = {}
+    for p in pars:
+        if p not in extracted:
+            out[p] = pars[p]
+    return out
+
 def word(obj):
     """
     Pass a pickleable object and convert it to a word.
     """
+    # TODO: Remove extraction of run-specific parameters
+    obj = extract_run_specific_pars(obj)
 
     obj = sortlist(obj)
 
