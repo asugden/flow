@@ -94,7 +94,7 @@ def parse_spontaneous():
                     metadata2.add_run(
                         mouse, date, run, run_type='spontaneous', tags=run_tags)
 
-    return metadata2.dataframe(sort=True)
+    return metadata2.meta(sort=True)
 
 
 spontaneous = {
