@@ -2,18 +2,49 @@
 from . import parser
 
 
-
 class MissingParentError(Exception):
+    """Error thrown if you try to add a bad date/run.
+
+    For adding a date without the mouse or a run without the mouse and date
+    already present in metadata.
+
+    """
+
     pass
 
 
 class AlreadyPresentError(Exception):
+    """Error thrown if a mouse/date/run already exists in metadata."""
+
     pass
 
 
-def dataframe(
+# TODO: This could all be added to the metadata instead.
+reversals = {
+    'CB173': '160516',
+    'AS20': '160827',
+    'AS21': '161115',
+    'AS23': '161213',
+    'OA32': '170406',
+    'OA32-H': '181231',
+    'OA34': '170602',
+    'OA36': '170906',
+    'OA37': '171231',
+    'OA37-H': '171231',
+    'OA38': '171231',
+    'AS41': '181231',
+    'AS44': '181231',
+    'AS46': '181231',
+    'AS47-naive': '181231',
+    'AS47': '181231',
+    'AS51': '181231',
+    'OA178': '180702',
+}
+
+
+def meta(
         mice=None, dates=None, runs=None, run_types=None, tags=None,
-        photometry=None, sort=False):
+        photometry=None, sort=False, reload_=False):
     """Return metadata as a DataFrame, optionally filtering on any columns.
 
     All parameters are optional and if passed will be used to filter the
@@ -36,7 +67,7 @@ def dataframe(
         Columns=('mouse', 'date', 'run', 'run_type', 'tags', 'photometry')
 
     """
-    df = parser.meta_df()
+    df = parser.meta_df(reload_=reload_)
 
     if mice is not None:
         df = df[df.mouse.isin(mice)]
@@ -179,3 +210,60 @@ def add_run(
 
     parser.save(metadata)
     parser.meta_dict(reload_=True)
+
+
+def runs(mouse, date, tags=None):
+    """Return all info for a given mouse and date.
+
+    Parameters
+    ----------
+    mouse : str
+    date : int
+    tags : list of str, optional
+        Optionally filter by additional tags.
+
+    Returns
+    -------
+    pd.DataFrame
+        Contains one row per run, filtered as requested.
+    """
+    return meta(mice=[mouse], dates=[date], tags=tags, sort=True)
+
+
+def reversal(mouse):
+    """Return date of the reversal for the mouse or None if not reversed."""
+    if mouse not in reversals:
+        return None
+    return int(reversals[mouse])
+
+
+def checkreversal(mouse, date, match=None, optmatch=None):
+    """Check whether a mouse and date are pre- or post-reversal.
+
+    Parameters
+    ----------
+    mouse : str
+    date : int
+    match : str
+        'pre' or 'post' to match pre- or post-reversal. Any other value
+        will always return True. Alternatively, a dictionary and will be used
+        with optmatch.
+    optmatch : str, optional
+        Check if optmatch is in match. Match must be a dictionary.
+
+    """
+    if match is None:
+        match = ''
+
+    if optmatch is not None:
+        if optmatch not in match:
+            return True
+        else:
+            match = match[optmatch]
+
+    if match.lower() == 'pre':
+        return date < reversals[mouse]
+    elif match.lower() == 'post':
+        return date >= reversals[mouse]
+    else:
+        return True
