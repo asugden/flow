@@ -266,33 +266,53 @@ def reversal(mouse):
     return int(reversals[mouse])
 
 
-def checkreversal(mouse, date, match=None, optmatch=None):
-    """Check whether a mouse and date are pre- or post-reversal.
+# def checkreversal(mouse, date, match=None, optmatch=None):
+#     """Check whether a mouse and date are pre- or post-reversal.
+#
+#     Parameters
+#     ----------
+#     mouse : str
+#     date : int
+#     match : str
+#         'pre' or 'post' to match pre- or post-reversal. Any other value
+#         will always return True. Alternatively, a dictionary and will be used
+#         with optmatch.
+#     optmatch : str, optional
+#         Check if optmatch is in match. Match must be a dictionary.
+#
+#     """
+#     if match is None:
+#         match = ''
+#
+#     if optmatch is not None:
+#         if optmatch not in match:
+#             return True
+#         else:
+#             match = match[optmatch]
+#
+#     if match.lower() == 'pre':
+#         return date < reversals[mouse]
+#     elif match.lower() == 'post':
+#         return date >= reversals[mouse]
+#     else:
+#         return True
+
+
+def dates(mouse, tags=None):
+    """Return all dates that a given mouse was imaged.
 
     Parameters
     ----------
     mouse : str
-    date : int
-    match : str
-        'pre' or 'post' to match pre- or post-reversal. Any other value
-        will always return True. Alternatively, a dictionary and will be used
-        with optmatch.
-    optmatch : str, optional
-        Check if optmatch is in match. Match must be a dictionary.
+    tags : list of str, optional
+        If not None, dates must include these tags.
+
+    Returns
+    -------
+    dates : list of int
+        Sorted dates the mouse was recorded.
 
     """
-    if match is None:
-        match = ''
 
-    if optmatch is not None:
-        if optmatch not in match:
-            return True
-        else:
-            match = match[optmatch]
-
-    if match.lower() == 'pre':
-        return date < reversals[mouse]
-    elif match.lower() == 'post':
-        return date >= reversals[mouse]
-    else:
-        return True
+    data = meta(mice=[mouse], tags=tags)
+    return sorted(data['date'].unique())

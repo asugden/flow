@@ -96,7 +96,7 @@ def save(metadata):
     """
     validate(metadata)
 
-    # Sort lists sanely
+    # Sort lists consistently
     metadata['mice'] = sorted(metadata['mice'], key=itemgetter('name'))
     for mouse in metadata['mice']:
         mouse['dates'] = sorted(mouse['dates'], key=itemgetter('date'))
