@@ -192,33 +192,6 @@ def extractkv(args, defaults=None):
     return out
 
 
-def parseargs(args, defaults=None, limit_to_defaults=False):
-    """
-    Combine arguments from command-line and defaults.
-
-    Parameters
-    ----------
-    args : Namespace
-        Parsed args from argparse parse.
-    defaults : dict
-        Dictionary of default values.
-
-    Returns
-    -------
-
-
-    """
-    if defaults is None:
-        defaults = {}
-
-    out = deepcopy(defaults)
-
-    for key, val in vars(args).iteritems():
-        if not limit_to_defaults or key in defaults:
-            out[key] = val
-    return out
-
-
 def parseclass(args, trace=False, force=True):
     """
     Parse input arguments, get the resulting classifier and optionally

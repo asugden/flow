@@ -88,43 +88,7 @@ def save_figs(save_path, figs):
         pp.close()
 
 
-def smart_parser(**kwargs):
-    """Return a smart parser that will parse all arguments."""
-    epilog = "The smart_parser will additionally accept any recognized" + \
-        " args and add them to the resulting Namespace."
-    parser = argparse.ArgumentParser(epilog=epilog, **kwargs)
-
-    def smart_parse_args():
-        args, extras = parser.parse_known_args()
-        idx = 0
-        while idx < len(extras):
-            if extras[idx].startswith('-'):
-                skip = 1
-                if extras[idx].startswith('--'):
-                    skip = 2
-                key = extras[idx][skip:]
-                idx += 1
-                values = []
-                while idx < len(extras) and not extras[idx].startswith('-'):
-                    values.append(extras[idx])
-                    idx += 1
-                if not len(values):
-                    raise ValueError(
-                        "All unknown arguments must have at least 1 value.")
-                elif len(values) == 1:
-                    vars(args)[key] = values[0]
-                else:
-                    vars(args)[key] = values
-            else:
-                idx += 1
-        return args
-
-    parser.parse_args = smart_parse_args
-
-    return parser
-
-
-def default_parser(arguments=('mouse', 'date'), **kwargs):
+def default_parser(arguments=('mouse', 'date', 'tags'), **kwargs):
     """Return a default parser that includes default arguments.
 
     Parameters
@@ -143,12 +107,20 @@ def default_parser(arguments=('mouse', 'date'), **kwargs):
 
     if 'mouse' in arguments:
         parser.add_argument(
-            '-m', '--mouse', type=str, action='store',
-            help='Mouse to analyze.')
+            '-m', '--mouse', type=str, action='store', nargs='*', default=None,
+            help='Mouse(mice) to analyze.')
     if 'date' in arguments:
         parser.add_argument(
-            '-d', '--date', type=int, action='store',
-            help='Date to analyze.')
+            '-d', '--date', type=int, action='store', nargs='*', default=None,
+            help='Date(s) to analyze.')
+    if 'run' in arguments:
+        parser.add_argument(
+            '-r', '--run', type=int, action='store', nargs='*', default=None,
+            help='Run(s) to analyze.')
+    if 'tags' in arguments:
+        parser.add_argument(
+            '-t', '--tags', type=str, action='store', nargs='*', default=None,
+            help='Additional tags to filter mouse/date/run on.')
 
     return parser
 
