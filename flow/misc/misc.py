@@ -105,18 +105,18 @@ def default_parser(arguments=('mouse', 'date', 'tags'), **kwargs):
     """
     parser = argparse.ArgumentParser(**kwargs)
 
-    if 'mouse' in arguments:
+    if 'mice' in arguments:
         parser.add_argument(
-            '-m', '--mouse', type=str, action='store', nargs='*', default=None,
-            help='Mouse(mice) to analyze.')
-    if 'date' in arguments:
+            '-m', '--mice', type=str, action='store', nargs='*', default=None,
+            help='Mice to analyze.')
+    if 'dates' in arguments:
         parser.add_argument(
-            '-d', '--date', type=int, action='store', nargs='*', default=None,
-            help='Date(s) to analyze.')
-    if 'run' in arguments:
+            '-d', '--dates', type=int, action='store', nargs='*', default=None,
+            help='Dates to analyze.')
+    if 'runs' in arguments:
         parser.add_argument(
-            '-r', '--run', type=int, action='store', nargs='*', default=None,
-            help='Run(s) to analyze.')
+            '-r', '--runs', type=int, action='store', nargs='*', default=None,
+            help='Runs to analyze.')
     if 'tags' in arguments:
         parser.add_argument(
             '-t', '--tags', type=str, action='store', nargs='*', default=None,
