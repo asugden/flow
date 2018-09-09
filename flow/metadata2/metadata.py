@@ -316,3 +316,38 @@ def dates(mouse, tags=None):
 
     data = meta(mice=[mouse], tags=tags)
     return sorted(data['date'].unique())
+
+def data(mouse, date):
+    """Return all of the data for  given date as a dict.
+
+    Parameters
+    ----------
+    mouse : str
+    date : int
+
+    Returns
+    -------
+    dict
+        All metadata with following keys:
+            mouse : mouse name
+            date : date as int
+            hungry : list of run indexes for hungry spontaneous runs
+            sated : list of run indexes for sated sponataeous runs
+            *run_type* : list of run indices for all run types in metadata
+
+    """
+
+    out = {'mouse': mouse, 'date': date}
+
+    date_df = meta(mice=[mouse], dates=[date])
+
+    for run_type, run_type_df in date_df.groupby('run_type'):
+        out[str(run_type)] = sorted(run_type_df.run)
+
+    spont_df = date_df[date_df.run_type == 'spontaneous']
+    out['hungry'] = sorted(
+        spont_df.ix[spont_df.tags.apply(lambda x: 'hungry' in x), 'run'])
+    out['sated'] = sorted(
+        spont_df.ix[spont_df.tags.apply(lambda x: 'sated' in x), 'run'])
+
+    return out
