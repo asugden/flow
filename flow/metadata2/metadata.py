@@ -107,7 +107,7 @@ def meta(
     if run_types is not None:
         df = df[df.run_type.isin(run_types)]
     if tags is not None:
-        df = df[df.mouse_tags.apply(
+        df = df[df.tags.apply(
             lambda x: any(tag in x for tag in tags))]
     if photometry is not None:
         df = df[df.photometry.apply(
