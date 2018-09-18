@@ -125,41 +125,6 @@ def default_parser(arguments=('mouse', 'date', 'tags'), **kwargs):
     return parser
 
 
-def layout_subplots(n_plots, height=11., width=8.5, **kwargs):
-    """Layout subplots to fit square axes on a fixed size figure.
-
-    Determines the optimal number of rows and columns to fit the given number
-    of square axes on a page.
-
-    Parameters
-    ----------
-    n_plots : int
-        Number of plots to fit.
-    height, width : float
-        Page dimensions, in inches.
-
-    Other parameters
-    ----------------
-    **kwargs
-        Everything else is passed to plt.subplots
-
-    """
-    rows = 0.
-    p = 0
-    while p < n_plots:
-        rows += 1.
-        cols = int(width / (height / rows))
-        p = rows * cols
-
-    fig, axs = plt.subplots(
-        int(rows), int(cols), figsize=(width, height), **kwargs)
-
-    for ax in axs.flatten()[n_plots:]:
-        ax.set_visible(False)
-
-    return fig, axs
-
-
 def loadmat(filename):
     """Load mat files and convert structs to dicts.
 
