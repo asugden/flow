@@ -50,26 +50,43 @@ def git_revision():
     return sha.strip()
 
 
-def summary_page(days, lpars):
-    """Return a summary page of data analyzed and settings used."""
-    fig = plt.figure(figsize=(8.5, 11))
+def summary_page(sorter, figsize=None, **kwargs):
+    """Return a summary page of data analyzed and settings used.
+
+    Parameters
+    ----------
+    sorter : DateSorter or RunSorter
+        Really any iterable will work. Adds str of the object and everything it
+        iterates over.
+    figsize : tuple, optional
+        2-element tuple of the size of the figure.
+    **kwargs
+        Values for any additional keyword arguments are added as text.
+
+    Notes
+    -----
+    There is no attempt to actual estimate the size of the text, it's just
+    assumed to fit on the page. If the text is too long, it will go off the
+    bottom. Could add fontsize argument if needed.
+
+    """
+    if figsize is None:
+        figsize = (8.5, 11)
+    fig = plt.figure(figsize=figsize)
 
     header = 'Summary sheet - {time} - {sha1}\n\n'.format(
         time=time.asctime(), sha1=git_revision())
 
     divider = '-------------------------------------------------------------\n'
 
-    days_text = ''
-    days.reset()
-    while days.next():
-        md, _ = days.get()
-        days_text += str(md) + '\n'
-    days.reset()
+    sorter_text = str(sorter) + '\n'
+    for x in sorter:
+        sorter_text += ' ' + str(x) + '\n'
 
-    lpars_text = pprint.pformat(lpars)
+    kwargs_text = pprint.pformat(kwargs)
 
-    fig_text = header + 'Experiments\n' + divider + days_text + \
-        '\nParameters\n' + divider + lpars_text
+    fig_text = header + 'Experiments\n' + divider + sorter_text + \
+        '\nParameters\n' + divider + kwargs_text
 
     fig.text(0.05, 0.97, fig_text, va='top', ha='left', fontsize=5)
 
@@ -77,15 +94,34 @@ def summary_page(days, lpars):
 
 
 def save_figs(save_path, figs):
-    """Save figs to a file."""
+    """Save figs to a file.
+
+    'figs' can be a generator and they will be consumed and closed 1 by 1.
+    Uses a temporary file so that a crash in the middle doesn't corrupt the
+    destination on an overwrite.
+
+    """
     mkdir_p(os.path.dirname(save_path))
-    if save_path.endswith('.pdf'):
-        from matplotlib.backends.backend_pdf import PdfPages
-        pp = PdfPages(save_path)
-        for fig in figs:
-            pp.savefig(fig)
-            plt.close(fig)
-        pp.close()
+    temp_save_path = save_path + '.tmp'
+    # noinspection PyBroadException
+    try:
+        if save_path.endswith('.pdf'):
+            from matplotlib.backends.backend_pdf import PdfPages
+            pp = PdfPages(temp_save_path)
+            for fig in figs:
+                pp.savefig(fig)
+                plt.close(fig)
+            pp.close()
+    except:
+        # os.remove(temp_save_path)
+        raise
+    else:
+        os.rename(temp_save_path, save_path)
+    finally:
+        try:
+            os.remove(temp_save_path)
+        except OSError:
+            pass
 
 
 def default_parser(arguments=('mouse', 'date', 'tags'), **kwargs):
@@ -121,6 +157,10 @@ def default_parser(arguments=('mouse', 'date', 'tags'), **kwargs):
         parser.add_argument(
             '-t', '--tags', type=str, action='store', nargs='*', default=None,
             help='Additional tags to filter mouse/date/run on.')
+    if 'overwrite' in arguments:
+        parser.add_argument(
+            '-o', '--overwrite', action='store_true',
+            help='If True, overwrite pre-existing files.')
 
     return parser
 
