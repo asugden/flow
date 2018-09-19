@@ -39,6 +39,8 @@ reversals = {
     'AS47': '181231',
     'AS51': '181231',
     'OA178': '180702',
+    'OA191': '180813',
+    'OA192': '180903',
 }
 
 sleep = {
@@ -119,7 +121,7 @@ def meta(
     return df
 
 
-def add_mouse(mouse, tags=None, overwrite=False):
+def add_mouse(mouse, tags=None, overwrite=False, update=False):
     """Add a mouse to the metadata.
 
     Parameters
@@ -127,26 +129,41 @@ def add_mouse(mouse, tags=None, overwrite=False):
     mouse : str
     tags : list of str, optional
     overwrite : bool
+        If True and Mouse already exists, replace with a new empty Mouse.
+    update : bool
+        If True and Mouse already exists, append new tags to existing Mouse.
 
     """
+    if overwrite and update:
+        raise ValueError('Cannot both update and overwrite a Mouse.')
+    mouse_dict = {'name': mouse,
+                  'dates': []}
     metadata = parser.meta_dict()
     existing_mouse = [m for m in metadata['mice'] if m['name'] == mouse]
     assert len(existing_mouse) <= 1
     if len(existing_mouse) == 1:
-        if not overwrite:
+        if not overwrite and not update:
             raise AlreadyPresentError(
                 'Mouse already present in metadata: {}'.format(mouse))
+        elif update:
+            mouse_dict['dates'] = existing_mouse[0]['dates']
+            mouse_dict['tags'] = existing_mouse[0].get('tags', [])
         metadata['mice'].remove(existing_mouse[0])
-    mouse_dict = {'name': mouse,
-                  'dates': []}
+
     if tags is not None:
-        mouse_dict['tags'] = tags
+        if 'tags' not in mouse_dict:
+            mouse_dict['tags'] = tags
+        else:
+            mouse_dict['tags'].extend(tags)
+
     metadata['mice'].append(mouse_dict)
     parser.save(metadata)
     parser.meta_dict(reload_=True)
 
 
-def add_date(mouse, date, tags=None, photometry=None, overwrite=False):
+def add_date(
+        mouse, date, tags=None, photometry=None, overwrite=False,
+        update=False):
     """Add a date to the metadata.
 
     Mouse must already exist.
@@ -158,8 +175,15 @@ def add_date(mouse, date, tags=None, photometry=None, overwrite=False):
     tags : list of str, optional
     photometry : list of str, optional
     overwrite : bool
+        If True and Date already exists, replace with a new empty Date.
+    update : bool
+        If True and Date already exists, append new tags and photometry.
 
     """
+    if overwrite and update:
+        raise ValueError('Cannot both update and overwrite a Date.')
+    date_dict = {'date': date,
+                 'runs': []}
     metadata = parser.meta_dict()
     existing_mouse = [m for m in metadata['mice'] if m['name'] == mouse]
     if len(existing_mouse) == 0:
@@ -171,17 +195,25 @@ def add_date(mouse, date, tags=None, photometry=None, overwrite=False):
     existing_date = [d for d in mouse_dict['dates'] if d['date'] == date]
     assert len(existing_date) <= 1
     if len(existing_date) == 1:
-        if not overwrite:
+        if not overwrite and not update:
             raise AlreadyPresentError(
                 'Date already exists in metadata: {}-{}'.format(mouse, date))
+        elif update:
+            date_dict['runs'] = existing_date[0]['runs']
+            date_dict['tags'] = existing_date[0].get('tags', [])
+            date_dict['photometry'] = existing_date[0].get('photometry', [])
         mouse_dict['dates'].remove(existing_date[0])
 
-    date_dict = {'date': date,
-                 'runs': []}
     if tags is not None:
-        date_dict['tags'] = tags
+        if 'tags' not in date_dict:
+            date_dict['tags'] = tags
+        else:
+            date_dict['tags'].extend(tags)
     if photometry is not None:
-        date_dict['photometry'] = photometry
+        if 'photometry' not in date_dict:
+            date_dict['photometry'] = photometry
+        else:
+            date_dict['photometry'].extend(photometry)
 
     mouse_dict['dates'].append(date_dict)
     metadata['mice'].append(mouse_dict)
@@ -191,7 +223,7 @@ def add_date(mouse, date, tags=None, photometry=None, overwrite=False):
 
 
 def add_run(
-        mouse, date, run, run_type, tags=None, overwrite=False):
+        mouse, date, run, run_type, tags=None, overwrite=False, update=False):
     """Add a run to the metadata.
 
     Parameters
@@ -202,8 +234,15 @@ def add_run(
     run_type : str
     tags : list of str, optional
     overwrite : bool
+        If True and Run exists, replace with a new empty Run.
+    update : bool
+        If True and Run exists, append new tags and update run_type.
 
     """
+    if overwrite and update:
+        raise ValueError('Cannot both update and overwrite a Run.')
+    run_dict = {'run': run,
+                'run_type': run_type}
     metadata = parser.meta_dict()
     existing_mouse = [m for m in metadata['mice'] if m['name'] == mouse]
     if len(existing_mouse) == 0:
@@ -222,16 +261,19 @@ def add_run(
     existing_run = [r for r in date_dict['runs'] if r['run'] == run]
     assert len(existing_run) <= 1
     if len(existing_run) == 1:
-        if not overwrite:
+        if not overwrite and not update:
             raise AlreadyPresentError(
                 'Run already exists in metadata: {}-{}-{}'.format(
                     mouse, date, run))
+        elif update:
+            run_dict['tags'] = existing_run[0].get('tags', [])
         date_dict['runs'].remove(existing_run[0])
 
-    run_dict = {'run': run,
-                'run_type': run_type}
     if tags is not None:
-        run_dict['tags'] = tags
+        if 'tags' not in run_dict:
+            run_dict['tags'] = tags
+        else:
+            run_dict['tags'].extend(tags)
 
     date_dict['runs'].append(run_dict)
     mouse_dict['dates'].append(date_dict)
@@ -313,7 +355,6 @@ def dates(mouse, tags=None):
         Sorted dates the mouse was recorded.
 
     """
-
     data = meta(mice=[mouse], tags=tags)
     return sorted(data['date'].unique())
 
@@ -332,11 +373,10 @@ def data(mouse, date):
             mouse : mouse name
             date : date as int
             hungry : list of run indexes for hungry spontaneous runs
-            sated : list of run indexes for sated sponataeous runs
+            sated : list of run indexes for sated spontaneous runs
             *run_type* : list of run indices for all run types in metadata
 
     """
-
     out = {'mouse': mouse, 'date': date}
 
     date_df = meta(mice=[mouse], dates=[date])
