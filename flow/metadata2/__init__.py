@@ -1,2 +1,2 @@
 from .metadata import *
-from .sorters import DateSorter, RunSorter
+from .sorters import MouseSorter, DateSorter, RunSorter

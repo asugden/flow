@@ -1,5 +1,6 @@
 """General plotting functions."""
 from copy import copy
+import matplotlib.pyplot as plt
 import numpy as np
 import seaborn as sns
 

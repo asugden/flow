@@ -6,6 +6,93 @@ from . import metadata
 from .. import config, paths
 
 
+class Mouse(object):
+    """A single Mouse.
+
+    Parameters
+    ----------
+    mouse : str
+
+    Attributes
+    ----------
+    mouse : str
+    tags : tuple of str
+
+    Methods
+    -------
+    dates
+        Return a DateSorter of associated Dates, as determined by the metadata.
+
+    """
+    def __init__(self, mouse):
+        self._mouse = str(mouse)
+        self._tags = None
+
+
+    @property
+    def mouse(self):
+        return copy(self._mouse)
+
+
+    @property
+    def tags(self):
+        if self._tags is None:
+            self._get_metadata()
+        return copy(self._tags)
+
+    def _get_metadata(self):
+        """Query the metadata and set necessary properties."""
+        meta = metadata.meta(mice=[self.mouse])
+        mouse_tags = set(meta['tags'].iloc[0])
+        for tags in meta['tags']:
+            mouse_tags.intersection_update(tags)
+
+        self._tags = tuple(sorted(mouse_tags))
+
+    def __repr__(self):
+        """Return repr of Mouse."""
+        return "Mouse(mouse={}, tags={})".format(self.mouse, self.tags)
+
+    def __str__(self):
+        """Return str of Mouse."""
+        return self.mouse
+
+    def __lt__(self, other):
+        """Make mice sortable."""
+        assert isinstance(other, type(self))
+        return self.mouse < other.mouse
+
+    def __eq__(self, other):
+        """Test equivalence."""
+        return isinstance(other, type(self)) and self.mouse == other.mouse
+
+    def dates(self, dates=None, tags=None, name=None):
+        """Return a DateSorter of associated Dates.
+
+        Can optionally filter Dates by tags.
+
+        Parameters
+        ----------
+        dates : list of int, optional
+            List of dates to filter on.
+        tags : list of str, optional
+            List of tags to filter on.
+        name : str, optional
+            Name of resulting DateSorter.
+
+        Returns
+        -------
+        DateSorter
+
+        """
+        meta = metadata.meta(mice=[self.mouse], dates=dates, tags=tags)
+
+        date_objs = (Date(mouse=self.mouse, date=date)
+                     for date in meta['date'].unique())
+
+        return DateSorter(date_objs, name=name)
+
+
 class Date(object):
     """A single Date.
 
@@ -27,7 +114,7 @@ class Date(object):
     Methods
     -------
     runs
-        Return a RunSorter of associated runs, as determined by the metadata.
+        Return a RunSorter of associated Runs, as determined by the metadata.
 
     """
     def __init__(self, mouse, date):
@@ -69,9 +156,13 @@ class Date(object):
         self._photometry = tuple(sorted(photometry))
 
     def __repr__(self):
-        """Return repr of Day."""
-        return "Day(mouse={}, date={}, tags={}, photometry={})".format(
+        """Return repr of Date."""
+        return "Date(mouse={}, date={}, tags={}, photometry={})".format(
             self.mouse, self.date, self.tags, self.photometry)
+
+    def __str__(self):
+        """Return str of Date."""
+        return "{}_{}".format(self.mouse, self.date)
 
     def __lt__(self, other):
         """Make dates sortable."""
@@ -186,6 +277,10 @@ class Run(object):
         return 'Run(mouse={}, date={}, run={}, run_type={}, tags={})'.format(
             self.mouse, self.date, self.run, self.run_type, self.tags)
 
+    def __str__(self):
+        """Return str of Run."""
+        return "{}_{}_{}".format(self.mouse, self.date, self.run)
+
     def __lt__(self, other):
         """Make runs sortable, by (mouse, date, run)."""
         assert isinstance(other, type(self))
@@ -241,6 +336,80 @@ class Run(object):
                     self.mouse, self.date, self.run, pars, randomize)
 
 
+class MouseSorter(UserList):
+    """Iterator of Mouse objects.
+
+    Parameters
+    ----------
+    mice : list of Mouse
+        A list of Mouse objects to include.
+    name : str, optional
+
+    Attributes
+    ----------
+    name : str
+        Name of MouseSorter
+
+    Methods
+    -------
+    frommeta(mice=None, tags=None, name=None)
+        Constructor to create a MouseSorter from metadata parameters.
+
+    Notes
+    -----
+    Mice are sorted upon initialization so that iterating will always be sorted.
+
+    """
+    def __init__(self, mice=None, name=None):
+        if mice is None:
+            mice = []
+        self.data = sorted(mice)
+
+        if name is None:
+            self._name = None
+        else:
+            self._name = str(name)
+
+    def __repr__(self):
+        return "MouseSorter([{} {}], name={})".format(
+            len(self), 'Mouse' if len(self) == 1 else 'Mice', self.name)
+
+    @property
+    def name(self):
+        """The name of the MouseSorter, if it exists, else `None`"""
+        if self._name is None:
+            return 'None'
+        else:
+            return self._name
+
+    @classmethod
+    def frommeta(cls, mice=None, tags=None, name=None):
+        """Initialize a MouseSorter from metadata.
+
+        Parameters
+        ----------
+        mice : list of str, optional
+        tags : list of str, optional
+        name : str, optional
+            Name/label for Sorter.
+
+        Notes
+        -----
+        All arguments are used to filter the experimental metadata.
+        All remaining mice will be included in the MouseSorter.
+
+        Returns
+        -------
+        MouseSorter
+
+        """
+        meta = metadata.meta(mice=mice, tags=tags)
+
+        mouse_objs = (Mouse(mouse=mouse) for mouse in meta.mouse.unique())
+
+        return cls(mouse_objs, name=name)
+
+
 class DateSorter(UserList):
     """Iterator of Date objects.
 
@@ -276,7 +445,8 @@ class DateSorter(UserList):
             self._name = str(name)
 
     def __repr__(self):
-        return "DateSorter([{} Dates], name={})".format(len(self), self.name)
+        return "DateSorter([{} {}], name={})".format(
+            len(self), 'Date' if len(self) == 1 else 'Dates', self.name)
 
     @property
     def name(self):
@@ -302,8 +472,8 @@ class DateSorter(UserList):
 
         Notes
         -----
-        All arguments are used to filter the experiemntal metadata.
-        All remaining dates will be included in DateSorter.
+        All arguments are used to filter the experimental metadata.
+        All remaining dates will be included in the DateSorter.
 
         Returns
         -------
@@ -356,7 +526,8 @@ class RunSorter(UserList):
             self._name = str(name)
 
     def __repr__(self):
-        return "RunSorter([{} Runs], name={})".format(len(self), self.name)
+        return "RunSorter([{} {}], name={})".format(
+            len(self), 'Run' if len(self) == 1 else 'Runs', self.name)
 
     @property
     def name(self):
