@@ -585,7 +585,7 @@ class RunSorter(UserList):
             photometry=photometry)
 
         run_objs = (Run(mouse=run.mouse, date=run.date, run=run.run)
-                    for _, run in meta.itterrows())
+                    for _, run in meta.iterrows())
 
         return cls(run_objs, name=name)
 

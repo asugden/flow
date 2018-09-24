@@ -113,7 +113,6 @@ def save_figs(save_path, figs):
                 plt.close(fig)
             pp.close()
     except:
-        # os.remove(temp_save_path)
         raise
     else:
         os.rename(temp_save_path, save_path)

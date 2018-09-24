@@ -26,7 +26,6 @@ def validate(metadata=None):
     jsonschema.ValidationError
 
     """
-    global CURRENT_SCHEMA_VERSION
     schema_version = CURRENT_SCHEMA_VERSION
     schema_path = os.path.join(
         os.path.dirname(__file__),
@@ -93,6 +92,10 @@ def save(metadata):
     metadata : dict
         Dict to be written as JSON.
 
+    Notes
+    -----
+    All lists will be sorted by default.
+
     """
     validate(metadata)
 
@@ -100,8 +103,17 @@ def save(metadata):
     metadata['mice'] = sorted(metadata['mice'], key=itemgetter('name'))
     for mouse in metadata['mice']:
         mouse['dates'] = sorted(mouse['dates'], key=itemgetter('date'))
+        if 'tags' in mouse:
+            mouse['tags'] = sorted(mouse['tags'])
         for date in mouse['dates']:
             date['runs'] = sorted(date['runs'], key=itemgetter('run'))
+            if 'tags' in date:
+                date['tags'] = sorted(date['tags'])
+            if 'photometry' in date:
+                date['photometry'] = sorted(date['photometry'])
+            for run in date['runs']:
+                if 'tags' in run:
+                    run['tags'] = sorted(run['tags'])
 
     metadata_path = _get_metadata_path()
     with open(metadata_path, 'w') as f:
