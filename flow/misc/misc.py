@@ -207,3 +207,25 @@ def loadmat(filename):
     data = spio.loadmat(
         filename, struct_as_record=False, squeeze_me=True, appendmat=False)
     return check_keys(data)
+
+
+def parse_date(datestr):
+    """Parse our standard format date string into a datetime object.
+
+    Parameters
+    ----------
+    datestr : str or int
+        String or int to be parsed.
+
+    Returns
+    -------
+    datetime
+
+    """
+    datestr = str(datestr)
+    try:
+        date = datetime.datetime.strptime(datestr, '%y%m%d')
+    except ValueError:
+        raise ValueError(
+            'Misformed date. Should be in YYMMDD format, e.g. 180723')
+    return date
