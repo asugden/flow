@@ -2,7 +2,7 @@ from copy import deepcopy
 import os
 import pandas as pd
 
-from . import metadata2
+from . import metadata, parser
 
 # This is used to cache the metadata parsed as a dataframe.
 _dataframe = None
@@ -32,7 +32,7 @@ AS41
 
 def parse_spontaneous(overwrite=False):
     if overwrite:
-        os.remove(metadata2.parser._get_metadata_path())
+        os.remove(parser._get_metadata_path())
     replay1_mice = ['CB173', 'AS20', 'OA32', 'OA34', 'OA36', 'OA37', 'OA38', 'AS41']
     jeff_mice = ['OA178', 'OA191', 'OA192']
     for mouse in spontaneous:
@@ -43,7 +43,7 @@ def parse_spontaneous(overwrite=False):
         else:
             mouse_tags = []
         print("Adding {}".format(mouse))
-        metadata2.add_mouse(mouse, tags=mouse_tags)
+        metadata.add_mouse(mouse, tags=mouse_tags)
         for group in spontaneous[mouse]:
             date_tags = []
             sated = 'sated' in group
@@ -65,33 +65,33 @@ def parse_spontaneous(overwrite=False):
                 date = int(key)
                 print('Adding {}-{}'.format(mouse, date))
                 try:
-                    metadata2.add_date(
+                    metadata.add_date(
                         mouse, date, photometry=photometry, tags=date_tags)
-                except metadata2.metadata.AlreadyPresentError:
+                except metadata.AlreadyPresentError:
                     pass
 
                 for run in training_runs:
                     run_tags = ['hungry']
                     try:
-                        metadata2.add_run(
+                        metadata.add_run(
                             mouse, date, run, run_type='training', tags=run_tags)
-                    except metadata2.metadata.AlreadyPresentError:
+                    except metadata.AlreadyPresentError:
                         pass
 
                 for run in running_runs:
                     run_tags = ['hungry']
                     try:
-                        metadata2.add_run(
+                        metadata.add_run(
                             mouse, date, run, run_type='running', tags=run_tags)
-                    except metadata2.metadata.AlreadyPresentError:
+                    except metadata.AlreadyPresentError:
                         pass
 
                 for run in sated_stim_runs:
                     run_tags = ['sated']
                     try:
-                        metadata2.add_run(
+                        metadata.add_run(
                             mouse, date, run, run_type='sated-stim', tags=run_tags)
-                    except metadata2.metadata.AlreadyPresentError:
+                    except metadata.AlreadyPresentError:
                         pass
 
                 for run in spontaneous[mouse][group][key]:
@@ -100,10 +100,12 @@ def parse_spontaneous(overwrite=False):
                         run_tags = ['sated']
                     elif hungry:
                         run_tags = ['hungry']
-                    metadata2.add_run(
+                    else:
+                        run_tags = []
+                    metadata.add_run(
                         mouse, date, run, run_type='spontaneous', tags=run_tags)
 
-    return metadata2.meta(sort=True)
+    return metadata.meta(sort=True)
 
 
 spontaneous = {

@@ -2,7 +2,6 @@ from copy import deepcopy
 import math
 import numpy as np
 import os.path as opath
-import scipy.io as spio
 from uuid import uuid1
 import warnings
 

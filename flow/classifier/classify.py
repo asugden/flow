@@ -12,7 +12,8 @@ from scipy.stats import norm
 # Moved into function for now
 # from pool import database
 
-from .. import metadata, outfns, paths
+from .. import outfns, paths
+from .. import metadata2 as metadata
 from . import aode, randomizations
 from ..misc import legiblepars
 
@@ -20,6 +21,7 @@ from ..misc import legiblepars
 def temporal_prior(traces, actmn, actvar, outliers, fwhm, thresh, priors, expand=1):
     """
     Generate temporal-dependent priors using basis sets and mexican-hat functions
+
     :param traces: matrix of traces, ncells by nframes
     :param actmn: mean activity
     :param actvar: variation above which we will consider it a guaranteed event
@@ -1038,8 +1040,8 @@ def classify(pars, randomize, verbose=True, save=True):
 
 if __name__ == '__main__':
     from sys import argv
-    import parseargv
+    import flow.parseargv
 
-    out = parseargv.parsekv(argv)
-    randomize = parseargv.random(argv)
+    out = flow.parseargv.parsekv(argv)
+    randomize = flow.parseargv.random(argv)
     classify(out, randomize)

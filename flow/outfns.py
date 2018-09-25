@@ -3,7 +3,7 @@ from scipy import optimize
 from scipy.spatial.distance import cosine as cosinedist
 from scipy.stats import pearsonr, spearmanr, rankdata, linregress, t as tcdf
 
-from . import glm, metadata, paths
+from . import glm, paths
 
 def nandivide(a, b):
     """

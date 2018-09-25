@@ -3,7 +3,8 @@ from datetime import datetime
 import networkx as nx
 import numpy as np
 
-from . import metadata, paths, xday
+from . import metadata2 as metadata
+from . import paths, xday
 
 
 def labels(mouse, day, minpred=0.01, minfrac=0.05):
@@ -205,9 +206,9 @@ def _propagate_categories(mouse, day1, categories, dayrange, daydistance, minpre
     :return:
     """
 
-    dates = np.array([int(d) for d in metadata.dates(mouse)])
+    dates = np.array(metadata.dates(mouse))
     if day1 not in dates:
-        print 'ERROR: Date not found'
+        print('ERROR: Date not found')
         exit(0)
 
     d1 = np.argmax(dates == day1)

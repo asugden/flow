@@ -110,10 +110,10 @@ def meta(
         df = df[df.run_type.isin(run_types)]
     if tags is not None:
         df = df[df.tags.apply(
-            lambda x: any(tag in x for tag in tags))]
+            lambda x: all(tag in x for tag in tags))]
     if photometry is not None:
         df = df[df.photometry.apply(
-            lambda x: any(tag in x for tag in photometry))]
+            lambda x: all(tag in x for tag in photometry))]
 
     if sort:
         df = df.sort_values(by=['mouse', 'date', 'run']).reset_index(drop=True)
@@ -283,24 +283,6 @@ def add_run(
     parser.meta_dict(reload_=True)
 
 
-def runs(mouse, date, tags=None):
-    """Return all info for a given mouse and date.
-
-    Parameters
-    ----------
-    mouse : str
-    date : int
-    tags : list of str, optional
-        Optionally filter by additional tags.
-
-    Returns
-    -------
-    pd.DataFrame
-        Contains one row per run, filtered as requested.
-    """
-    return meta(mice=[mouse], dates=[date], tags=tags, sort=True)
-
-
 def reversal(mouse):
     """Return date of the reversal for the mouse or None if not reversed."""
     if mouse not in reversals:
@@ -340,6 +322,24 @@ def reversal(mouse):
 #         return True
 
 
+def mice(tags=None):
+    """Return all mice filtered by a set of tags.
+
+    Parameters
+    ----------
+    tags : list of str, optional
+        If not None, at least 1 run must include all these tags.
+
+    Returns
+    -------
+    list of str
+        Sorted mouse names.
+
+    """
+    data = meta(tags=tags)
+    return sorted(data['mouse'].unique())
+
+
 def dates(mouse, tags=None):
     """Return all dates that a given mouse was imaged.
 
@@ -358,8 +358,28 @@ def dates(mouse, tags=None):
     data = meta(mice=[mouse], tags=tags)
     return sorted(data['date'].unique())
 
+
+def runs(mouse, date, tags=None):
+    """Return all info for a given mouse and date.
+
+    Parameters
+    ----------
+    mouse : str
+    date : int
+    tags : list of str, optional
+        Optionally filter by additional tags.
+
+    Returns
+    -------
+    pd.DataFrame
+        Contains one row per run, filtered as requested.
+
+    """
+    return meta(mice=[mouse], dates=[date], tags=tags, sort=True)
+
+
 def data(mouse, date):
-    """Return all of the data for  given date as a dict.
+    """Return all of the data for a given date as a dict.
 
     Parameters
     ----------

@@ -1,9 +1,9 @@
-# Moved to flow: 180817
 import numpy as np
 from scipy.signal import gaussian
 import scipy.io as spio
 
-from . import metadata, paths
+from . import metadata2 as metadata
+from . import paths
 
 
 def glm(mouse, date):
