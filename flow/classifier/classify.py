@@ -13,7 +13,7 @@ from scipy.stats import norm
 # from pool import database
 
 from .. import outfns, paths
-from .. import metadata2 as metadata
+from .. import metadata as metadata
 from . import aode, randomizations
 from ..misc import legiblepars
 

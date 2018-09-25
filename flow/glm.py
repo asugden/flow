@@ -2,7 +2,7 @@ import numpy as np
 from scipy.signal import gaussian
 import scipy.io as spio
 
-from . import metadata2 as metadata
+from . import metadata as metadata
 from . import paths
 
 

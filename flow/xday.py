@@ -1,7 +1,7 @@
 import numpy as np
 import os.path as opath
 
-from . import metadata2 as metadata
+from . import metadata as metadata
 from . import paths
 
 

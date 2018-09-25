@@ -8,10 +8,10 @@ import os.path as opath
 # from pool import database
 
 from . import config
-from . import metadata2 as metadata
+from . import metadata as metadata
 from . import paths
 from .classifier import classify
-from .metadata2 import metadata_old
+from .metadata import metadata_old
 from .misc import loadmat
 from .misc import Parser
 

@@ -3,7 +3,7 @@ from datetime import datetime
 import networkx as nx
 import numpy as np
 
-from . import metadata2 as metadata
+from . import metadata as metadata
 from . import paths, xday
 
 
