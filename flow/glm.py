@@ -9,6 +9,7 @@ from . import paths
 def glm(mouse, date):
     """
     Return a new instance of a GLM
+
     :param mouse: mouse name, str
     :param date: date, str
     :return: instance of class GLM
@@ -23,6 +24,7 @@ def glm(mouse, date):
 def labels(mouse, date, minpred=0.01, minfrac=0.05):
     """
     Return the GLM labels for a particular mouse and date
+
     :param mouse: mouse name, str
     :param date: date, str
     :param minpred: the minimum variance predicted by all glm filters
@@ -39,6 +41,7 @@ def labels(mouse, date, minpred=0.01, minfrac=0.05):
 def unitvectors(mouse, date, trange=(0, 2), rectify=True, hz=None):
     """
     Get expected values across a time range given GLM coefficients.
+
     :param mouse: mouse name, str
     :param date: date, str
     :param trange: time range in seconds, tuple
@@ -85,9 +88,13 @@ class GLM:
                 self.cellgroups = [str(v) for v in self.d['cellgroups']]
                 self.devexp = self.d['deviance_explained']
 
+    def __repr__(self):
+        return "GLM(mouse={}, date={})".format(self.mouse, self.date)
+
     def groups(self, short=False):
         """
         Return a list of all cellgroups
+
         :param short: set to True if only simple cell groups should be returned
         :return: list of cell groups, str
         """
@@ -100,6 +107,7 @@ class GLM:
     def basis(self, group, trange=(0, 2), hz=None):
         """
         Reconstruct a basis function
+
         :param group: the group name over which to reconstruct the basis function
         :param trange: time range to include
         :param hz: frequency of the recording, will automatically find if necessary
@@ -134,6 +142,7 @@ class GLM:
     def vectors(self, trange=(0, 2), rectify=True, hz=None):
         """
         Get expected values across a time range given GLM coefficients.
+
         :param trange: time range in seconds, tuple
         :param rectify: set values < 0 equal to 0 if True
         :param hz: the frequency of the recording, will automatically find if necessary
@@ -157,6 +166,7 @@ class GLM:
     def meanresp(self, trange=(0, 2), rectify=False, hz=None):
         """
         Get the mean responses to each of the groups
+
         :param trange: time range in seconds
         :param rectify: set values < 0 equal to 0 if True
         :param hz: frequency of the recording, will automatically find if necessary
@@ -175,6 +185,7 @@ class GLM:
     def labels(self, minpred=0.01, minfrac=0.05):
         """
         Label cells by their GLM filter responses
+
         :param minpred: the minimum variance predicted by all glm filters
         :param minfrac: the minimum fraction of glm variance explained by filters for each cell type
         :return: dict of labels
@@ -211,6 +222,7 @@ class GLM:
     def _frequency(self, freq=None):
         """
         Get the frequency if it doesn't exist
+
         :return: frequency, float
         """
 
@@ -238,6 +250,7 @@ def loadmatpy(filename):
 def _mattodict(matobj):
     """
     Recursively convert matobjs into dicts.
+
     :param matobj: matlab object from _check_keys
     :return: dict
     """

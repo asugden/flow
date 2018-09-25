@@ -360,7 +360,7 @@ def dates(mouse, tags=None):
 
 
 def runs(mouse, date, tags=None):
-    """Return all info for a given mouse and date.
+    """Return all runs for a given mouse and date.
 
     Parameters
     ----------
@@ -371,11 +371,12 @@ def runs(mouse, date, tags=None):
 
     Returns
     -------
-    pd.DataFrame
-        Contains one row per run, filtered as requested.
+    runs : list of int
+        Sorted runs for the given mouse and date.
 
     """
-    return meta(mice=[mouse], dates=[date], tags=tags, sort=True)
+    data = meta(mice=[mouse], dates=[date], tags=tags, sort=True)
+    return sorted(data['run'])
 
 
 def data(mouse, date):
