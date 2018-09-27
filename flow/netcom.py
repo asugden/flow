@@ -278,7 +278,7 @@ def nodes_edges(nodes, corr, limits=None, addzeros=False):
 def nxgraph(nodes, corr, limits=None):
     """
     Graph a set of nodes and edges given a type of noise correlation and a limitation such as visual-drivenness
-    :param nodes: can be int or a list defining the range
+    :param nodes: can be int or a list defining the range (i.e. number of cells)
     :param corr: correlations that define edges
     :param limits: limitations on which nodes to include
     :return: a networkx graph
