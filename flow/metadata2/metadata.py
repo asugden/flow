@@ -2,7 +2,6 @@
 from . import parser
 
 
-
 class MissingParentError(Exception):
     pass
 
@@ -17,7 +16,8 @@ def dataframe(
     """Return metadata as a DataFrame, optionally filtering on any columns.
 
     All parameters are optional and if passed will be used to filter the
-    columns of the resulting dataframe.
+    columns of the resulting dataframe. Will correct if arguments are not
+    passed as lists.
 
     Parameters
     ----------
@@ -39,14 +39,24 @@ def dataframe(
     df = parser.meta_df()
 
     if mice is not None:
+        if not isinstance(mice, list):
+            mice = [mice]
         df = df[df.mouse.isin(mice)]
     if dates is not None:
+        if not isinstance(dates, list) and not isinstance(dates, np.ndarray):
+            dates = [dates]
         df = df[df.date.isin(dates)]
     if runs is not None:
+        if not isinstance(runs, list) and not isinstance(runs, np.ndarray):
+            runs = [runs]
         df = df[df.run.isin(runs)]
     if run_types is not None:
+        if not isinstance(run_types, list):
+            run_types = [run_types]
         df = df[df.run_type.isin(run_types)]
     if tags is not None:
+        if not isinstance(tags, list):
+            tags = [tags]
         df = df[df.mouse_tags.apply(
             lambda x: any(tag in x for tag in tags))]
     if photometry is not None:
