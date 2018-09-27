@@ -1036,10 +1036,11 @@ def classify(pars, randomize, verbose=True, save=True):
 
     return out
 
+
 if __name__ == '__main__':
     from sys import argv
-    import parseargv
+    import _parseargv
 
-    out = parseargv.parsekv(argv)
-    randomize = parseargv.random(argv)
+    out = _parseargv.parsekv(argv)
+    randomize = _parseargv.random(argv)
     classify(out, randomize)
