@@ -26,7 +26,6 @@ def validate(metadata=None):
     jsonschema.ValidationError
 
     """
-    global CURRENT_SCHEMA_VERSION
     schema_version = CURRENT_SCHEMA_VERSION
     schema_path = os.path.join(
         os.path.dirname(__file__),
@@ -47,15 +46,20 @@ def meta_dict(reload_=False):
     global _metadata
     if reload_ or _metadata is None:
         metadata_path = _get_metadata_path()
-        with open(metadata_path, 'r') as f:
-            _metadata = json.load(f)
+        try:
+            with open(metadata_path, 'r') as f:
+                _metadata = json.load(f)
+        except IOError:
+            _initialize_metadata()
+            with open(metadata_path, 'r') as f:
+                _metadata = json.load(f)
     return deepcopy(_metadata)
 
 
-def meta_df():
+def meta_df(reload_=False):
     """Parse metadata into a pandas dataframe."""
     out = []
-    meta = meta_dict()
+    meta = meta_dict(reload_=reload_)
     for mouse in meta['mice']:
         mouse_name = mouse.get('name')
         mouse_tags = set(mouse.get('tags', []))
@@ -72,7 +76,7 @@ def meta_df():
                     'date': date_num,
                     'photometry': photometry,
                     'run': run_id,
-                    'tags': run_tags,
+                    'tags': sorted(run_tags),
                     'run_type': run_type
                 })
     return pd.DataFrame(out)
@@ -88,15 +92,28 @@ def save(metadata):
     metadata : dict
         Dict to be written as JSON.
 
+    Notes
+    -----
+    All lists will be sorted by default.
+
     """
     validate(metadata)
 
-    # Sort lists sanely
+    # Sort lists consistently
     metadata['mice'] = sorted(metadata['mice'], key=itemgetter('name'))
     for mouse in metadata['mice']:
         mouse['dates'] = sorted(mouse['dates'], key=itemgetter('date'))
+        if 'tags' in mouse:
+            mouse['tags'] = sorted(mouse['tags'])
         for date in mouse['dates']:
             date['runs'] = sorted(date['runs'], key=itemgetter('run'))
+            if 'tags' in date:
+                date['tags'] = sorted(date['tags'])
+            if 'photometry' in date:
+                date['photometry'] = sorted(date['photometry'])
+            for run in date['runs']:
+                if 'tags' in run:
+                    run['tags'] = sorted(run['tags'])
 
     metadata_path = _get_metadata_path()
     with open(metadata_path, 'w') as f:
@@ -115,6 +132,11 @@ def _get_metadata_path():
             'Run flow.config.reconfigure() to update package configuration.')
 
     return metadata_path
+
+
+def _initialize_metadata():
+    metadata = {'mice': [], 'version': CURRENT_SCHEMA_VERSION}
+    save(metadata)
 
 
 def _validate(metadata, schema):

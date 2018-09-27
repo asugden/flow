@@ -2,7 +2,6 @@ from copy import deepcopy
 import math
 import numpy as np
 import os.path as opath
-import scipy.io as spio
 from uuid import uuid1
 import warnings
 
@@ -757,7 +756,7 @@ class Trace2P:
         conds = [self.d['condition'].flatten()[:lnonsets] == self.codes[cs]]
         minlen = min(np.shape(conds)[1], np.shape(self.d['onsets'])[0], np.shape(self.d['trialerror'])[0])
         conds = conds[:minlen]
-        out = self.d['trialerror'].flatten()[:minlen][conds] % 2
+        out = self.d['trialerror'].flatten()[:minlen][tuple(conds)] % 2
         out = [o for o in out.flatten() if o < self.nframes]
 
         return np.array(out) == 1

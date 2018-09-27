@@ -1,4 +1,4 @@
-from copy import copy, deepcopy
+from copy import deepcopy
 import numpy as np
 import os
 import os.path as opath
@@ -8,11 +8,13 @@ import os.path as opath
 # from pool import database
 
 from . import config
-from . import metadata
+from . import metadata as metadata
 from . import paths
 from .classifier import classify
+from .metadata import metadata_old
 from .misc import loadmat
 # from .misc import Parser
+
 
 """
 Parse command-line inputs into easily readable versions to be used to 
@@ -79,19 +81,24 @@ def getmetadata(args):
 
     if 'noauto' in args:
         return args
-    if mouse not in metadata.spontaneous:
+    if mouse not in metadata.mice():
         return args
 
-    md = metadata.spontaneous[mouse]
+    # md = metadata_old.spontaneous[mouse]
+    md = metadata.data(mouse, date)
 
     out = {p: args[p] for p in args}
 
-    for group in md:
-        if str(date) in md[group]:
-            if 'training-runs' not in args:
-                out['training-runs'] = md[group]['train']
-            if 'training-other-running-runs' not in args:
-                out['training-other-running-runs'] = md[group]['running']
+    if 'training-runs' not in args:
+        out['training-runs'] = md['training']
+    if 'training-other-running-runs' not in args:
+        out['training-other-running-runs'] = md['running']
+    # for group in md:
+    #     if str(date) in md[group]:
+    #         if 'training-runs' not in args:
+    #             out['training-runs'] = md[group]['train']
+    #         if 'training-other-running-runs' not in args:
+    #             out['training-other-running-runs'] = md[group]['running']
 
     return out
 
@@ -192,33 +199,6 @@ def extractkv(args, defaults=None):
     return out
 
 
-def parseargs(args, defaults=None, limit_to_defaults=False):
-    """
-    Combine arguments from command-line and defaults.
-
-    Parameters
-    ----------
-    args : Namespace
-        Parsed args from argparse parse.
-    defaults : dict
-        Dictionary of default values.
-
-    Returns
-    -------
-
-
-    """
-    if defaults is None:
-        defaults = {}
-
-    out = deepcopy(defaults)
-
-    for key, val in vars(args).iteritems():
-        if not limit_to_defaults or key in defaults:
-            out[key] = val
-    return out
-
-
 def parseclass(args, trace=False, force=True):
     """
     Parse input arguments, get the resulting classifier and optionally
@@ -246,12 +226,20 @@ def classifiermdr(mouse, date, run, randomize='', force=True):
     :return: classifier output or None
     """
 
-    mousemd = metadata.mdr(mouse, date, run)
+    # mousemd = metadata_old.mdr(mouse, date, run)
+    mousemd = metadata.data(mouse, date)
+    # args = parsekv([
+    #     '-mouse', mouse,
+    #     '-date', date,
+    #     '-comparison-run', str(run),
+    #     '-training-runs', ','.join([str(i) for i in mousemd['train']]),
+    #     '-training-other-running-runs', ','.join([str(i) for i in mousemd['running']])
+    # ])
     args = parsekv([
         '-mouse', mouse,
         '-date', date,
         '-comparison-run', str(run),
-        '-training-runs', ','.join([str(i) for i in mousemd['train']]),
+        '-training-runs', ','.join([str(i) for i in mousemd['training']]),
         '-training-other-running-runs', ','.join([str(i) for i in mousemd['running']])
     ])
 
@@ -380,7 +368,7 @@ class RunSorter():
         self._daylimit, self.andb = None, None
         self._day_threshold(kvargs)
 
-        self.md = metadata.sortedall() if all else metadata.sortedspontaneous()
+        self.md = metadata_old.sortedall() if all else metadata_old.sortedspontaneous()
 
         self.randomize = '' if 'randomize' not in kvargs else kvargs['randomize']
         self._prune_metadata(kvargs)
@@ -416,7 +404,7 @@ class RunSorter():
                     matchvalorlist(kvargs, 'date', int(date)) and
                     matchvalorlist(kvargs, 'run', int(run)) and
                     matchvalorlist(kvargs, 'group', group) and
-                    metadata.checkreversal(mouse, date, kvargs, 'reversal')):
+                    metadata_old.checkreversal(mouse, date, kvargs, 'reversal')):
 
                 daypass = True
                 if self._daylimit is not None:
@@ -441,7 +429,7 @@ class RunSorter():
         if self.index < len(self.md):
             # First get the arguments
             mouse, date, run, group = self.md[self.index]
-            mousemd = metadata.mdr(mouse, date, run)
+            mousemd = metadata_old.mdr(mouse, date, run)
             self.nextargs = parsekv([
                 '-mouse', mouse,
                 '-date', date,
@@ -619,7 +607,7 @@ class DaySorter():
         self._daylimit, self.andb = None, None
         self._day_threshold(kvargs)
 
-        self.md = metadata.sortedspontaneous()
+        self.md = metadata_old.sortedspontaneous()
         self.randomize = '' if 'randomize' not in kvargs else kvargs['randomize']
         self._prune_metadata(kvargs)
 
@@ -650,7 +638,7 @@ class DaySorter():
             if (matchvalorlist(kvargs, 'mouse', mouse, True) and
                     matchvalorlist(kvargs, 'date', int(date)) and
                     matchvalorlist(kvargs, 'group', group) and
-                    metadata.checkreversal(mouse, date, kvargs, 'reversal')):
+                    metadata_old.checkreversal(mouse, date, kvargs, 'reversal')):
 
                 daypass = True
                 if self._daylimit is not None:
@@ -686,7 +674,7 @@ class DaySorter():
             self.nextargs = []
 
             for run in runs:
-                mousemd = metadata.mdr(mouse, date, run)
+                mousemd = metadata_old.mdr(mouse, date, run)
                 self.nextargs.append(deepcopy(parsekv([
                     '-mouse', mouse,
                     '-date', date,

@@ -1,8 +1,112 @@
 from copy import deepcopy
+import os
 import pandas as pd
+
+from . import metadata, parser
 
 # This is used to cache the metadata parsed as a dataframe.
 _dataframe = None
+
+
+"""
+training, running always hungry
+sated-stim always sated
+
+dates are spontaneous, hungry/sated based on parsed group
+
+disengaged, naive as date tags
+
+skip-crossday added as date tag
+
+add replay1 mouse tag to:
+CB173
+AS20
+OA32
+OA34
+OA36
+OA37
+OA38
+AS41
+
+"""
+
+def parse_spontaneous(overwrite=False):
+    if overwrite:
+        os.remove(parser._get_metadata_path())
+    replay1_mice = ['CB173', 'AS20', 'OA32', 'OA34', 'OA36', 'OA37', 'OA38', 'AS41']
+    jeff_mice = ['OA178', 'OA191', 'OA192']
+    for mouse in spontaneous:
+        if mouse in replay1_mice:
+            mouse_tags = ['replay1']
+        elif mouse in jeff_mice:
+            mouse_tags = ['jeff']
+        else:
+            mouse_tags = []
+        print("Adding {}".format(mouse))
+        metadata.add_mouse(mouse, tags=mouse_tags)
+        for group in spontaneous[mouse]:
+            date_tags = []
+            sated = 'sated' in group
+            hungry = 'hungry' in group
+            if 'disengaged' in group:
+                date_tags.append('disengaged')
+            if 'naive' in group:
+                date_tags.append('naive')
+            if spontaneous[mouse][group].get('skip-crossday', False):
+                date_tags.append('skip-crossday')
+            training_runs = spontaneous[mouse][group]['train']
+            running_runs = spontaneous[mouse][group]['running']
+            sated_stim_runs = spontaneous[mouse][group].get('sated-stim', [])
+            photometry = spontaneous[mouse][group].get('photometry', [])
+            for key in spontaneous[mouse][group]:
+                if key in ('train', 'running', 'sated-stim', 'photometry',
+                           'skip-crossday'):
+                    continue
+                date = int(key)
+                print('Adding {}-{}'.format(mouse, date))
+                try:
+                    metadata.add_date(
+                        mouse, date, photometry=photometry, tags=date_tags)
+                except metadata.AlreadyPresentError:
+                    pass
+
+                for run in training_runs:
+                    run_tags = ['hungry']
+                    try:
+                        metadata.add_run(
+                            mouse, date, run, run_type='training', tags=run_tags)
+                    except metadata.AlreadyPresentError:
+                        pass
+
+                for run in running_runs:
+                    run_tags = ['hungry']
+                    try:
+                        metadata.add_run(
+                            mouse, date, run, run_type='running', tags=run_tags)
+                    except metadata.AlreadyPresentError:
+                        pass
+
+                for run in sated_stim_runs:
+                    run_tags = ['sated']
+                    try:
+                        metadata.add_run(
+                            mouse, date, run, run_type='sated-stim', tags=run_tags)
+                    except metadata.AlreadyPresentError:
+                        pass
+
+                for run in spontaneous[mouse][group][key]:
+                    assert (sated or hungry) and not (sated and hungry)
+                    if sated:
+                        run_tags = ['sated']
+                    elif hungry:
+                        run_tags = ['hungry']
+                    else:
+                        run_tags = []
+                    metadata.add_run(
+                        mouse, date, run, run_type='spontaneous', tags=run_tags)
+
+    return metadata.meta(sort=True)
+
 
 spontaneous = {
     'CB173': {
@@ -248,9 +352,9 @@ spontaneous = {
             'photometry': ['nacc'],
             '170328': [5],
             '170330': [5],
-            '170331': [5],
+            # '170331': [5],
             '170403': [5],
-            '170404': [5],
+            # '170404': [5],
             '170406': [5],
             '170407': [5],
             '170410': [5],
@@ -263,7 +367,7 @@ spontaneous = {
         'group-5-hungry-ca1': {
             'train': [2, 3, 4],
             'running': [1],
-            'photometry': ['ca1'],
+            'photometry': ['nacc', 'ca1'],
             '170331': [5],
             '170404': [5],
         },
@@ -766,7 +870,7 @@ spontaneous = {
 
     'OA178': {
         'sated': {
-            'train': [2, 3],  # [2, 3, 4],
+            'train': [2, 3],
             'running': [1],
             '180601': [9, 10, 11],
             '180612': [9, 10],
@@ -780,16 +884,16 @@ spontaneous = {
             '180706': [9, 10, 11],
             '180710': [9, 10, 11],
             '180712': [9, 10, 11],
-            # '180716': [9, 10, 11],
-            # '180718': [9, 10, 11],
+            '180716': [9, 10, 11],
+            '180718': [9, 10, 11],
         },
     },
 
     'OA191': {
         'sated': {
-            'train': [2, 3],  # [2, 3, 4],
+            'train': [2, 3],
             'running': [1],
-            '180711': [9, 10, 11],
+            '180711': [9, 11],
             '180713': [9, 10, 11],
             '180717': [9, 10, 11],
             '180719': [9, 10, 11],
@@ -800,28 +904,49 @@ spontaneous = {
             # '180801': [9, 10, 11],
             '180803': [9, 10, 11],
             '180807': [9, 10, 11],
-            '180809': [9, 10, 11],
+            '180809': [9, 10],
             '180813': [9, 10, 11],
             '180815': [9, 10, 11],
-        }
+            '180817': [9, 10, 11],
+            '180821': [9, 10, 11],
+            '180823': [9, 10, 11],
+            '180827': [9, 10, 11],
+            '180829': [9, 10, 11],
+            '180831': [9, 10],
+            '180904': [9, 10, 11],
+            # '180906': [9, 10, 11],
+            # '180910': [9, 10, 11],
+            # '180912': [9, 10, 11],
+
+        },
     },
 
     'OA192': {
         'sated': {
-            'train': [2, 3],  # [2, 3, 4],
+            'train': [2, 3],
             'running': [1],
             '180802': [9, 10, 11],
             '180808': [9, 10, 11],
             '180814': [9, 10, 11],
             '180816': [9, 10, 11],
             '180820': [9, 10, 11],
+            '180822': [9, 10, 11],
+            # '180828': [9, 10, 11],
+            '180830': [9, 10, 11],
+            '180903': [9, 10, 11],
+            '180905': [9, 10, 11],
+            '180907': [9, 10, 11],
+            '180911': [9, 10, 11],
+            '180913': [9, 10, 11],
+            '180917': [9, 10, 11],
+            '180919': [9, 10, 11],
         },
-        'bad2': {
+        'sated-bad2': {
             'train': [3],
             'running': [1],
             '180806': [9, 10, 11]
         },
-        'bad3': {
+        'sated-bad3': {
             'train': [2],
             'running': [1],
             '180731': [9, 10, 11],
@@ -878,7 +1003,8 @@ reversals = {
     'AS47': '181231',
     'AS51': '181231',
     'OA178': '180702',
-    'OA191': '180813'
+    'OA191': '180813',
+    'OA192': '180903',
 }
 
 

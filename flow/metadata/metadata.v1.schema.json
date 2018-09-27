@@ -92,12 +92,12 @@
                         "title": "The Run Tags Schema", 
                         "description": "Any tags to apply to a single run. Can be used to sort and filter.",
                         "items": {
-		                    	"$id": "#/properties/mice/items/properties/dates/items/properties/runs/items/properties/tags/items",
-		                    	"type": "string",
-		                    	"examples": [
-		                    	  "bad",
-		                    	  "error"
-		                    	]
+                          "$id": "#/properties/mice/items/properties/dates/items/properties/runs/items/properties/tags/items",
+                          "type": "string",
+                          "examples": [
+                            "bad",
+                            "error"
+                          ]
                         }
                       }
                     }
@@ -109,13 +109,13 @@
                   "title": "The Date Tags Schema", 
                   "description": "Any tags to apply to an entire date. Can be used to sort and filter.",
                   "items": {
-	                	"$id": "#/properties/mice/items/properties/dates/items/properties/tags/items",
-	                	"type": "string",
-	                	"examples": [
-	                	  "bad",
-	                	  "error"
-	                	]
-	                }
+                    "$id": "#/properties/mice/items/properties/dates/items/properties/tags/items",
+                    "type": "string",
+                    "examples": [
+                      "bad",
+                      "error"
+                    ]
+                  }
                 }, 
                 "photometry": {
                   "$id": "#/properties/mice/items/properties/dates/items/properties/photometry", 
@@ -140,11 +140,11 @@
             "title": "The Mouse Tags Schema", 
             "description": "Any tags to apply to an entire mouse. Can be used to sort and filter.",
             "items": {
-            	"$id": "#/properties/mice/items/properties/tags/items",
-            	"type": "string",
-            	"examples": [
-            	  "jeff"
-            	]
+              "$id": "#/properties/mice/items/properties/tags/items",
+              "type": "string",
+              "examples": [
+                "jeff"
+              ]
             }
           }
         }

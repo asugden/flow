@@ -50,26 +50,43 @@ def git_revision():
     return sha.strip()
 
 
-def summary_page(days, lpars):
-    """Return a summary page of data analyzed and settings used."""
-    fig = plt.figure(figsize=(8.5, 11))
+def summary_page(sorter, figsize=None, **kwargs):
+    """Return a summary page of data analyzed and settings used.
+
+    Parameters
+    ----------
+    sorter : DateSorter or RunSorter
+        Really any iterable will work. Adds str of the object and everything it
+        iterates over.
+    figsize : tuple, optional
+        2-element tuple of the size of the figure.
+    **kwargs
+        Values for any additional keyword arguments are added as text.
+
+    Notes
+    -----
+    There is no attempt to actual estimate the size of the text, it's just
+    assumed to fit on the page. If the text is too long, it will go off the
+    bottom. Could add fontsize argument if needed.
+
+    """
+    if figsize is None:
+        figsize = (8.5, 11)
+    fig = plt.figure(figsize=figsize)
 
     header = 'Summary sheet - {time} - {sha1}\n\n'.format(
         time=time.asctime(), sha1=git_revision())
 
     divider = '-------------------------------------------------------------\n'
 
-    days_text = ''
-    days.reset()
-    while days.next():
-        md, _ = days.get()
-        days_text += str(md) + '\n'
-    days.reset()
+    sorter_text = str(sorter) + '\n'
+    for x in sorter:
+        sorter_text += ' ' + str(x) + '\n'
 
-    lpars_text = pprint.pformat(lpars)
+    kwargs_text = pprint.pformat(kwargs)
 
-    fig_text = header + 'Experiments\n' + divider + days_text + \
-        '\nParameters\n' + divider + lpars_text
+    fig_text = header + 'Experiments\n' + divider + sorter_text + \
+        '\nParameters\n' + divider + kwargs_text
 
     fig.text(0.05, 0.97, fig_text, va='top', ha='left', fontsize=5)
 
@@ -77,54 +94,36 @@ def summary_page(days, lpars):
 
 
 def save_figs(save_path, figs):
-    """Save figs to a file."""
+    """Save figs to a file.
+
+    'figs' can be a generator and they will be consumed and closed 1 by 1.
+    Uses a temporary file so that a crash in the middle doesn't corrupt the
+    destination on an overwrite.
+
+    """
     mkdir_p(os.path.dirname(save_path))
-    if save_path.endswith('.pdf'):
-        from matplotlib.backends.backend_pdf import PdfPages
-        pp = PdfPages(save_path)
-        for fig in figs:
-            pp.savefig(fig)
-            plt.close(fig)
-        pp.close()
+    temp_save_path = save_path + '.tmp'
+    # noinspection PyBroadException
+    try:
+        if save_path.endswith('.pdf'):
+            from matplotlib.backends.backend_pdf import PdfPages
+            pp = PdfPages(temp_save_path)
+            for fig in figs:
+                pp.savefig(fig)
+                plt.close(fig)
+            pp.close()
+    except:
+        raise
+    else:
+        os.rename(temp_save_path, save_path)
+    finally:
+        try:
+            os.remove(temp_save_path)
+        except OSError:
+            pass
 
 
-def smart_parser(**kwargs):
-    """Return a smart parser that will parse all arguments."""
-    epilog = "The smart_parser will additionally accept any recognized" + \
-        " args and add them to the resulting Namespace."
-    parser = argparse.ArgumentParser(epilog=epilog, **kwargs)
-
-    def smart_parse_args():
-        args, extras = parser.parse_known_args()
-        idx = 0
-        while idx < len(extras):
-            if extras[idx].startswith('-'):
-                skip = 1
-                if extras[idx].startswith('--'):
-                    skip = 2
-                key = extras[idx][skip:]
-                idx += 1
-                values = []
-                while idx < len(extras) and not extras[idx].startswith('-'):
-                    values.append(extras[idx])
-                    idx += 1
-                if not len(values):
-                    raise ValueError(
-                        "All unknown arguments must have at least 1 value.")
-                elif len(values) == 1:
-                    vars(args)[key] = values[0]
-                else:
-                    vars(args)[key] = values
-            else:
-                idx += 1
-        return args
-
-    parser.parse_args = smart_parse_args
-
-    return parser
-
-
-def default_parser(arguments=('mouse', 'date'), **kwargs):
+def default_parser(arguments=('mouse', 'date', 'tags'), **kwargs):
     """Return a default parser that includes default arguments.
 
     Parameters
@@ -141,51 +140,28 @@ def default_parser(arguments=('mouse', 'date'), **kwargs):
     """
     parser = argparse.ArgumentParser(**kwargs)
 
-    if 'mouse' in arguments:
+    if 'mice' in arguments:
         parser.add_argument(
-            '-m', '--mouse', type=str, action='store',
-            help='Mouse to analyze.')
-    if 'date' in arguments:
+            '-m', '--mice', type=str, action='store', nargs='*', default=None,
+            help='Mice to analyze.')
+    if 'dates' in arguments:
         parser.add_argument(
-            '-d', '--date', type=int, action='store',
-            help='Date to analyze.')
+            '-d', '--dates', type=int, action='store', nargs='*', default=None,
+            help='Dates to analyze.')
+    if 'runs' in arguments:
+        parser.add_argument(
+            '-r', '--runs', type=int, action='store', nargs='*', default=None,
+            help='Runs to analyze.')
+    if 'tags' in arguments:
+        parser.add_argument(
+            '-t', '--tags', type=str, action='store', nargs='*', default=None,
+            help='Additional tags to filter mouse/date/run on.')
+    if 'overwrite' in arguments:
+        parser.add_argument(
+            '-o', '--overwrite', action='store_true',
+            help='If True, overwrite pre-existing files.')
 
     return parser
-
-
-def layout_subplots(n_plots, height=11., width=8.5, **kwargs):
-    """Layout subplots to fit square axes on a fixed size figure.
-
-    Determines the optimal number of rows and columns to fit the given number
-    of square axes on a page.
-
-    Parameters
-    ----------
-    n_plots : int
-        Number of plots to fit.
-    height, width : float
-        Page dimensions, in inches.
-
-    Other parameters
-    ----------------
-    **kwargs
-        Everything else is passed to plt.subplots
-
-    """
-    rows = 0.
-    p = 0
-    while p < n_plots:
-        rows += 1.
-        cols = int(width / (height / rows))
-        p = rows * cols
-
-    fig, axs = plt.subplots(
-        int(rows), int(cols), figsize=(width, height), **kwargs)
-
-    for ax in axs.flatten()[n_plots:]:
-        ax.set_visible(False)
-
-    return fig, axs
 
 
 def loadmat(filename):
@@ -231,3 +207,25 @@ def loadmat(filename):
     data = spio.loadmat(
         filename, struct_as_record=False, squeeze_me=True, appendmat=False)
     return check_keys(data)
+
+
+def parse_date(datestr):
+    """Parse our standard format date string into a datetime object.
+
+    Parameters
+    ----------
+    datestr : str or int
+        String or int to be parsed.
+
+    Returns
+    -------
+    datetime
+
+    """
+    datestr = str(datestr)
+    try:
+        date = datetime.datetime.strptime(datestr, '%y%m%d')
+    except ValueError:
+        raise ValueError(
+            'Misformed date. Should be in YYMMDD format, e.g. 180723')
+    return date

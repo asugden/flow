@@ -137,7 +137,7 @@ def randomizeevents(pars, preclassifier, reps=100, verbose=True):
 
 if __name__ == '__main__':
     from sys import argv
-    from . import parseargv
+    from flow import parseargv
     runs = parseargv.sortedruns(argv, classifier=True, trace=False, force=True)
     while runs.next():
         md, args, gm = runs.get()
