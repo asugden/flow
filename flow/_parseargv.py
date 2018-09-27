@@ -12,7 +12,7 @@ from . import metadata
 from . import paths
 from .classifier import classify
 from .misc import loadmat
-from .misc import Parser
+# from .misc import Parser
 
 """
 Parse command-line inputs into easily readable versions to be used to 
