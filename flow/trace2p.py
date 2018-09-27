@@ -831,11 +831,21 @@ class Trace2P:
 
         if 'photometry' in self.d and len(self.d['photometry'].flatten()) > 0:
             if tracetype == 'dff':
-                return self.d['photometry'][fiber, :].flatten()
+                if self.d['photometry'].ndim == 1 and fiber == 0:
+                    return self.d['photometry']
+                elif self.d['photometry'].ndim == 2:
+                    return self.d['photometry'][fiber, :]
+                else:
+                    return []
             elif tracetype == 'raw':
                 return self.d['photometryraw'].flatten()
             else:
-                return self.d['photometrydeconvolved'][fiber, :].flatten()
+                if self.d['photometrydeconvolved'].ndim == 1 and fiber == 0:
+                    return self.d['photometrydeconvolved']
+                elif self.d['photometrydeconvolved'].ndim == 2:
+                    return self.d['photometrydeconvolved'][fiber, :]
+                else:
+                    return []
         else:
             return []
 
