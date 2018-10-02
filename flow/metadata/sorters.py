@@ -1,9 +1,11 @@
 from builtins import object
 from copy import copy
+from datetime import datetime
 from future.moves.collections import UserList
+import numpy as np
 
 from . import metadata
-from .. import config, paths
+from .. import config, paths, xday
 
 
 class Mouse(object):
@@ -100,11 +102,14 @@ class Date(object):
     ----------
     mouse : str
     date : int
+    cells : numpy array
 
     Attributes
     ----------
     mouse : str
     date : int
+    cells : numpy array
+        A vector of cell numbers, used to reorder trace2p if comparing across days
     tags : tuple of str
         Specific tags for this date. Collected from metadata.
     photometry : tuple of str
@@ -117,10 +122,11 @@ class Date(object):
         Return a RunSorter of associated Runs, as determined by the metadata.
 
     """
-    def __init__(self, mouse, date):
+    def __init__(self, mouse, date, cells=None):
         self._mouse = str(mouse)
         self._date = int(date)
-        self._tags, self._photometry = None, None
+        self._cells = cells
+        self._tags, self._photometry, self._runs = None, None, None
 
     @property
     def mouse(self):
@@ -135,6 +141,10 @@ class Date(object):
         if self._tags is None:
             self._get_metadata()
         return copy(self._tags)
+
+    @property
+    def cells(self):
+        return copy(self._cells)
 
     @property
     def photometry(self):
@@ -194,12 +204,16 @@ class Date(object):
         RunSorter
 
         """
+        if self._runs is None:
+            meta = metadata.meta(mice=[self.mouse], dates=[self.date])
+            self._runs = {run: Run(mouse=self.mouse, date=self.date, run=run, cells=self._cells)
+                          for run in meta['run']}
+
         meta = metadata.meta(
             mice=[self.mouse], dates=[self.date], tags=tags,
-            run_types=run_types)
+            run_types=run_types if isinstance(run_types, list) else [run_types])
 
-        run_objs = (Run(mouse=self.mouse, date=self.date, run=run)
-                    for run in meta['run'])
+        run_objs = (self._runs[run] for run in meta['run'])
 
         return RunSorter(run_objs, name=name)
 
@@ -212,12 +226,15 @@ class Run(object):
     mouse : str
     date : int
     run : int
+    cells : numpy array
 
     Attributes
     ----------
     mouse : str
     date : int
     run : int
+    cells : numpy array
+        A vector of cell numbers, used to reorder trace2p if comparing across days
     run_type : str
     tags : tuple of str
 
@@ -231,10 +248,11 @@ class Run(object):
 
     """
 
-    def __init__(self, mouse, date, run):
+    def __init__(self, mouse, date, run, cells=None):
         self._mouse = str(mouse)
         self._date = int(date)
         self._run = int(run)
+        self._cells = cells
 
         self._run_type, self._tags = None, None
         self._t2p, self._c2p = None, None
@@ -262,6 +280,10 @@ class Run(object):
         if self._tags is None:
             self._get_metadata()
         return copy(self._tags)
+
+    @property
+    def cells(self):
+        return copy(self._cells)
 
     def _get_metadata(self):
         """Query the metadata and set necessary properties."""
@@ -305,6 +327,10 @@ class Run(object):
         if self._t2p is None:
             self._t2p = paths.gett2p(
                 self.mouse, self.date, self.run)
+
+            if self._cells is not None:
+                self._t2p.subset(self._cells)
+
         return self._t2p
 
     def classify2p(self, newpars=None, randomize=''):
@@ -486,6 +512,118 @@ class DateSorter(UserList):
         date_objs = (
             Date(mouse=date_df.mouse, date=date_df.date) for _, date_df in
             meta.groupby(['mouse', 'date'], as_index=False).first().iterrows())
+
+        return cls(date_objs, name=name)
+
+
+class DatePairSorter(UserList):
+    """Iterator of Date objects.
+
+    Parameters
+    ----------
+    dates : list of Date
+        A list of Date objects to include.
+    name : str, optional
+
+    Attributes
+    ----------
+    name : str
+        Name of DatePairSorter
+
+    Methods
+    -------
+    frommeta(mice=None, dates=None, tags=None, photometry=None, name=None)
+        Constructor to create a DatePairSorter from metadata parameters.
+
+    Notes
+    -----
+    Dates are sorted upon initialization so that iterating will always be sorted.
+
+    """
+
+    def __init__(self, dates=None, name=None):
+        if dates is None:
+            dates = []
+        self.data = sorted(dates)
+
+        if name is None:
+            self._name = None
+        else:
+            self._name = str(name)
+
+    def __repr__(self):
+        return "DatePairSorter([{} {}], name={})".format(
+            len(self), 'Date' if len(self) == 1 else 'Dates', self.name)
+
+    @property
+    def name(self):
+        """The name of the DatePairSorter, if it exists, else `None`"""
+        if self._name is None:
+            return 'None'
+        else:
+            return self._name
+
+    @classmethod
+    def frommeta(
+            cls, mice=None, dates=None, tags=None, photometry=None,
+            day_distance=None, sequential=True, cross_reversal=False, name=None):
+        """Initialize a DatePairSorter from metadata.
+
+        Parameters
+        ----------
+        mice : list of str, optional
+        dates : list of int, optional
+        tags : list of str, optional
+        photometry : list of str, optional
+        day_distance : tuple of ints, optional
+        sequential : bool, optional
+        cross_reversal : bool
+        name : str, optional
+            Name/label for Sorter.
+
+        Notes
+        -----
+        All arguments are used to filter the experimental metadata.
+        All remaining dates will be included in the DatePairSorter.
+
+        Returns
+        -------
+        DatePairSorter
+
+        """
+        meta = metadata.meta(
+            mice=mice, dates=dates, tags=tags, photometry=photometry)
+        meta['reversal'] = 0
+
+        # Set reversal
+        if not cross_reversal:
+            for mouse in [ddf.mouse for _, ddf in
+                          meta.groupby('mouse', as_index=False).first().iterrows()]:
+                rev = metadata.reversal(mouse)
+                meta.loc[(meta['mouse'] == mouse) & (meta['date'] >= rev), 'reversal'] = 1
+
+        # Iterate over pair-able dates
+        pairs = []
+        for mouse, rev in [(ddf.mouse, ddf.reversal) for _, ddf in
+                           meta.groupby(['mouse', 'reversal'], as_index=False).first().iterrows()]:
+            ds = np.array([ddf.date for _, ddf in meta.loc[(meta['mouse'] == mouse)
+                          & (meta['reversal'] == rev), :].groupby('date', as_index=False).first().iterrows()])
+
+            for d1 in ds:
+                d2s = ds[ds > d1]
+                if sequential and len(d2s) > 0:
+                    d2s = [d2s[0]]
+
+                for d2 in d2s:
+                    tdelta = datetime.strptime(str(d2), '%y%m%d') \
+                             - datetime.strptime(str(d1), '%y%m%d')
+                    id1, id2 = xday.ids(mouse, d1, d2)
+                    if day_distance[0] <= tdelta.days <= day_distance[1] and len(id1) > 0:
+                        pairs.append((mouse, d1, d2, id1, id2))
+
+        # Return a tuple of date tuples
+        date_objs = ((Date(mouse=mouse, date=d1, cells=id1), Date(mouse=mouse, date=d2, cells=id2))
+                     for mouse, d1, d2, id1, id2 in pairs)
 
         return cls(date_objs, name=name)
 

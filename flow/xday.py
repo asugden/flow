@@ -1,7 +1,6 @@
 import numpy as np
 import os.path as opath
 
-from . import metadata as metadata
 from . import paths
 
 
@@ -31,19 +30,6 @@ def ids(mouse, day1, day2):
         matchpos2 = [np.argmax(ids2 == id) for id in matchids1]
 
         return np.array(matchpos1), np.array(matchpos2)
-
-def nextday(mouse, date, group='sated'):
-    """
-    Get the next day following date date of a particular mouse
-
-    :param mouse: mouse name, str
-    :param date: date, int
-    :param group: group name, e.g. sated
-    :return: next date, str
-    """
-
-    dates = metadata.dates(mouse, tags=[group])
-    return dates[dates.index(int(date)) + 1]
 
 def _read_crossday_ids(mouse, date):
     """

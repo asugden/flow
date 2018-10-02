@@ -33,6 +33,7 @@ class Trace2P:
         # Set some optional variables
         self.cst = 2  # CS time
         self._addedcses = ['reward', 'punishment']
+        self._original_traces = None
 
         # Clean things up
         self._loadextramasks(path)
@@ -102,6 +103,35 @@ class Trace2P:
                 out = out[errs%2 == errortrials]
 
         return out
+
+    def subset(self, vector=None):
+        """
+        Reorder cells and select a subset, used for matching across days.
+
+        Parameters
+        ----------
+        vector : numpy array
+            A vector with which cell traces should be reordered. If None, return to default
+
+        """
+
+        # dff, raw, f0, dec/deconvolved
+
+        if self._original_traces is not None:
+            for key in self._original_traces:
+                self.d[key] = deepcopy(self._original_traces[key])
+
+        if vector is not None:
+            if self._original_traces is None:
+                self._original_traces = {}
+                for key in ['dff', 'raw', 'f0', 'deconvolved']:
+                    if key in self.d:
+                        self._original_traces[key] = deepcopy(self.d[key])
+
+            for key in self._original_traces:
+                self.d[key] = self._original_traces[key][vector]
+
+        self.ncells = np.shape(self.d['deconvolved'])[0]
 
     def trialmask(self, cs='', errortrials=-1, fulltrial=False, padpre=0, padpost=0):
         """
@@ -195,61 +225,51 @@ class Trace2P:
             ncells x frames x nstimuli/onsets
 
         """
-        defaults = {
-            'start-s': -1 if isinstance(start_s, dict) else start_s,
-            'end-s': end_s,
-            'trace-type': trace_type,
-            'cutoff-before-lick-ms': cutoff_before_lick_ms,
-            'error-trials': errortrials,
-            'baseline': baseline,
-        }
 
         if isinstance(start_s, dict):
-            args = deepcopy(start_s)
-            start_s = defaults['start-s']
-            for p in args:
-                defaults[p] = args[p]
+            end_s = start_s['end-s'] if 'end-s' in start_s else end_s
+            trace_type = start_s['trace-type'] if 'trace-type' in start_s else trace_type
+            cutoff_before_lick_ms = start_s['cutoff-before-first-lick'] if \
+                'cutoff-before-first-lick' in start_s else cutoff_before_lick_ms
+            errortrials = start_s['error-trials'] if 'error-trials' in start_s else errortrials
+            baseline = start_s['baseline'] if 'baseline' in start_s else baseline
+            start_s = start_s['start-s'] if 'start-s' in start_s else -1
 
-        defaults['start-fr'] = int(round(defaults['start-s']*self.framerate))
-        defaults['end-fr'] = int(round(defaults['end-s']*self.framerate))
-        defaults['cutoff-fr'] = int(round(defaults['cutoff-before-lick-ms']/
-                                    1000.0*self.framerate))
+        start_frame = int(round(start_s*self.framerate))
+        end_frame = int(round(end_s*self.framerate))
+        cutoff_frame = int(round(cutoff_before_lick_ms/1000.0*self.framerate))
 
         # Get lick times and onsets
         licks = self.d['licking'].flatten()
-        ons = self.csonsets(cs, errortrials=defaults['error-trials'])
-        out = np.empty((self.ncells, defaults['end-fr'] - defaults['start-fr'],
-                        len(ons)))
+        ons = self.csonsets(cs, errortrials=errortrials)
+        out = np.empty((self.ncells, end_frame - start_frame, len(ons)))
         out.fill(np.nan)
 
         # Iterate through onsets, find the beginning and end, and add
         # the appropriate trace type to the output
         for i, onset in enumerate(ons):
-            start = defaults['start-fr'] + onset
-            end = defaults['end-fr'] + onset
+            start = start_frame + onset
+            end = end_frame + onset
 
             if i + start >= 0:
-                if defaults['cutoff-before-lick-ms'] > -1:
+                if cutoff_before_lick_ms > -1:
                     postlicks = licks[licks > onset]
                     if len(postlicks) > 0 and postlicks[0] < end:
-                        end = postlicks[0] - defaults['cutoff-fr']
+                        end = postlicks[0] - cutoff_frame
                         if end < onset:
                             end = start - 1
 
                 if end > self.nframes:
                     end = self.nframes
                 if end > start:
-                    out[:, :end-start, i] = self.trace(
-                        defaults['trace-type'])[:, start:end]
+                    out[:, :end-start, i] = self.trace(trace_type)[:, start:end]
 
         # Subtract the baseline, if desired
-        if baseline is not None and \
-                defaults['baseline'][0] != defaults['baseline'][1]:
-            blargs = {key: defaults[key] for key in defaults}
-            blargs['start-s'], blargs['end-s'] = blargs['baseline']
-            blargs['baseline'] = (-1, -1)
-            blargs['cutoff-before-first-lick-ms'] = -1
-            bltrs = np.nanmean(self.cstraces(cs, blargs), axis=1)
+        if baseline is not None and baseline[0] != baseline[1]:
+            bltrs = np.nanmean(self.cstraces(cs, start_s=baseline[0], end_s=baseline[1],
+                                             trace_type=trace_type, cutoff_before_lick_ms=-1,
+                                             errortrials=errortrials, baseline=None),
+                               axis=1)
             for f in range(np.shape(out)[1]):
                 out[:, f, :] -= bltrs
 
