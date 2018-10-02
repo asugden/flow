@@ -984,6 +984,8 @@ class Grapher():
         with SuppressErrors():
             if len(args['save']) > 0:
                 filename = ''.join([args['save'], '.', args['format']])
+                if len(self._directory) > 0 and not opath.exists(self._directory):
+                    os.mkdir(self._directory)
                 plt.savefig(opath.join(self._directory, filename), transparent=True)
             else:
                 plt.show()
