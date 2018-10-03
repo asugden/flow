@@ -35,8 +35,8 @@ _settings = {
 
     # ACCOUNT FOR DECREASED ACTIVITY IN SPONTANEOUS RUNS
     # Analog variables
-    'analog-training-multiplier': 0.35,  # 0.35,  # Multiply deconvolved values by this before passing to classifier
-    'analog-comparison-multiplier': 1.5,  # 1.5,  # Multiply deconvolved values by this before passing to classifier,
+    'analog-training-multiplier': 0.75,  # 0.35,  # Multiply deconvolved values by this before passing to classifier
+    'analog-comparison-multiplier': 2.0,  # 1.5,  # Multiply deconvolved values by this before passing to classifier,
                                           # usually 1.5
 
     # TEMPORAL CLASSIFIER

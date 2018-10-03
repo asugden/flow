@@ -348,6 +348,17 @@ class Run(object):
 
         """
         pars = config.default()
+        running_runs = metadata.meta(
+            mice=[self.mouse], dates=[self.date], run_types=['running'])
+        training_runs = metadata.meta(
+            mice=[self.mouse], dates=[self.date], run_types=['training'])
+        # TODO: Add option to train on a different day
+        pars.update({'mouse': self.mouse,
+                     'comparison-date': str(self.date),
+                     'comparison-run': self.run,
+                     'training-date': str(self.date),
+                     'training-other-running-runs': sorted(running_runs.run),
+                     'training-runs': sorted(training_runs.run)})
 
         if newpars is None:
             if self._c2p is None:
