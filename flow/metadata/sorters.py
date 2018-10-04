@@ -30,11 +30,9 @@ class Mouse(object):
         self._mouse = str(mouse)
         self._tags = None
 
-
     @property
     def mouse(self):
         return copy(self._mouse)
-
 
     @property
     def tags(self):
@@ -219,8 +217,9 @@ class Date(object):
                           for run in meta['run']}
 
         meta = metadata.meta(
-            mice=[self.mouse], dates=[self.date], tags=tags,
-            run_types=run_types if isinstance(run_types, list) else [run_types])
+            mice=[self.mouse], dates=[self.date],
+            tags=tags if isinstance(tags, list) or tags is None else [tags],
+            run_types=run_types if isinstance(run_types, list) or run_types is None else [run_types])
 
         run_objs = (self._runs[run] for run in meta['run'])
 
