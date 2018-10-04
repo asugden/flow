@@ -115,6 +115,8 @@ class Date(object):
     photometry : tuple of str
         Tuple of labels for the location of photometry recordings on this
         date, if present.
+    parent : Mouse
+        The parent Mouse object.
 
     Methods
     -------
@@ -126,7 +128,10 @@ class Date(object):
         self._mouse = str(mouse)
         self._date = int(date)
         self._cells = cells
-        self._tags, self._photometry, self._runs = None, None, None
+
+        self._parent = Mouse(mouse=self.mouse)
+        self._tags, self._photometry = None, None
+        self._runs = None
 
     @property
     def mouse(self):
@@ -135,6 +140,10 @@ class Date(object):
     @property
     def date(self):
         return copy(self._date)
+
+    @property
+    def parent(self):
+        return self._parent
 
     @property
     def tags(self):
@@ -206,7 +215,7 @@ class Date(object):
         """
         if self._runs is None:
             meta = metadata.meta(mice=[self.mouse], dates=[self.date])
-            self._runs = {run: Run(mouse=self.mouse, date=self.date, run=run, cells=self._cells)
+            self._runs = {run: Run(mouse=self.mouse, date=self.date, run=run, cells=self.cells)
                           for run in meta['run']}
 
         meta = metadata.meta(
@@ -237,6 +246,8 @@ class Run(object):
         A vector of cell numbers, used to reorder trace2p if comparing across days
     run_type : str
     tags : tuple of str
+    parent : Date
+        The parent Date object.
 
     Methods
     -------
@@ -254,6 +265,7 @@ class Run(object):
         self._run = int(run)
         self._cells = cells
 
+        self._parent = Date(mouse=self.mouse, date=self.date)
         self._run_type, self._tags = None, None
         self._t2p, self._c2p = None, None
 
@@ -268,6 +280,10 @@ class Run(object):
     @property
     def run(self):
         return copy(self._run)
+
+    @property
+    def parent(self):
+        return self._parent
 
     @property
     def run_type(self):
@@ -688,7 +704,7 @@ class RunSorter(UserList):
 
     # @classmethod
     # def fromargs(cls, args):
-    #     """Initialzie a RunSorter """
+    #     """Initialize a RunSorter """
     #     name = parse_name(args)
     #
     #     # TODO: how to handle run type?
