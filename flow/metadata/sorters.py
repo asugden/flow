@@ -5,7 +5,7 @@ from future.moves.collections import UserList
 import numpy as np
 
 from . import metadata
-from .. import config, paths, xday
+from .. import config, glm, paths, xday
 
 
 class Mouse(object):
@@ -217,6 +217,22 @@ class Date(object):
 
         return RunSorter(run_objs, name=name)
 
+    def glm(self):
+        """Return GLM object.
+
+        Returns
+        -------
+        GLM
+
+        """
+        if self._glm is None:
+            self._glm = glm.glm(self.mouse, self.date)
+
+            if self._cells is not None:
+                self._glm.subset(self._cells)
+
+        return self._glm
+
 
 class Run(object):
     """A single run.
@@ -255,7 +271,7 @@ class Run(object):
         self._cells = cells
 
         self._run_type, self._tags = None, None
-        self._t2p, self._c2p = None, None
+        self._t2p, self._c2p, self._glm = None, None, None
 
     @property
     def mouse(self):
