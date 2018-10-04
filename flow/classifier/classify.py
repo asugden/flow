@@ -12,7 +12,7 @@ from scipy.stats import norm
 # Moved into function for now
 # from pool import database
 
-from .. import outfns, paths
+from .. import paths
 from .. import metadata as metadata
 from . import aode, randomizations
 from ..misc import legiblepars
@@ -62,7 +62,7 @@ def temporal_prior(traces, actmn, actvar, outliers, fwhm, thresh, priors, expand
 
     # Use a running max if expand > 1
     if expand > 1:
-        weights = outfns.movingmax(weights, expand).flatten()
+        weights = movingmax(weights, expand).flatten()
 
     # Normalize priors
     psum = float(np.sum([priors[key] for key in priors]))
@@ -128,6 +128,29 @@ def temporal_prior_weight(traces, actmn, actvar, outliers, fwhm, thresh, priors,
     # And return the wfits to the narrowest basis function
     weights = np.clip(np.nanmin(fits, axis=0), 0, 1)
     return weights
+
+def movingmax(a, window):
+    """
+    Return the moving maximum/rolling maximum of a vector
+    :param a: vector
+    :param window: window size for moving maximum in frames
+    :return: vector of size(a)
+    """
+    a = np.array(a)
+    if a.ndim == 1: a = a.reshape((len(a), 1))
+
+    beg = int(round((window - 0.5)/2.0))
+    end = window - beg - 1
+    beg = np.array([[np.nan]*np.shape(a)[0]]*beg).T
+    end = np.array([[np.nan]*np.shape(a)[0]]*end).T
+
+    a = np.concatenate([beg, a, end], axis=1)
+
+    shape = a.shape[:-1] + (a.shape[-1] - window + 1, window)
+    strides = a.strides + (a.strides[-1], )
+    strided = np.lib.stride_tricks.as_strided(a, shape=shape, strides=strides)
+
+    return np.nanmax(rolling_window(a, window), a.ndim)
 
 # ===============================================================================
 class ClassifierTrain:
