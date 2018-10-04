@@ -465,15 +465,39 @@ class Trace2P:
 
         return out
 
-    def trace(self, tracetype):
+    def trace(self, tracetype, mu=None, sigma=None):
         """
-        Return trace of type 'axondff' or 'raw'. ncell < 0 returns all.
-        Returned in form [cell, time]
+        Return a trace of specified type.
+
+        Parameters
+        ----------
+        tracetype : str
+            Trace type, can be 'dff', 'raw', 'f0', 'deconvolved', or 'zscore'
+        mu : vector of floats
+            The mean activity per cell, calculated for zscore if None
+        sigma : vector of floats
+            The standard deviation of the activity per cell, calculated for zscore if None
+
+        Returns
+        -------
+        matrix (ncells, nframes)
+
         """
 
-        # Types usually are dff, raw, f0, dec/deconvolved
+        # Fix shortened name 'dec' to 'deconvolved
         if tracetype.lower()[:3] == 'dec':
             tracetype = 'deconvolved'
+
+        # Deal with z-score separately
+        if tracetype == 'zscore':
+            if mu is None or sigma is None:
+                if 'zscore' not in self.d:
+                    mu = np.nanmean(self.d['dff'], axis=1)
+                    sigma = np.nanstd(self.d['dff'], axis=1)
+                    self.d['zscore'] = ((self.d['dff'].T - mu)/sigma).T
+            else:
+                return ((self.d['dff'].T - mu)/sigma).T
+
         return self.d[tracetype]
 
     def pupilmask(self, include_phase=False):
