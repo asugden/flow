@@ -1,8 +1,8 @@
+from copy import deepcopy
 import numpy as np
 from scipy.signal import gaussian
 import scipy.io as spio
 
-from . import metadata as metadata
 from . import paths
 
 
@@ -73,6 +73,10 @@ class GLM:
         self.date = date
         self.exists = False
         self.freq = None
+
+        self._original_coeffs = None
+        self._original_devexp = None
+
         path = paths.glmpath(mouse, date)
 
         if path is not None:
@@ -104,7 +108,30 @@ class GLM:
         else:
             return self.names
 
-    def basis(self, group, trange=(0, 2), hz=None):
+    def subset(self, vector):
+        """
+        Reorder cells and select a subset, used for matching across days.
+
+        Parameters
+        ----------
+        vector : numpy array
+            A vector with which cell traces should be reordered. If None, return to default
+
+        """
+
+        if self._original_coeffs is not None:
+            self.coeffs = deepcopy(self._original_coeffs)
+            self.devexp = deepcopy(self._original_devexp)
+
+        if vector is not None:
+            if self._original_coeffs is None:
+                self._original_coeffs = deepcopy(self.coeffs)
+                self._original_devexp = deepcopy(self.devexp)
+
+            self.coeffs = self.coeffs[vector, :]
+            self.devexp = self.devexp[vector, :]
+
+    def basis(self, group, trange=(0, 2), hz=15.49):
         """
         Reconstruct a basis function
 
@@ -113,8 +140,6 @@ class GLM:
         :param hz: frequency of the recording, will automatically find if necessary
         :return: a matrix of ncells x ntimes with basis vectors relative to stimulus
         """
-
-        hz = self._frequency(hz)
 
         ncells = np.shape(self.coeffs)[0]
         ncoeffs = np.shape(self.coeffs)[1]
@@ -218,22 +243,24 @@ class GLM:
 
         return odict
 
-    # Local functions
-    def _frequency(self, freq=None):
+    def explained(self):
         """
-        Get the frequency if it doesn't exist
+        Get the deviance explained by each group of behavioral vectors.
 
-        :return: frequency, float
+        Returns
+        -------
+        dict of numpy vectors of ncells
+            Dictionary of deviance explained by cell group as a fraction of total deviance explained
+            Also includes a value of total deviance explained
+
         """
 
-        if freq is not None:
-            self.freq = freq
-        elif self.freq is None:
-            runs = metadata.runs(self.mouse, self.date)
-            t2p = paths.gett2p(self.mouse, self.date, runs[0])
-            self.freq = t2p.framerate
+        groupdev = (self.devexp[:, 1:].T*(self.devexp[:, 0])).T
+        odict = {'total': self.devexp[:, 0]}
+        for i, name in enumerate(self.cellgroups):
+            odict[name] = groupdev[:, i]
 
-        return self.freq
+        return odict
 
 
 def loadmatpy(filename):
