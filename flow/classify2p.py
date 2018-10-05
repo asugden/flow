@@ -19,7 +19,7 @@ class Classify2P():
             Empty if real, or a randomization type string if randomized (i.e. identify or circshift)
 
         """
-
+        self._paths = paths
         self.randomization = randomization
         self.pars = pars
         self.xresults = None
@@ -30,6 +30,9 @@ class Classify2P():
             self.d = loadmat(paths[0])
         else:
             self.d = loadmat(paths)
+
+    def __repr__(self):
+        return "Classify2P(paths={})".format(self._paths)
 
     def results(self, cs='', xmask=False):
         """
@@ -49,7 +52,7 @@ class Classify2P():
 
         """
 
-        if cs not in self.d['results']:
+        if len(cs) and cs not in self.d['results']:
             return []
 
         if xmask:
@@ -74,7 +77,7 @@ class Classify2P():
         ----------
         cs : str
             Stimulus name, e.g. plus
-        traces : ndarray of ncells x ntimes or Trace2P instace
+        traces : ndarray of ncells x ntimes or Trace2P instance
             Activity traces from which the peak population activity is derived
         threshold : float
             The classifier threshold used to identify events
