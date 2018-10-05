@@ -4,7 +4,7 @@ import numpy as np
 import os.path as opath
 from scipy.io import savemat
 
-from .. import events, paths
+from .. import classify2p, paths
 from ..misc import legiblepars
 
 # Imported within functions that need them
@@ -33,7 +33,7 @@ def repevents(gm, t2p, combframes, reps):
 
     framematch, trace, priors = None, None, None
     for i, cs in enumerate(cses):
-        evs = np.array(events.peakprobs(gm['results'][cs], 0.05))
+        evs = np.array(classify2p.peakprobs(gm['results'][cs], 0.05))
         evs = evs[evs > fmin]
         print(cs, len(evs))
 
