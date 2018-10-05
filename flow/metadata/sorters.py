@@ -30,11 +30,9 @@ class Mouse(object):
         self._mouse = str(mouse)
         self._tags = None
 
-
     @property
     def mouse(self):
         return copy(self._mouse)
-
 
     @property
     def tags(self):
@@ -207,7 +205,7 @@ class Date(object):
         runs : list of int
             List of run numbers to include. Defaults to all runs.
         tags : list of str, optional
-            List of tags to filter on.
+            List of tags to filter on. Can also be single tag.
         name : str, optional
             Name of resulting RunSorter.
 
@@ -218,6 +216,8 @@ class Date(object):
         """
         if run_types is not None and not isinstance(run_types, list):
             run_types = [run_types]
+        if tags is not None and not isinstance(tags, list):
+            tags = [tags]
 
         if self._runs is None:
             meta = metadata.meta(mice=[self.mouse], dates=[self.date])
