@@ -50,6 +50,8 @@ def sortlist(obj):
 
 def extract_run_specific_pars(pars):
     extracted = ['mouse', 'training-date', 'comparison-date', 'comparison-run']
+    if not isinstance(pars, dict):
+        return pars
     out = {}
     for p in pars:
         if p not in extracted:

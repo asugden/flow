@@ -194,7 +194,7 @@ class Date(object):
         return isinstance(other, type(self)) and self.mouse == other.mouse \
             and self.date == other.date
 
-    def runs(self, run_types=None, tags=None, name=None):
+    def runs(self, run_types=None, runs=None, tags=None, name=None):
         """Return a RunSorter of associated runs.
 
         Can optionally filter runs by runtype or other tags.
@@ -202,7 +202,10 @@ class Date(object):
         Parameters
         ----------
         run_types : list of {'training', 'spontaneous', 'running'}, optional
-            List of run_types to include. Defaults to all types.
+            List of run_types to include. Defaults to all types. Can also be
+            a single run_type.
+        runs : list of int
+            List of run numbers to include. Defaults to all runs.
         tags : list of str, optional
             List of tags to filter on.
         name : str, optional
@@ -213,14 +216,17 @@ class Date(object):
         RunSorter
 
         """
+        if run_types is not None and not isinstance(run_types, list):
+            run_types = [run_types]
+
         if self._runs is None:
             meta = metadata.meta(mice=[self.mouse], dates=[self.date])
             self._runs = {run: Run(mouse=self.mouse, date=self.date, run=run, cells=self.cells)
                           for run in meta['run']}
 
         meta = metadata.meta(
-            mice=[self.mouse], dates=[self.date], tags=tags,
-            run_types=run_types if isinstance(run_types, list) else [run_types])
+            mice=[self.mouse], dates=[self.date], runs=runs, tags=tags,
+            run_types=run_types)
 
         run_objs = (self._runs[run] for run in meta['run'])
 
