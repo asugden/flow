@@ -163,6 +163,10 @@ def default_parser(arguments=('mouse', 'date', 'tags'), **kwargs):
         parser.add_argument(
             '-o', '--overwrite', action='store_true',
             help='If True, overwrite pre-existing files.')
+    if 'verbose' in arguments:
+        parser.add_argument(
+            '-v', '--verbose', action='store_true',
+            help='Be verbose.')
 
     return parser
 
