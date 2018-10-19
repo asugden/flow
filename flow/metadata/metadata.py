@@ -110,13 +110,15 @@ def meta(
         df = df[df.run.isin(runs)]
     if run_types is not None:
         df = df[df.run_type.isin(run_types)]
-    if tags is not None:
+
+    # Filters that use an apply don't work right on empty dataframes
+    if tags is not None and len(df):
         df = df[df.tags.apply(
             lambda x: all(tag in x for tag in tags))]
-    if photometry is not None:
+    if photometry is not None and len(df):
         df = df[df.photometry.apply(
             lambda x: all(tag in x for tag in photometry))]
-    if exclude_tags is not None:
+    if exclude_tags is not None and len(df):
         df = df[~ df.tags.apply(
             lambda x: any(tag in x for tag in exclude_tags))]
 
