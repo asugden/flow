@@ -75,7 +75,7 @@ sleep = {
 
 def meta(
         mice=None, dates=None, runs=None, run_types=None, tags=None,
-        photometry=None, sort=False, reload_=False):
+        photometry=None, exclude_tags=('bad',), sort=False, reload_=False):
     """Return metadata as a DataFrame, optionally filtering on any columns.
 
     All parameters are optional and if passed will be used to filter the
@@ -89,6 +89,8 @@ def meta(
     run_types : list of str
     tags : list of str
     photometry : list of str
+    exclude_tags : list of str
+        List of tags to exclude from result.
     sort : bool
         If True, sort rows by (mouse, date, run).
 
@@ -114,6 +116,9 @@ def meta(
     if photometry is not None:
         df = df[df.photometry.apply(
             lambda x: all(tag in x for tag in photometry))]
+    if exclude_tags is not None:
+        df = df[~ df.tags.apply(
+            lambda x: any(tag in x for tag in exclude_tags))]
 
     if sort:
         df = df.sort_values(by=['mouse', 'date', 'run']).reset_index(drop=True)
