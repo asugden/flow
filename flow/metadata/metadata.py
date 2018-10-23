@@ -366,13 +366,15 @@ def dates(mouse, tags=None):
     return sorted(data['date'].unique())
 
 
-def runs(mouse, date, tags=None):
+def runs(mouse, date, run_types=None, tags=None):
     """Return all runs for a given mouse and date.
 
     Parameters
     ----------
     mouse : str
     date : int
+    run_types : list of str, optional
+        Optionally filter to specific run types.
     tags : list of str, optional
         Optionally filter by additional tags.
 
@@ -382,7 +384,8 @@ def runs(mouse, date, tags=None):
         Sorted runs for the given mouse and date.
 
     """
-    data = meta(mice=[mouse], dates=[date], tags=tags, sort=True)
+    data = meta(
+        mice=[mouse], dates=[date], run_types=run_types, tags=tags, sort=True)
     return sorted(data['run'])
 
 

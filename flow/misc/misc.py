@@ -147,10 +147,20 @@ def default_parser(arguments=('mouse', 'date', 'tags'), **kwargs):
         parser.add_argument(
             '-m', '--mice', type=str, action='store', nargs='*', default=None,
             help='Mice to analyze.')
+    elif 'mouse' in arguments:
+        parser.add_argument(
+            '-m', '--mouse', type=str, action='store',
+            help='Mouse to analyze.')
+
     if 'dates' in arguments:
         parser.add_argument(
             '-d', '--dates', type=int, action='store', nargs='*', default=None,
             help='Dates to analyze.')
+    elif 'date' in arguments:
+        parser.add_argument(
+            '-d', '--date', type=int, action='store',
+            help='Date to analyze.')
+
     if 'runs' in arguments:
         parser.add_argument(
             '-r', '--runs', type=int, action='store', nargs='*', default=None,
