@@ -977,7 +977,7 @@ class Trace2P:
         elif cs == 'reward' or cs == 'ensure':
             out = np.copy(self.d['ensure'])
         elif cs == 'punishment' or cs == 'quinine':
-            out = np.copy(self.d['ensure'])
+            out = np.copy(self.d['quinine'])
         else:
             if cs not in self.codes:
                 return []
