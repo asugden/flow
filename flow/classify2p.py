@@ -26,10 +26,22 @@ class Classify2P():
 
         if isinstance(paths, list) and len(paths) > 1:
             raise NotImplementedError('Need to implement path lists')
-        elif isinstance(paths, list):
-            self.d = loadmat(paths[0])
-        else:
+        if isinstance(paths, list) and len(paths):
+            paths = paths[0]
+        if not len(paths):
+            paths = ''
+
+        try:
             self.d = loadmat(paths)
+        except IOError:
+            mouse = pars['mouse'] if 'mouse' in pars else '?MOUSE'
+            date = pars['comparison-date'] if 'comparison-date' in pars \
+                    else '?DATE'
+            run = pars['comparison-run'] if 'comparison-run' in pars \
+                    else '?RUN'
+            raise ValueError(
+                'Unable to locate classifier results: {}-{}-{}'.format(
+                    mouse, date, run))
 
     def __repr__(self):
         return "Classify2P(paths={})".format(self._paths)
