@@ -85,6 +85,9 @@ class Mouse(object):
         DateSorter
 
         """
+        if name is None:
+            name = str(self) + ' dates'
+
         meta = metadata.meta(mice=[self.mouse], dates=dates, tags=tags)
 
         date_objs = (Date(mouse=self.mouse, date=date)
@@ -214,6 +217,9 @@ class Date(object):
         RunSorter
 
         """
+        if name is None:
+            name = str(self) + ' runs'
+
         if run_types is not None and not isinstance(run_types, list):
             run_types = [run_types]
         if tags is not None and not isinstance(tags, list):
