@@ -132,7 +132,7 @@ class Date(object):
 
         self._parent = Mouse(mouse=self.mouse)
         self._tags, self._photometry = None, None
-        self._runs = None
+        self._glm, self._runs = None, None
 
     @property
     def mouse(self):
