@@ -15,6 +15,7 @@ class Trace2P:
     path to a simplified cellsort .mat file."""
 
     def __init__(self, path):
+        self._path = path
         self.d = loadmat(path)
         self._loadoffsets(path)
 
@@ -39,6 +40,9 @@ class Trace2P:
         self._loadextramasks(path)
         self._fixmistakes()
         self._initalize_roi_ids()
+
+    def __repr__(self):
+        return "Trace2P(path={})".format(self._path)
 
     @property
     def roi_ids(self):

@@ -49,7 +49,11 @@ def sortlist(obj):
         return obj
 
 def extract_run_specific_pars(pars):
-    extracted = ['mouse', 'training-date', 'comparison-date', 'comparison-run']
+    extracted = ['mouse', 'comparison-date', 'comparison-run']
+    if not isinstance(pars, dict):
+        return pars
+    if pars.get('comparison-date', '') == pars.get('training-date', None):
+        extracted.append('training-date')
     out = {}
     for p in pars:
         if p not in extracted:

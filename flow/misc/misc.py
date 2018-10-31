@@ -3,12 +3,15 @@ import argparse
 import collections
 import datetime
 import errno
+from getpass import getuser
 import matplotlib.pyplot as plt
 import os
 import pprint
 import scipy.io as spio
 import subprocess
 import time
+
+from . import wordhash
 
 
 def timestamp():
@@ -144,10 +147,20 @@ def default_parser(arguments=('mouse', 'date', 'tags'), **kwargs):
         parser.add_argument(
             '-m', '--mice', type=str, action='store', nargs='*', default=None,
             help='Mice to analyze.')
+    elif 'mouse' in arguments:
+        parser.add_argument(
+            '-m', '--mouse', type=str, action='store',
+            help='Mouse to analyze.')
+
     if 'dates' in arguments:
         parser.add_argument(
             '-d', '--dates', type=int, action='store', nargs='*', default=None,
             help='Dates to analyze.')
+    elif 'date' in arguments:
+        parser.add_argument(
+            '-d', '--date', type=int, action='store',
+            help='Date to analyze.')
+
     if 'runs' in arguments:
         parser.add_argument(
             '-r', '--runs', type=int, action='store', nargs='*', default=None,
@@ -160,6 +173,10 @@ def default_parser(arguments=('mouse', 'date', 'tags'), **kwargs):
         parser.add_argument(
             '-o', '--overwrite', action='store_true',
             help='If True, overwrite pre-existing files.')
+    if 'verbose' in arguments:
+        parser.add_argument(
+            '-v', '--verbose', action='store_true',
+            help='Be verbose.')
 
     return parser
 
@@ -227,5 +244,61 @@ def parse_date(datestr):
         date = datetime.datetime.strptime(datestr, '%y%m%d')
     except ValueError:
         raise ValueError(
-            'Misformed date. Should be in YYMMDD format, e.g. 180723')
+            'Malformed date. Should be in YYMMDD format, e.g. 180723')
     return date
+
+
+def notebook_word():
+    """Converts a Jupyter notebook runtime connection file to a simple word.
+
+    Must be called within a Jupyter notebook. Combined with 'notebook_file',
+    these functions allow you to connect to an active Jupyter notebook at the
+    command line.
+
+    notebook_file(notebook_word()) will return back the name of the connection
+    file.
+
+    Returns
+    -------
+    word : str
+
+    """
+    from ipykernel import get_connection_file
+
+    return wordhash.word(unicode(os.path.basename(get_connection_file())))
+
+
+def notebook_file(word, path=None):
+    """Converts a word from 'notebook_word' back to a filename.
+
+    Used to connect to an active Jupyter notebook from the command line.
+
+    To get matching file:
+        $> python -c "import jzap.misc; print(jzap.misc.notebook_file('WORD'))"
+    To connect to an existing notebook:
+        $> jupyter console --existing FILE
+
+    Arguments
+    ---------
+    word : str
+        A simple word computing by 'notebook_word'.
+    path : str, optional
+        Specify the location of the jupyter notebook runtime connection files.
+        If None, attempts to guess location.
+
+    Returns
+    -------
+    file : str
+
+    """
+    if path is None:
+        paths = ['/home/jupyter/.local/share/jupyter/runtime',
+                 '/home/{}/.local/share/jupyter/runtime'.format(getuser())]
+    else:
+        paths = [path]
+    for p in paths:
+        if os.path.isdir(p):
+            for file in os.listdir(p):
+                if wordhash.word(unicode(file)) is word:
+                    return file
+    return ''

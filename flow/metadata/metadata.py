@@ -41,6 +41,7 @@ reversals = {
     'OA178': '180702',
     'OA191': '180813',
     'OA192': '180903',
+    'OA205': '181001'
 }
 
 sleep = {
@@ -75,7 +76,7 @@ sleep = {
 
 def meta(
         mice=None, dates=None, runs=None, run_types=None, tags=None,
-        photometry=None, sort=False, reload_=False):
+        photometry=None, exclude_tags=('bad',), sort=False, reload_=False):
     """Return metadata as a DataFrame, optionally filtering on any columns.
 
     All parameters are optional and if passed will be used to filter the
@@ -89,6 +90,8 @@ def meta(
     run_types : list of str
     tags : list of str
     photometry : list of str
+    exclude_tags : list of str
+        List of tags to exclude from result.
     sort : bool
         If True, sort rows by (mouse, date, run).
 
@@ -108,12 +111,17 @@ def meta(
         df = df[df.run.isin(runs)]
     if run_types is not None:
         df = df[df.run_type.isin(run_types)]
-    if tags is not None:
+
+    # Filters that use an apply don't work right on empty dataframes
+    if tags is not None and len(df):
         df = df[df.tags.apply(
             lambda x: all(tag in x for tag in tags))]
-    if photometry is not None:
+    if photometry is not None and len(df):
         df = df[df.photometry.apply(
             lambda x: all(tag in x for tag in photometry))]
+    if exclude_tags is not None and len(df):
+        df = df[~ df.tags.apply(
+            lambda x: any(tag in x for tag in exclude_tags))]
 
     if sort:
         df = df.sort_values(by=['mouse', 'date', 'run']).reset_index(drop=True)
@@ -359,13 +367,15 @@ def dates(mouse, tags=None):
     return sorted(data['date'].unique())
 
 
-def runs(mouse, date, tags=None):
+def runs(mouse, date, run_types=None, tags=None):
     """Return all runs for a given mouse and date.
 
     Parameters
     ----------
     mouse : str
     date : int
+    run_types : list of str, optional
+        Optionally filter to specific run types.
     tags : list of str, optional
         Optionally filter by additional tags.
 
@@ -375,7 +385,8 @@ def runs(mouse, date, tags=None):
         Sorted runs for the given mouse and date.
 
     """
-    data = meta(mice=[mouse], dates=[date], tags=tags, sort=True)
+    data = meta(
+        mice=[mouse], dates=[date], run_types=run_types, tags=tags, sort=True)
     return sorted(data['run'])
 
 

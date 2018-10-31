@@ -217,7 +217,7 @@ class GLM:
         """
 
         # Get cell groups and the sufficiency of each deviance explained
-        groupdev = (self.devexp[:, 1:].T*(self.devexp[1][:, 0] >= minpred)).T
+        groupdev = (self.devexp[:, 1:].T*(self.devexp[:, 0] >= minpred)).T
         groupdev = groupdev >= minfrac
         ncells = np.shape(self.coeffs)[0]
 

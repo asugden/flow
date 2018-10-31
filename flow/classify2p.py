@@ -19,17 +19,32 @@ class Classify2P():
             Empty if real, or a randomization type string if randomized (i.e. identify or circshift)
 
         """
-
+        self._paths = paths
         self.randomization = randomization
         self.pars = pars
         self.xresults = None
 
         if isinstance(paths, list) and len(paths) > 1:
             raise NotImplementedError('Need to implement path lists')
-        elif isinstance(paths, list):
-            self.d = loadmat(paths[0])
-        else:
+        if isinstance(paths, list) and len(paths):
+            paths = paths[0]
+        if not len(paths):
+            paths = ''
+
+        try:
             self.d = loadmat(paths)
+        except IOError:
+            mouse = pars['mouse'] if 'mouse' in pars else '?MOUSE'
+            date = pars['comparison-date'] if 'comparison-date' in pars \
+                    else '?DATE'
+            run = pars['comparison-run'] if 'comparison-run' in pars \
+                    else '?RUN'
+            raise ValueError(
+                'Unable to locate classifier results: {}-{}-{}'.format(
+                    mouse, date, run))
+
+    def __repr__(self):
+        return "Classify2P(paths={})".format(self._paths)
 
     def results(self, cs='', xmask=False):
         """
@@ -49,7 +64,7 @@ class Classify2P():
 
         """
 
-        if cs not in self.d['results']:
+        if len(cs) and cs not in self.d['results']:
             return []
 
         if xmask:
@@ -74,7 +89,7 @@ class Classify2P():
         ----------
         cs : str
             Stimulus name, e.g. plus
-        traces : ndarray of ncells x ntimes or Trace2P instace
+        traces : ndarray of ncells x ntimes or Trace2P instance
             Activity traces from which the peak population activity is derived
         threshold : float
             The classifier threshold used to identify events
