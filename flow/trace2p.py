@@ -196,7 +196,7 @@ class Trace2P:
 
     def cstraces(
             self, cs, start_s=-1, end_s=2, trace_type='deconvolved',
-            cutoff_before_lick_ms=-1, errortrials=-1, baseline=None):
+            cutoff_before_lick_ms=-1, errortrials=-1, baseline=None, baseline_to_stimulus=True):
         """Return the onsets for a particular cs with flexibility.
 
         Parameters
@@ -218,6 +218,9 @@ class Trace2P:
         baseline : tuple of 2 ints, optional
             Use this interval (in seconds) as a baseline to subtract off from
             all traces each trial.
+        baseline_to_stimulus : bool
+            If true and the cs is either ensure or quinine, the baseline will be
+            relative to the stimulus onset rather than relative to the cs onset.
 
         Returns
         -------
@@ -227,13 +230,7 @@ class Trace2P:
         """
 
         if isinstance(start_s, dict):
-            end_s = start_s['end-s'] if 'end-s' in start_s else end_s
-            trace_type = start_s['trace-type'] if 'trace-type' in start_s else trace_type
-            cutoff_before_lick_ms = start_s['cutoff-before-first-lick'] if \
-                'cutoff-before-first-lick' in start_s else cutoff_before_lick_ms
-            errortrials = start_s['error-trials'] if 'error-trials' in start_s else errortrials
-            baseline = start_s['baseline'] if 'baseline' in start_s else baseline
-            start_s = start_s['start-s'] if 'start-s' in start_s else -1
+            raise ValueError('Dicts are no longer accepted')
 
         start_frame = int(round(start_s*self.framerate))
         end_frame = int(round(end_s*self.framerate))
@@ -265,13 +262,27 @@ class Trace2P:
                     out[:, :end-start, i] = self.trace(trace_type)[:, start:end]
 
         # Subtract the baseline, if desired
-        if baseline is not None and baseline[0] != baseline[1]:
-            bltrs = np.nanmean(self.cstraces(cs, start_s=baseline[0], end_s=baseline[1],
-                                             trace_type=trace_type, cutoff_before_lick_ms=-1,
-                                             errortrials=errortrials, baseline=None),
-                               axis=1)
-            for f in range(np.shape(out)[1]):
-                out[:, f, :] -= bltrs
+        if baseline is not None and baseline[0] < baseline[1]:
+            if cs in ['ensure', 'quinine'] and baseline_to_stimulus:
+                start_blf = int(round(baseline[0]*self.framerate))
+                end_blf = int(round(baseline[1]*self.framerate))
+
+                for i, onset in enumerate(ons):
+                    pos = np.argmax(self.d['onsets'] < onset)
+                    start = self.d['onsets'][pos] + start_blf
+                    end = self.d['onsets'][pos] + end_blf
+
+                    if end > self.nframes:
+                        end = self.nframes
+
+                    out[:, :, i] -= np.nanmean(self.trace(trace_type)[:, start:end])
+            else:
+                bltrs = np.nanmean(self.cstraces(cs, start_s=baseline[0], end_s=baseline[1],
+                                                 trace_type=trace_type, cutoff_before_lick_ms=-1,
+                                                 errortrials=errortrials, baseline=None),
+                                   axis=1)
+                for f in range(np.shape(out)[1]):
+                    out[:, f, :] -= bltrs
 
         return out
 
@@ -408,8 +419,7 @@ class Trace2P:
         with warnings.catch_warnings():
             # We're ignoring warnings of comparisons between nans already in the array and nan
             warnings.simplefilter('ignore', category=RuntimeWarning)
-            nnan = np.isfinite(out)
-            out[nnan][out[nnan] > maxframes] = np.nan
+            out[out > maxframes] = np.nan
 
         if units[0] == 's':
             out /= self.framerate
@@ -973,7 +983,7 @@ class Trace2P:
         elif cs == 'reward' or cs == 'ensure':
             out = np.copy(self.d['ensure'])
         elif cs == 'punishment' or cs == 'quinine':
-            out = np.copy(self.d['ensure'])
+            out = np.copy(self.d['quinine'])
         else:
             if cs not in self.codes:
                 return []
