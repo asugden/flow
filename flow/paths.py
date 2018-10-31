@@ -280,7 +280,7 @@ def output(pars):
 
     return path
 
-def neuralnet(mouse, date, netpars={}):
+def neuralnet(mouse, date, netpars={}, mtype='full'):
     word = wordhash.word(netpars)
     # print 'Classifier %s' % (word)
 
@@ -291,7 +291,7 @@ def neuralnet(mouse, date, netpars={}):
     path = opath.join(path, date)
     if not opath.exists(path): os.mkdir(path)
     # Base/mouse/date/nn-parameterWord.h5
-    path = opath.join(path, 'nn-%s.h5' % word)
+    path = opath.join(path, 'nn-%s-%s.h5' % (word, mtype))
 
     return path
 
