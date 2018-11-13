@@ -267,7 +267,7 @@ class Trace2P:
 
         # Subtract the baseline, if desired
         if baseline is not None and baseline[0] < baseline[1]:
-            if cs in ['ensure', 'quinine'] and baseline_to_stimulus:
+            if cs in ['ensure', 'quinine', 'reward', 'punishment'] and baseline_to_stimulus:
                 start_blf = int(round(baseline[0]*self.framerate))
                 end_blf = int(round(baseline[1]*self.framerate))
 
