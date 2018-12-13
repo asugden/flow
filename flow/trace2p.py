@@ -1,4 +1,4 @@
-from copy import deepcopy
+from copy import copy, deepcopy
 import math
 import numpy as np
 import os.path as opath
@@ -52,6 +52,20 @@ class Trace2P:
         """Return the number of conditioned stimuli for condition cs."""
         onsets = self._onsets(cs)
         return len(onsets)
+
+    def conditions(self):
+        """Return the trial label for all trials.
+
+        :return" list of strings, 1 per trail
+
+        """
+        condition_ids = self.d['condition']
+        codes = copy(self.d['codes'])
+
+        # Invert dictionary, so you can also index it by value
+        codes_inverted = {val: key for key, val in codes.iteritems()}
+
+        return [codes_inverted[c] for c in condition_ids]
 
     def csonsets(self, cs='', errortrials=-1, lickcutoff=-1, lickwindow=(-1, 0)):
         """
@@ -799,20 +813,26 @@ class Trace2P:
             return float(num)/denom
         return num, denom
 
-    def errors(self, cs):
+    def errors(self, cs=None):
         """
-        Return the error codes of trials for a particular cs.
+        Return true of false based on the outcome of the trial.
 
-        :param cs: plus, minus, neutral, blank, pavlovian
-        :return: vector of error codes with 1s being errors
+        :param cs: None, plus, minus, neutral, blank, pavlovian
+        :return: vector of bools, true for all errors
         """
 
-        if cs not in self.codes:
+        if cs is not None and cs not in self.codes:
             return []
 
-        lnonsets = len(self.d['onsets'])
-        conds = [self.d['condition'].flatten()[:lnonsets] == self.codes[cs]]
-        minlen = min(np.shape(conds)[1], np.shape(self.d['onsets'])[0], np.shape(self.d['trialerror'])[0])
+        nonsets = len(self.d['onsets'])
+        if cs is not None:
+            conds = [self.d['condition'].flatten()[:nonsets] == self.codes[cs]]
+        else:
+            conds = [np.ones(nonsets, dtype=bool)]
+
+        minlen = min(np.shape(conds)[1],
+                     np.shape(self.d['onsets'])[0],
+                     np.shape(self.d['trialerror'])[0])
         conds = conds[:minlen]
         out = self.d['trialerror'].flatten()[:minlen][tuple(conds)] % 2
         out = [o for o in out.flatten() if o < self.nframes]
@@ -843,8 +863,7 @@ class Trace2P:
 
     def motion(self, diff=False):
         """
-        Return the distance traveled by the brain as judged by
-        registration.
+        Return the distance traveled by the brain as judged by registration.
 
         :param diff: Return the mean-subtracted diff of motion if true
         :returns: vector of brainmotion of length nframes
