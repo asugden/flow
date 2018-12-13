@@ -692,17 +692,6 @@ class RunSorter(UserList):
         A list of Run objects to include.
     name : str, optional
 
-    Attributes
-    ----------
-    name : str
-        Name of DateSorter
-
-    Methods
-    -------
-    frommeta(mice=None, dates=None, runs=None, run_types=None, tags=None,
-             photometry=None, name=None)
-        Constructor to create a RunSorter from metadata parameters.
-
     Notes
     -----
     Runs are sorted upon initialization so that iterating will always be sorted.

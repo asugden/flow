@@ -137,16 +137,21 @@ def smooth(x, window_len=5, window='flat'):
     (with the window size) in both ends so that transient parts are minimized
     in the begining and end part of the output signal.
 
-    input:
-        x: the input signal
-        window_len: the dimension of the smoothing window; should be an odd integer
-        window: the type of window from 'flat', 'hanning', 'hamming', 'bartlett', 'blackman'
-            flat window will produce a moving average smoothing.
+    Parameters
+    ----------
+    x
+        the input signal
+    window_len
+        the dimension of the smoothing window; should be an odd integer
+    window : {'flat', 'hanning', 'hamming', 'bartlett', 'blackman'}
+        The type of window. Flat window will produce a moving average smoothing.
 
-    output:
+    Returns
+    -------
         the smoothed signal
 
-    example:
+    Example
+    -------
 
     t=linspace(-2,2,0.1)
     x=sin(t)+randn(len(t))*0.1
