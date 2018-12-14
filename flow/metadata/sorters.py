@@ -340,7 +340,7 @@ class Run(object):
 
     def __repr__(self):
         """Return repr of Run."""
-        return 'Run(mouse='{}', date={}, run={}, run_type='{}', tags={})'.format(
+        return "Run(mouse='{}', date={}, run={}, run_type='{}', tags={})".format(
             self.mouse, self.date, self.run, self.run_type, self.tags)
 
     def __str__(self):
@@ -351,9 +351,9 @@ class Run(object):
         """Make runs sortable, by (mouse, date, run)."""
         assert isinstance(other, type(self))
         return self.mouse < other.mouse or \
-               (self.mouse == other.mouse and self.date < other.date) or \
-               (self.mouse == other.mouse and self.date == other.date and
-                self.run < other.run)
+            (self.mouse == other.mouse and self.date < other.date) or \
+            (self.mouse == other.mouse and self.date == other.date and
+             self.run < other.run)
 
     def __eq__(self, other):
         """Test equivalence."""
