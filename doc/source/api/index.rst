@@ -11,7 +11,7 @@ All the classes, functions, and methods of the analysis module.
 	metadata/index
 	misc/index
 
-Core sub-modules:
+Core files:
 
 .. toctree::
 	:glob:

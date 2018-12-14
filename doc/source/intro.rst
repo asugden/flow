@@ -7,18 +7,13 @@ Introduction
 Flow contains all the core code for working with lab data.
 
 
-Package Structure
-=================
-
-TODO
-
 Using Flow
-=====================
+==========
 
 TODO
 
-LAB Module Structure
-====================
+Flow Structure
+==============
 
 **classifier**
 	Code specifically for running the reactivation AODE classifier.
