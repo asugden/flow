@@ -333,7 +333,7 @@ class Trace2P:
 
     def inversecstraces(self, cs, args):
         """
-        Return the traces for trials in which there were not presentations of a particualr type.
+        Return the traces for trials in which there were not presentations of a particular type.
         """
 
         # TODO: remove?
@@ -754,7 +754,7 @@ class Trace2P:
         starts = np.array([0] + cses) + stimlen + safety_frames[0]
         ends = np.array(cses + [self.nframes]) - safety_frames[1]
 
-        # Add runnning speed cutoff
+        # Add running speed cutoff
         starts, ends = self._limit_to_running(starts, ends, running_threshold)
 
         # Calculate all chunks that fit within those times

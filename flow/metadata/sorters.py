@@ -51,7 +51,7 @@ class Mouse(object):
 
     def __repr__(self):
         """Return repr of Mouse."""
-        return "Mouse(mouse={}, tags={})".format(self.mouse, self.tags)
+        return "Mouse(mouse='{}', tags={})".format(self.mouse, self.tags)
 
     def __str__(self):
         """Return str of Mouse."""
@@ -177,7 +177,7 @@ class Date(object):
 
     def __repr__(self):
         """Return repr of Date."""
-        return "Date(mouse={}, date={}, tags={}, photometry={})".format(
+        return "Date(mouse='{}', date={}, tags={}, photometry={})".format(
             self.mouse, self.date, self.tags, self.photometry)
 
     def __str__(self):
@@ -340,7 +340,7 @@ class Run(object):
 
     def __repr__(self):
         """Return repr of Run."""
-        return 'Run(mouse={}, date={}, run={}, run_type={}, tags={})'.format(
+        return 'Run(mouse='{}', date={}, run={}, run_type='{}', tags={})'.format(
             self.mouse, self.date, self.run, self.run_type, self.tags)
 
     def __str__(self):
