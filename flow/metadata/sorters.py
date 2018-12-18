@@ -1,3 +1,8 @@
+"""Object representations of Mouse/Date/Run and list of each.
+
+Used to sort through mouse metadata and is the core of analysis functions.
+
+"""
 from builtins import object
 from copy import copy
 from datetime import datetime
@@ -26,19 +31,23 @@ class Mouse(object):
         Return a DateSorter of associated Dates, as determined by the metadata.
 
     """
+
     def __init__(self, mouse):
+        """Init."""
         self._mouse = str(mouse)
         self._tags = None
 
     @property
     def mouse(self):
+        """Mouse name as string."""
         return copy(self._mouse)
 
     @property
     def tags(self):
+        """Tuple of mouse tags."""
         if self._tags is None:
             self._get_metadata()
-        return copy(self._tags)
+        return tuple(self._tags)
 
     def _get_metadata(self):
         """Query the metadata and set necessary properties."""
@@ -110,7 +119,8 @@ class Date(object):
     mouse : str
     date : int
     cells : numpy array
-        A vector of cell numbers, used to reorder trace2p if comparing across days
+        A vector of cell numbers, used to reorder trace2p if comparing across
+        days
     tags : tuple of str
         Specific tags for this date. Collected from metadata.
     photometry : tuple of str
@@ -125,7 +135,9 @@ class Date(object):
         Return a RunSorter of associated Runs, as determined by the metadata.
 
     """
+
     def __init__(self, mouse, date, cells=None):
+        """Init."""
         self._mouse = str(mouse)
         self._date = int(date)
         self._cells = cells
@@ -136,21 +148,25 @@ class Date(object):
 
     @property
     def mouse(self):
+        """Name of mouse as string."""
         return copy(self._mouse)
 
     @property
     def date(self):
+        """Date as integer."""
         return copy(self._date)
 
     @property
     def parent(self):
+        """Link back to the parent Mouse object."""
         return self._parent
 
     @property
     def tags(self):
+        """Tuple of Date tags."""
         if self._tags is None:
             self._get_metadata()
-        return copy(self._tags)
+        return tuple(self._tags)
 
     @property
     def cells(self):
@@ -158,9 +174,10 @@ class Date(object):
 
     @property
     def photometry(self):
+        """Tuple of photometry information."""
         if self._photometry is None:
             self._get_metadata()
-        return copy(self._photometry)
+        return tuple(self._photometry)
 
     def _get_metadata(self):
         """Query the metadata and set necessary properties."""
@@ -188,7 +205,7 @@ class Date(object):
         """Make dates sortable."""
         assert isinstance(other, type(self))
         return self.mouse < other.mouse or \
-               (self.mouse == other.mouse and self.date < other.date)
+            (self.mouse == other.mouse and self.date < other.date)
 
     def __eq__(self, other):
         """Test equivalence."""
@@ -202,7 +219,7 @@ class Date(object):
 
         Parameters
         ----------
-        run_types : list of {'training', 'spontaneous', 'running'}, optional
+        run_types : list of str, optional
             List of run_types to include. Defaults to all types. Can also be
             a single run_type.
         runs : list of int
@@ -227,7 +244,8 @@ class Date(object):
 
         if self._runs is None:
             meta = metadata.meta(mice=[self.mouse], dates=[self.date])
-            self._runs = {run: Run(mouse=self.mouse, date=self.date, run=run, cells=self.cells)
+            self._runs = {run: Run(mouse=self.mouse, date=self.date, run=run,
+                                   cells=self.cells)
                           for run in meta['run']}
 
         meta = metadata.meta(
@@ -271,7 +289,8 @@ class Run(object):
     date : int
     run : int
     cells : numpy array
-        A vector of cell numbers, used to reorder trace2p if comparing across days
+        A vector of cell numbers, used to reorder trace2p if comparing across
+        days
     run_type : str
     tags : tuple of str
     parent : Date
@@ -288,6 +307,7 @@ class Run(object):
     """
 
     def __init__(self, mouse, date, run, cells=None):
+        """Init."""
         self._mouse = str(mouse)
         self._date = int(date)
         self._run = int(run)
@@ -299,31 +319,37 @@ class Run(object):
 
     @property
     def mouse(self):
+        """Name of mouse as string."""
         return copy(self._mouse)
 
     @property
     def date(self):
+        """Date of Run as integer."""
         return copy(self._date)
 
     @property
     def run(self):
+        """Index of run as integer."""
         return copy(self._run)
 
     @property
     def parent(self):
+        """Link back to the parent Date."""
         return self._parent
 
     @property
     def run_type(self):
+        """Run type of the Run as string."""
         if self._run_type is None:
             self._get_metadata()
         return copy(self._run_type)
 
     @property
     def tags(self):
+        """Tuple of Run tags."""
         if self._tags is None:
             self._get_metadata()
-        return copy(self._tags)
+        return tuple(self._tags)
 
     @property
     def cells(self):
@@ -414,7 +440,7 @@ class Run(object):
                 pars[key] = newpars[key]
 
             return paths.classifier2p(
-                    self.mouse, self.date, self.run, pars, randomize)
+                self.mouse, self.date, self.run, pars, randomize)
 
 
 class MouseSorter(UserList):
@@ -438,10 +464,13 @@ class MouseSorter(UserList):
 
     Notes
     -----
-    Mice are sorted upon initialization so that iterating will always be sorted.
+    Mice are sorted upon initialization so that iterating will always be
+    sorted.
 
     """
+
     def __init__(self, mice=None, name=None):
+        """Init."""
         if mice is None:
             mice = []
         self.data = sorted(mice)
@@ -457,7 +486,7 @@ class MouseSorter(UserList):
 
     @property
     def name(self):
-        """The name of the MouseSorter, if it exists, else `None`"""
+        """The name of the MouseSorter, if it exists, else `None`."""
         if self._name is None:
             return 'None'
         else:
@@ -490,6 +519,37 @@ class MouseSorter(UserList):
 
         return cls(mouse_objs, name=name)
 
+    def all_runs(
+            self, dates=None, run_types=None, runs=None, tags=None, name=None):
+        """Return a RunSorter from all the runs of all the mice and dates.
+
+        Parameters
+        ----------
+        dates : list of int, optional
+            List of dates to filter on.
+        run_types : list of str, optional
+            List of run_types to include. Defaults to all types. Can also be
+            a single run_type.
+        runs : list of int
+            List of run numbers to include. Defaults to all runs.
+        tags : list of str, optional
+            List of tags to filter on. Can also be single tag.
+        name : str, optional
+            Name of resulting RunSorter.
+
+        Returns
+        -------
+        RunSorter
+
+        """
+        all_runs = [run
+                    for mouse in self
+                    for date in mouse.dates(dates=dates, tags=tags)
+                    for run in date.runs(run_types=run_types, runs=runs,
+                                         tags=tags)]
+
+        return RunSorter(all_runs, name=name)
+
 
 class DateSorter(UserList):
     """Iterator of Date objects.
@@ -512,10 +572,13 @@ class DateSorter(UserList):
 
     Notes
     -----
-    Dates are sorted upon initialization so that iterating will always be sorted.
+    Dates are sorted upon initialization so that iterating will always be
+    sorted.
 
     """
+
     def __init__(self, dates=None, name=None):
+        """Init."""
         if dates is None:
             dates = []
         self.data = sorted(dates)
@@ -531,7 +594,7 @@ class DateSorter(UserList):
 
     @property
     def name(self):
-        """The name of the DateSorter, if it exists, else `None`"""
+        """The name of the DateSorter, if it exists, else `None`."""
         if self._name is None:
             return 'None'
         else:
@@ -592,11 +655,13 @@ class DatePairSorter(UserList):
 
     Notes
     -----
-    Dates are sorted upon initialization so that iterating will always be sorted.
+    Dates are sorted upon initialization so that iterating will always be
+    sorted.
 
     """
 
     def __init__(self, dates=None, name=None):
+        """Init."""
         if dates is None:
             dates = []
         self.data = sorted(dates)
@@ -612,7 +677,7 @@ class DatePairSorter(UserList):
 
     @property
     def name(self):
-        """The name of the DatePairSorter, if it exists, else `None`"""
+        """The name of the DatePairSorter, if it exists, else `None`."""
         if self._name is None:
             return 'None'
         else:
@@ -621,7 +686,8 @@ class DatePairSorter(UserList):
     @classmethod
     def frommeta(
             cls, mice=None, dates=None, tags=None, photometry=None,
-            day_distance=None, sequential=True, cross_reversal=False, name=None):
+            day_distance=None, sequential=True, cross_reversal=False,
+            name=None):
         """Initialize a DatePairSorter from metadata.
 
         Parameters
@@ -697,7 +763,9 @@ class RunSorter(UserList):
     Runs are sorted upon initialization so that iterating will always be sorted.
 
     """
+
     def __init__(self, runs=None, name=None):
+        """Init."""
         if runs is None:
             runs = []
         self.data = sorted(runs)
@@ -713,21 +781,11 @@ class RunSorter(UserList):
 
     @property
     def name(self):
-        """The name of the RunSorter, if it exists, else `None`"""
+        """The name of the RunSorter, if it exists, else `None`."""
         if self._name is None:
             return 'None'
         else:
             return self._name
-
-    # @classmethod
-    # def fromargs(cls, args):
-    #     """Initialize a RunSorter """
-    #     name = parse_name(args)
-    #
-    #     # TODO: how to handle run type?
-    #
-    #     return cls.frommeta(mice=args.mice, dates=args.dates, name=name)
-
 
     @classmethod
     def frommeta(
@@ -771,40 +829,6 @@ class RunSorter(UserList):
 
         return cls(run_objs, name=name)
 
-    # @classmethod
-    # def frommice(
-    #         cls, mice=None, dates=None, training=False, spontaneous=False,
-    #         running=False, name=None):
-    #     """Initialize a new RunSorter from a list of mice.
-    #
-    #     Parameters
-    #     ----------
-    #     mice : list of str, optional
-    #         List of mice to include.
-    #     dates : list of int, optional
-    #         If not None, limit to these dates.
-    #     training : bool
-    #         If True, include training trials.
-    #     spontaneous : bool
-    #         If True, include spontaneous trials.
-    #     running : bool
-    #         If True, include running trials.
-    #     name : str, optional
-    #         A name to label the sorter, optional.
-    #
-    #     """
-    #     if not training and not spontaneous and not running:
-    #         raise ValueError('Must select at least 1 run type.')
-    #
-    #     run_types = []
-    #     if training:
-    #         run_types.append('training')
-    #     if spontaneous:
-    #         run_types.append('spontaneous')
-    #     if running:
-    #         run_types.append('running')
-    #
-    #     return cls.frommeta(mice=mice, dates=dates, run_types=run_types)
 
 def parse_name(args, cs=False):
     """Return a name based on the command line arguments passed.
@@ -812,8 +836,8 @@ def parse_name(args, cs=False):
     Specifically cares about mouse and date
     :param cs: if cs, include the cs values if passed in command line
     :return:
-    """
 
+    """
     out = ''
     if 'mouse' in args:
         if isinstance(args.mouse, str):
