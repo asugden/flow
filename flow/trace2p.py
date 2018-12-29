@@ -59,8 +59,12 @@ class Trace2P:
         :return" list of strings, 1 per trail
 
         """
-        condition_ids = self.d['condition']
-        codes = copy(self.d['codes'])
+        try:
+            condition_ids = self.d['condition']
+            codes = copy(self.d['codes'])
+        except KeyError:
+            # No trial structure to this recording
+            return []
 
         # Invert dictionary, so you can also index it by value
         codes_inverted = {val: key for key, val in codes.iteritems()}
