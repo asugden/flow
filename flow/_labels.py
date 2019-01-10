@@ -65,8 +65,8 @@ def categorize(
 
     else:
         lbls = labels(mouse, date, minpred, minfrac)
-        if andb is not None:
-            lbls = addlabels(lbls, andb)
+        # if andb is not None:
+        #     lbls = addlabels(lbls, andb)
 
         ncells = len(lbls[lbls.keys()[0]])
 

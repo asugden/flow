@@ -34,7 +34,7 @@ class NCGraph:
         cluster = nx.clustering(self.gx, None, weight='weight')
 
         out = np.full(self.ncells, np.nan)
-        for c1 in self.nodes:
+        for i, c1 in enumerate(self.nodes):
             if cluster[c1] > 0:
                 out[c1] = cluster[c1]
 
@@ -277,22 +277,23 @@ def nodes_edges(nodes, corr, limits=None, addzeros=False):
 
 def nxgraph(nodes, corr, limits=None):
     """
-    Graph a set of nodes and edges given a type of noise correlation and a limitation such as visual-drivenness
-    :param nodes: can be int or a list defining the range (i.e. number of cells)
-    :param corr: correlations that define edges
-    :param limits: limitations on which nodes to include
-    :return: a networkx graph
+    Make a new NCGraph instance for a NetworkX graph.
+    Do not set with nodes as a list or it will return something
+    that cannot be compared with the cells in a particular day.
+
+    Parameters
+    ----------
+    nodes : int
+        Number of cells in the day
+    corr : matrix of ncells x ncells
+        The noise correlations or other correlations from which edge weights should be set
+    limits : boolean or index array
+        Limiting which nodes should be included, such as visual-drivenness
+
+    Returns
+    -------
+
     """
 
-    nodes, edges = nodes_edges(nodes, corr, limits)
-
-    # Add nodes and edges
-    gx = nx.Graph()
-
-    for c1 in nodes:
-        gx.add_node(c1)
-
-    for c1, c2, weight in edges:
-        gx.add_edge(c1, c2, weight=weight)
-
+    gx = NCGraph(nodes, corr, limits)
     return gx
