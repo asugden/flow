@@ -110,17 +110,28 @@ def setargs(defaults, args):
         return out
 
 def scalebar(ax, matchx=True, matchy=True, hidex=True, hidey=True, **kwargs):
-    """ Add scalebars to axes
+    """Add scalebars to axes.
+
     Adds a set of scale bars to *ax*, matching the size to the ticks of the plot
     and optionally hiding the x and y axes
-    - ax : the axis to attach ticks to
-    - matchx,matchy : if True, set size of scale bars to spacing between ticks
-                    if False, size should be set using sizex and sizey params
-    - hidex,hidey : if True, hide x-axis and y-axis of parent
-    - **kwargs : additional arguments passed to AnchoredScaleBars
-    Returns created scalebar object
-    """
 
+    Parameters
+    ----------
+    ax
+        The axis to attach ticks to
+    matchx,matchy
+        If True, set size of scale bars to spacing between ticks. If False,
+        size should be set using sizex and sizey params.
+    hidex,hidey
+        If True, hide x-axis and y-axis of parent.
+    **kwargs
+        additional arguments passed to AnchoredScaleBars
+
+    Returns
+    -------
+        Created scalebar object
+
+    """
     xtremes = ax.get_xlim()
     ytremes = ax.get_ylim()
 
@@ -212,19 +223,18 @@ def fit_GLM(x, y, family='Gamma', link='log'):
 
 # Define a context manager to suppress stdout and stderr.
 class SuppressErrors(object):
-    """
-    A context manager for doing a "deep suppression" of stdout and stderr in
-    Python, i.e. will suppress all print, even if the print originates in a
+    """A context manager for doing a "deep suppression" of stdout and stderr.
+
+    Will suppress all print, even if the print originates in a
     compiled C/Fortran sub-function.
-       This will not suppress raised exceptions, since exceptions are printed
+    This will not suppress raised exceptions, since exceptions are printed
     to stderr just before a script exits, and after the context manager has
     exited (at least, I think that is why it lets exceptions through).
 
     """
-
     def __init__(self):
         # Open a pair of null files
-        self.null_fds =  [os.open(os.devnull,os.O_RDWR) for x in range(2)]
+        self.null_fds = [os.open(os.devnull, os.O_RDWR) for x in range(2)]
         # Save the actual stdout (1) and stderr (2) file descriptors.
         self.save_fds = (os.dup(1), os.dup(2))
 

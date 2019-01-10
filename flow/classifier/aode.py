@@ -45,17 +45,19 @@ class AODE:
         return out
 
     def generate_binary(self):
-        """
+        """Generate binary.
+
         Measure the probabilities of single cell firing and pairwise
         firing over a range of frames relative to the stimuli added via
         onset(). To avoid adding pseudocounts, set a minimum and maximum
         probability of firing.
-            decrease_spiking_probability is a tuple with the first
-            value describing the decrease in spiking (0.5 would mean
-            that a training onset with 20 cells active would select only
-            10 of those cells). The second value is the number of
-            iterations to measure from each, given that they are
-            randomized.
+
+        decrease_spiking_probability is a tuple with the first value describing
+        the decrease in spiking (0.5 would mean that a training onset with 20
+        cells active would select only 10 of those cells). The second value is
+        the number of iterations to measure from each, given that they are
+        randomized.
+
         """
         print('BINARY, MAN')
         for condition in self.d:

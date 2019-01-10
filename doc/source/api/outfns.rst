@@ -1,0 +1,4 @@
+outfns
+======
+
+.. automodule:: flow.outfns

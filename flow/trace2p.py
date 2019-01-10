@@ -1,4 +1,4 @@
-from copy import deepcopy
+from copy import copy, deepcopy
 import math
 import numpy as np
 import os.path as opath
@@ -52,6 +52,24 @@ class Trace2P:
         """Return the number of conditioned stimuli for condition cs."""
         onsets = self._onsets(cs)
         return len(onsets)
+
+    def conditions(self):
+        """Return the trial label for all trials.
+
+        :return" list of strings, 1 per trail
+
+        """
+        try:
+            condition_ids = self.d['condition']
+            codes = copy(self.d['codes'])
+        except KeyError:
+            # No trial structure to this recording
+            return []
+
+        # Invert dictionary, so you can also index it by value
+        codes_inverted = {val: key for key, val in codes.iteritems()}
+
+        return [codes_inverted[c] for c in condition_ids]
 
     def csonsets(self, cs='', errortrials=-1, lickcutoff=-1, lickwindow=(-1, 0)):
         """
@@ -267,7 +285,7 @@ class Trace2P:
 
         # Subtract the baseline, if desired
         if baseline is not None and baseline[0] < baseline[1]:
-            if cs in ['ensure', 'quinine'] and baseline_to_stimulus:
+            if cs in ['ensure', 'quinine', 'reward', 'punishment'] and baseline_to_stimulus:
                 start_blf = int(round(baseline[0]*self.framerate))
                 end_blf = int(round(baseline[1]*self.framerate))
 
@@ -319,7 +337,7 @@ class Trace2P:
 
     def inversecstraces(self, cs, args):
         """
-        Return the traces for trials in which there were not presentations of a particualr type.
+        Return the traces for trials in which there were not presentations of a particular type.
         """
 
         # TODO: remove?
@@ -740,7 +758,7 @@ class Trace2P:
         starts = np.array([0] + cses) + stimlen + safety_frames[0]
         ends = np.array(cses + [self.nframes]) - safety_frames[1]
 
-        # Add runnning speed cutoff
+        # Add running speed cutoff
         starts, ends = self._limit_to_running(starts, ends, running_threshold)
 
         # Calculate all chunks that fit within those times
@@ -799,20 +817,26 @@ class Trace2P:
             return float(num)/denom
         return num, denom
 
-    def errors(self, cs):
+    def errors(self, cs=None):
         """
-        Return the error codes of trials for a particular cs.
+        Return true of false based on the outcome of the trial.
 
-        :param cs: plus, minus, neutral, blank, pavlovian
-        :return: vector of error codes with 1s being errors
+        :param cs: None, plus, minus, neutral, blank, pavlovian
+        :return: vector of bools, true for all errors
         """
 
-        if cs not in self.codes:
+        if cs is not None and cs not in self.codes:
             return []
 
-        lnonsets = len(self.d['onsets'])
-        conds = [self.d['condition'].flatten()[:lnonsets] == self.codes[cs]]
-        minlen = min(np.shape(conds)[1], np.shape(self.d['onsets'])[0], np.shape(self.d['trialerror'])[0])
+        nonsets = len(self.d['onsets'])
+        if cs is not None:
+            conds = [self.d['condition'].flatten()[:nonsets] == self.codes[cs]]
+        else:
+            conds = [np.ones(nonsets, dtype=bool)]
+
+        minlen = min(np.shape(conds)[1],
+                     np.shape(self.d['onsets'])[0],
+                     np.shape(self.d['trialerror'])[0])
         conds = conds[:minlen]
         out = self.d['trialerror'].flatten()[:minlen][tuple(conds)] % 2
         out = [o for o in out.flatten() if o < self.nframes]
@@ -843,8 +867,7 @@ class Trace2P:
 
     def motion(self, diff=False):
         """
-        Return the distance traveled by the brain as judged by
-        registration.
+        Return the distance traveled by the brain as judged by registration.
 
         :param diff: Return the mean-subtracted diff of motion if true
         :returns: vector of brainmotion of length nframes

@@ -16,8 +16,8 @@ _metadata = None
 def validate(metadata=None):
     """Validate the current schema.
 
-    Parameter
-    ---------
+    Parameters
+    ----------
     metadata : dict, optional
         If None, load the metadata from the config location.
 

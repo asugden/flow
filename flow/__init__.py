@@ -8,4 +8,4 @@ from . import classifier, metadata, misc
 # Individual files
 from . import classify2p, config, glm, outfns, _parseargv, paths, trace2p, xday
 # Pull in important classes for easy use
-from .metadata.sorters import Date, Run, RunSorter, DateSorter, DatePairSorter
+from .metadata.sorters import Mouse, Date, Run, MouseSorter, DateSorter, RunSorter, DatePairSorter

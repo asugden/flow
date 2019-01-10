@@ -120,15 +120,15 @@ def read(sheet, page, range_, retrys=3):
     return values
 
 def dataframe(sheet, page, range_, retrys=3):
-    """
-    Convert the output of read into a pandas dataframe
+    """Convert the output of read into a pandas dataframe.
+
     :param sheet:
     :param page:
     :param range_:
     :param retrys:
     :return:
-    """
 
+    """
     data = read(sheet, page, range_, retrys)
     colnames = [key.lower().replace('-', '_') for key in data[0]]
     ncols = len(colnames)
