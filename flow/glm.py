@@ -243,9 +243,15 @@ class GLM:
 
         return odict
 
-    def explained(self):
+    def explained(self, scale_by_total=True):
         """
         Get the deviance explained by each group of behavioral vectors.
+
+        Parameters
+        ----------
+        scale_by_total : bool
+            If true, scale the deviance explained by the total deviance explained
+            for this cell. Makes the values comparable between cells.
 
         Returns
         -------
@@ -255,7 +261,11 @@ class GLM:
 
         """
 
-        groupdev = (self.devexp[:, 1:].T*(self.devexp[:, 0])).T
+        if scale_by_total:
+            groupdev = self.devexp[:, 1:]
+        else:
+            groupdev = (self.devexp[:, 1:].T*(self.devexp[:, 0])).T
+
         odict = {'total': self.devexp[:, 0]}
         for i, name in enumerate(self.cellgroups):
             odict[name] = groupdev[:, i]
