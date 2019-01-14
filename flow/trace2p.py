@@ -853,11 +853,27 @@ class Trace2P:
         licks = licks[licks < self.nframes]
         return licks
 
+    def reward(self):
+        """Return the frames in which reward was presented.
+
+        Intended to be generalized in the future.
+
+        """
+        return self.ensure()
+
     def ensure(self):
         """Return the frames in which there was ensure delivered."""
         if 'onsets' not in self.d:
             return np.array([])
         return self.d['ensure'].flatten()
+
+    def punishment(self):
+        """Return the frames in which punishment was presented.
+
+        Intended to be generalized in the future.
+
+        """
+        return self.quinine()
 
     def quinine(self):
         """Return the frames in which there was quinine delivered."""
