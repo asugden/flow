@@ -97,7 +97,7 @@ class Classify2P():
             A mask of which times to search for events over
         xmask : boolean
             If true, events cannot be found in more than one non-'other' category
-        max : flaot
+        max : float
             Maximum classifier value to accept
         downfor : int
             Number of frames in which a reactivation event cannot be identified
@@ -112,8 +112,8 @@ class Classify2P():
         -------
         ndarray
             A list of frame numbers on which the peak population activity was detected
-        """
 
+        """
         if cs not in self.d['results']:
             return []
 

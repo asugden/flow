@@ -224,10 +224,11 @@ class Trace2P:
         Parameters
         ----------
         cs : string
-            CS-type to return traces of, Should be one of values returned bvy
+            CS-type to return traces of, Should be one of values returned by
             t2p.cses().
         start_s : float
-            Time before stim to include, in seconds. For backward compatability, can also be arg dict.
+            Time before stim to include, in seconds.
+            For backward compatibility, can also be arg dict.
         end_s : float
             Time after stim to include, in seconds.
         trace_type : {'deconvolved', 'raw', 'dff'}

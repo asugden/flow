@@ -68,14 +68,13 @@ setup(
         'numpy>=1.8',
         'matplotlib>=1.5.3',
         'scipy>=0.19.0',
-        'networkx>=2.1',
-        'python-louvain',  # Imported as community
-        # 'pandas>=0.21.1'
+        'pandas>=0.21.1'
         # 'scikit-image>=0.9.3',
         # 'shapely>=1.2.14',
         # 'scikit-learn>=0.11',
         # 'pillow>=2.6.1',
-        # 'future>=0.14',
+        'future>=0.14',
+        'six',
     ],
     scripts=scripts,
     # package_data={
