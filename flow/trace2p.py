@@ -627,12 +627,12 @@ class Trace2P:
 
     def hasvar(self, var):
         """
-        Check if trace2p has variable type
+        Check if trace2p has variable type.
 
         :param var: string: photometry, pupil, pupilmask, ripple
         :return: boolean
-        """
 
+        """
         if var == 'pupil':
             return self.haspupil()
         elif var == 'photometry':
@@ -773,9 +773,11 @@ class Trace2P:
 
     def speed(self):
         """
-        Return a vector of running speed if possible. Speed is in cm/s smoothed over a second.
-        """
+        Return a vector of running speed if possible.
 
+        Speed is in cm/s smoothed over a second.
+
+        """
         wheel_diameter = 14  # in cm
         wheel_tabs = 44
         wheel_circumference = wheel_diameter*math.pi
@@ -807,9 +809,10 @@ class Trace2P:
     def behavior(self, cs, aspercent=True):
         """
         Return the success of the behavior for a particular stimulus.
-        If aspercent is set to false, returns correct, total.
-        """
 
+        If aspercent is set to false, returns correct, total.
+
+        """
         conds = [self.d['condition'].flatten() == self.codes[cs]]
         num = np.sum(self.d['trialerror'][conds]%2 == 0)
         denom = np.sum(conds)
