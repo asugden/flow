@@ -1,3 +1,4 @@
+#define NPY_NO_DEPRECATED_API NPY_1_7_API_VERSION
 #include "Python.h"
 #include "numpy/arrayobject.h"
 #include <omp.h>
@@ -46,14 +47,15 @@ static PyObject* naivebayes(PyObject *dummy, PyObject *args) {
 	PyArrayObject *nps=NULL, *npcl=NULL, *npcomp=NULL, *npresults=NULL, *nplike=NULL;
 
 	// Parse the input from NumPy
+	import_array();
 	if (!PyArg_ParseTuple(args, "OOOO!O!", &arg1, &arg3, &arg4,
 		&PyArray_Type, &arg5, &PyArray_Type, &arg6)) return NULL;
 
-	nps = (PyArrayObject *)PyArray_FROM_OTF(arg1, NPY_DOUBLE, NPY_IN_ARRAY);
-	npcl = (PyArrayObject *)PyArray_FROM_OTF(arg3, NPY_DOUBLE, NPY_IN_ARRAY);
-	npcomp = (PyArrayObject *)PyArray_FROM_OTF(arg4, NPY_DOUBLE, NPY_IN_ARRAY);
-	npresults = (PyArrayObject *)PyArray_FROM_OTF(arg5, NPY_DOUBLE, NPY_INOUT_ARRAY);
-	nplike = (PyArrayObject *)PyArray_FROM_OTF(arg6, NPY_DOUBLE, NPY_INOUT_ARRAY);
+	nps = (PyArrayObject *)PyArray_FROM_OTF(arg1, NPY_DOUBLE, NPY_ARRAY_IN_ARRAY);
+	npcl = (PyArrayObject *)PyArray_FROM_OTF(arg3, NPY_DOUBLE, NPY_ARRAY_IN_ARRAY);
+	npcomp = (PyArrayObject *)PyArray_FROM_OTF(arg4, NPY_DOUBLE, NPY_ARRAY_IN_ARRAY);
+	npresults = (PyArrayObject *)PyArray_FROM_OTF(arg5, NPY_DOUBLE, NPY_ARRAY_INOUT_ARRAY);
+	nplike = (PyArrayObject *)PyArray_FROM_OTF(arg6, NPY_DOUBLE, NPY_ARRAY_INOUT_ARRAY);
 
 	// Fail if necessary
 	if (nps == NULL || npcomp == NULL ||
@@ -215,15 +217,16 @@ static PyObject* aode(PyObject *dummy, PyObject *args) {
 	PyArrayObject *nps=NULL, *npj=NULL, *npcl=NULL, *npcomp=NULL, *npresults=NULL, *nplike=NULL;
 
 	// Parse the input from NumPy
+	import_array();
 	if (!PyArg_ParseTuple(args, "OOOOO!O!", &arg1, &arg2, &arg3, &arg4,
 		&PyArray_Type, &arg5, &PyArray_Type, &arg6)) return NULL;
 
-	nps = (PyArrayObject *)PyArray_FROM_OTF(arg1, NPY_DOUBLE, NPY_IN_ARRAY);
-	npj = (PyArrayObject *)PyArray_FROM_OTF(arg2, NPY_DOUBLE, NPY_IN_ARRAY);
-	npcl = (PyArrayObject *)PyArray_FROM_OTF(arg3, NPY_DOUBLE, NPY_IN_ARRAY);
-	npcomp = (PyArrayObject *)PyArray_FROM_OTF(arg4, NPY_DOUBLE, NPY_IN_ARRAY);
-	npresults = (PyArrayObject *)PyArray_FROM_OTF(arg5, NPY_DOUBLE, NPY_INOUT_ARRAY);
-	nplike = (PyArrayObject *)PyArray_FROM_OTF(arg6, NPY_DOUBLE, NPY_INOUT_ARRAY);
+	nps = (PyArrayObject *)PyArray_FROM_OTF(arg1, NPY_DOUBLE, NPY_ARRAY_IN_ARRAY);
+	npj = (PyArrayObject *)PyArray_FROM_OTF(arg2, NPY_DOUBLE, NPY_ARRAY_IN_ARRAY);
+	npcl = (PyArrayObject *)PyArray_FROM_OTF(arg3, NPY_DOUBLE, NPY_ARRAY_IN_ARRAY);
+	npcomp = (PyArrayObject *)PyArray_FROM_OTF(arg4, NPY_DOUBLE, NPY_ARRAY_IN_ARRAY);
+	npresults = (PyArrayObject *)PyArray_FROM_OTF(arg5, NPY_DOUBLE, NPY_ARRAY_INOUT_ARRAY);
+	nplike = (PyArrayObject *)PyArray_FROM_OTF(arg6, NPY_DOUBLE, NPY_ARRAY_INOUT_ARRAY);
 
 	// Fail if necessary
 	if (nps == NULL || npj == NULL || npcomp == NULL ||
@@ -309,13 +312,12 @@ static PyObject* rollmax(PyObject *dummy, PyObject *args) {
 	PyObject *arg1=NULL, *arg2=NULL;  // inputs will be the input array and the output array
 	PyArrayObject *npinput=NULL, *npoutput=NULL; // input array and output array
 
-	// Parse the input from NumPy
+    // Parse the input from NumPy
+	import_array();
 	if (!PyArg_ParseTuple(args, "OOi", &arg1, &arg2, &integrate_frames)) return NULL;
-
-	npinput = (PyArrayObject *)PyArray_FROM_OTF(arg1, NPY_DOUBLE, NPY_IN_ARRAY);
-	npoutput = (PyArrayObject *)PyArray_FROM_OTF(arg2, NPY_DOUBLE, NPY_INOUT_ARRAY);
-
-	// Fail if necessary
+    npinput = (PyArrayObject *)PyArray_FROM_OTF(arg1, NPY_DOUBLE, NPY_ARRAY_IN_ARRAY);
+	npoutput = (PyArrayObject *)PyArray_FROM_OTF(arg2, NPY_DOUBLE, NPY_ARRAY_INOUT_ARRAY);
+    // Fail if necessary
 	if (npinput == NULL || npoutput == NULL) goto fail;
 
     // Run
@@ -387,10 +389,11 @@ static PyObject* rollmean(PyObject *dummy, PyObject *args) {
 	PyArrayObject *npinput=NULL, *npoutput=NULL; // input array and output array
 
 	// Parse the input from NumPy
-	if (!PyArg_ParseTuple(args, "OOi", &arg1, &arg2, &integrate_frames)) return NULL;
+	import_array();
+    if (!PyArg_ParseTuple(args, "OOi", &arg1, &arg2, &integrate_frames)) return NULL;
 
-	npinput = (PyArrayObject *)PyArray_FROM_OTF(arg1, NPY_DOUBLE, NPY_IN_ARRAY);
-	npoutput = (PyArrayObject *)PyArray_FROM_OTF(arg2, NPY_DOUBLE, NPY_INOUT_ARRAY);
+	npinput = (PyArrayObject *)PyArray_FROM_OTF(arg1, NPY_DOUBLE, NPY_ARRAY_IN_ARRAY);
+	npoutput = (PyArrayObject *)PyArray_FROM_OTF(arg2, NPY_DOUBLE, NPY_ARRAY_INOUT_ARRAY);
 
 	// Fail if necessary
 	if (npinput == NULL || npoutput == NULL) goto fail;
@@ -421,8 +424,14 @@ static struct PyMethodDef methods[] = {
     {NULL, NULL, 0, NULL}
 };
 
-PyMODINIT_FUNC
-initrunclassifier (void) {
-    (void) Py_InitModule("runclassifier", methods);
-    import_array();
-}
+static struct PyModuleDef runclassifier = {
+    PyModuleDef_HEAD_INIT,
+    "runclassifier", /* name of module */
+    "",          /* module documentation, may be NULL */
+    -1,          /* size of per-interpreter state of the module, or -1 if the module keeps state in global variables. */
+    methods
+};
+
+PyMODINIT_FUNC PyInit_runclassifier(void) {
+    return PyModule_Create(&runclassifier);
+};
