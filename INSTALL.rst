@@ -16,8 +16,9 @@ Prerequisites
 * `Python <http://python.org>`_ 2.7
 * `numpy <http://www.scipy.org>`_ >= 1.8
 * `scipy <http://www.scipy.org>`_ >= 0.13.0
-* `six <https://pypi.python.org/pypi/six>`_, initial attempts at Python 2/3 compatibility
 * `pandas <http://pandas.pydata.org/s>`_
+* `six <https://pypi.python.org/pypi/six>`_, Python 2/3 compatibility
+* `future <https://pypi.org/project/future>`_, Python 2/3 compatibility
 
 .. * `pycircstat <https://pypi.python.org/pypi/pycircstat>`_, deals with circular statistics.
 .. * `shapely <https://pypi.python.org/pypi/Shapely>`_ >= 1.2.14 (**Windows users**: be sure to install from `Christophe Gohlke's built wheels <http://www.lfd.uci.edu/~gohlke/pythonlibs/#shapely>`_)

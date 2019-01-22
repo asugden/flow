@@ -224,10 +224,11 @@ class Trace2P:
         Parameters
         ----------
         cs : string
-            CS-type to return traces of, Should be one of values returned bvy
+            CS-type to return traces of, Should be one of values returned by
             t2p.cses().
         start_s : float
-            Time before stim to include, in seconds. For backward compatability, can also be arg dict.
+            Time before stim to include, in seconds.
+            For backward compatibility, can also be arg dict.
         end_s : float
             Time after stim to include, in seconds.
         trace_type : {'deconvolved', 'raw', 'dff'}
@@ -335,24 +336,14 @@ class Trace2P:
 
         return np.array(out)
 
-    def inversecstraces(self, cs, args):
+    def inversecstraces(
+            self, cs, start_s=-1, end_s=2, trace_type='deconvolved',
+            errortrials=-1, baseline=(-1, -1)):
         """
         Return the traces for trials in which there were not presentations of a particular type.
         """
 
         # TODO: remove?
-
-        # Set arguments and convert to framerate
-        defaults = {
-            'start-s': -1,
-            'end-s': 2,
-            'trace-type': 'deconvolved',
-            'error-trials': -1,  # -1 is off, 0 is only correct trials, 1 is error trials
-            'baseline': (-1, -1),  # Baseline removed if these two are different
-        }
-
-        for p in args:
-            defaults[p] = args[p]
 
         if cs == 'ensure':
             cons = np.array(self.csonsets('plus', 0))
@@ -378,31 +369,30 @@ class Trace2P:
         off = int(np.round(np.nanmean(matches)))
         ons = fons + off
 
-        defaults['start-fr'] = int(round(defaults['start-s']*self.framerate))
-        defaults['end-fr'] = int(round(defaults['end-s']*self.framerate))
+        start_fr = int(round(start_s*self.framerate))
+        end_fr = int(round(end_s*self.framerate))
 
         # Get lick times and onsets
-        out = np.zeros((self.ncells, defaults['end-fr'] - defaults['start-fr'], len(ons)))
+        out = np.zeros((self.ncells, end_fr - start_fr, len(ons)))
         out[:, :, :] = np.nan
 
         # Iterate through onsets, find the beginning and end, and add
-        # the appropirate trace type to the output
+        # the appropriate trace type to the output
         for i, onset in enumerate(ons):
-            start = defaults['start-fr'] + onset
-            end = defaults['end-fr'] + onset
+            start = start_fr + onset
+            end = end_fr + onset
 
             if end > self.nframes:
                 end = self.nframes
             if end > start:
-                out[:, :end-start, i] = self.trace(defaults['trace-type'])[:, start:end]
+                out[:, :end-start, i] = self.trace(trace_type)[:, start:end]
 
         # Subtract the baseline, if desired
-        if defaults['baseline'][0] != defaults['baseline'][1]:
-            blargs = {key: defaults[key] for key in defaults}
-            blargs['start-s'], blargs['end-s'] = blargs['baseline']
-            blargs['baseline'] = (-1, -1)
-            blargs['cutoff-before-first-lick-ms'] = -1
-            bltrs = np.nanmean(self.cstraces(cs, blargs), axis=1)
+        if baseline[0] != baseline[1]:
+            bltrs = np.nanmean(self.cstraces(
+                cs, start_s=baseline[0], end_s=baseline[1], baseline=(-1, -1),
+                cutoff_before_lick_ms=-1, trace_type=trace_type,
+                errortrials=errortrials), axis=1)
             for f in range(np.shape(out)[1]):
                 out[:, f, :] -= bltrs
 
@@ -626,12 +616,12 @@ class Trace2P:
 
     def hasvar(self, var):
         """
-        Check if trace2p has variable type
+        Check if trace2p has variable type.
 
         :param var: string: photometry, pupil, pupilmask, ripple
         :return: boolean
-        """
 
+        """
         if var == 'pupil':
             return self.haspupil()
         elif var == 'photometry':
@@ -772,9 +762,11 @@ class Trace2P:
 
     def speed(self):
         """
-        Return a vector of running speed if possible. Speed is in cm/s smoothed over a second.
-        """
+        Return a vector of running speed if possible.
 
+        Speed is in cm/s smoothed over a second.
+
+        """
         wheel_diameter = 14  # in cm
         wheel_tabs = 44
         wheel_circumference = wheel_diameter*math.pi
@@ -806,9 +798,10 @@ class Trace2P:
     def behavior(self, cs, aspercent=True):
         """
         Return the success of the behavior for a particular stimulus.
-        If aspercent is set to false, returns correct, total.
-        """
 
+        If aspercent is set to false, returns correct, total.
+
+        """
         conds = [self.d['condition'].flatten() == self.codes[cs]]
         num = np.sum(self.d['trialerror'][conds]%2 == 0)
         denom = np.sum(conds)
@@ -853,11 +846,27 @@ class Trace2P:
         licks = licks[licks < self.nframes]
         return licks
 
+    def reward(self):
+        """Return the frames in which reward was presented.
+
+        Intended to be generalized in the future.
+
+        """
+        return self.ensure()
+
     def ensure(self):
         """Return the frames in which there was ensure delivered."""
         if 'onsets' not in self.d:
             return np.array([])
         return self.d['ensure'].flatten()
+
+    def punishment(self):
+        """Return the frames in which punishment was presented.
+
+        Intended to be generalized in the future.
+
+        """
+        return self.quinine()
 
     def quinine(self):
         """Return the frames in which there was quinine delivered."""

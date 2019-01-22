@@ -776,8 +776,26 @@ class RunSorter(UserList):
             self._name = str(name)
 
     def __repr__(self):
+        """Repr."""
         return "RunSorter([{} {}], name={})".format(
             len(self), 'Run' if len(self) == 1 else 'Runs', self.name)
+
+    def __iter__(self):
+        """Iter.
+
+        Clears cached trace2p and classify2p from previous Run as you iterate.
+
+        """
+        last_run = None
+        for run in self.data:
+            if last_run is not None:
+                last_run._c2p = None
+                last_run._t2p = None
+            last_run = run
+            yield run
+        if last_run is not None:
+            last_run._c2p = None
+            last_run._t2p = None
 
     @property
     def name(self):
