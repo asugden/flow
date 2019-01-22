@@ -461,7 +461,7 @@ def rollingmax(arr, integrate_frames):
         out = np.zeros((np.shape(arr)[0], np.shape(arr)[1] - (integrate_frames - 1)))
     else:
         raise ValueError('Function only handles 1d and 2d arrays')
-
+    print(arr.dtype, out.dtype)
     runclassifier.rollmax(arr, out, integrate_frames)
     return out
 
@@ -578,3 +578,7 @@ def classify(data, priors, integrate_frames):
 
     out = AODE(data, priors, integrate_frames)
     return out
+
+
+if __name__ == '__main__':
+    print(rollingmean(np.arange(20), 3))
