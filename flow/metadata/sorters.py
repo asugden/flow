@@ -254,7 +254,7 @@ class Date(object):
 
         run_objs = (self._runs[run] for run in meta['run'])
 
-        return RunSorter(run_objs, name=name)
+        return DateRunSorter(run_objs, name=name)
 
     def glm(self):
         """Return GLM object.
@@ -271,6 +271,14 @@ class Date(object):
                 self._glm.subset(self._cells)
 
         return self._glm
+
+    def clearcache(self):
+        """Clear all cached data for this Date and any child Run objects."""
+        if self._runs is not None:
+            for run in self._runs.values():
+                run.clearcache()
+            self._runs = None
+        self._glm = None
 
 
 class Run(object):
@@ -442,6 +450,11 @@ class Run(object):
             return paths.classifier2p(
                 self.mouse, self.date, self.run, pars, randomize)
 
+    def clearcache(self):
+        """Clear all cached data for this Run."""
+        print("Clear cache: {}".format(self))
+        self._t2p, self._c2p, self._glm = None, None, None
+
 
 class MouseSorter(UserList):
     """Iterator of Mouse objects.
@@ -519,37 +532,6 @@ class MouseSorter(UserList):
 
         return cls(mouse_objs, name=name)
 
-    def all_runs(
-            self, dates=None, run_types=None, runs=None, tags=None, name=None):
-        """Return a RunSorter from all the runs of all the mice and dates.
-
-        Parameters
-        ----------
-        dates : list of int, optional
-            List of dates to filter on.
-        run_types : list of str, optional
-            List of run_types to include. Defaults to all types. Can also be
-            a single run_type.
-        runs : list of int
-            List of run numbers to include. Defaults to all runs.
-        tags : list of str, optional
-            List of tags to filter on. Can also be single tag.
-        name : str, optional
-            Name of resulting RunSorter.
-
-        Returns
-        -------
-        RunSorter
-
-        """
-        all_runs = [run
-                    for mouse in self
-                    for date in mouse.dates(dates=dates, tags=tags)
-                    for run in date.runs(run_types=run_types, runs=runs,
-                                         tags=tags)]
-
-        return RunSorter(all_runs, name=name)
-
 
 class DateSorter(UserList):
     """Iterator of Date objects.
@@ -589,8 +571,15 @@ class DateSorter(UserList):
             self._name = str(name)
 
     def __repr__(self):
+        """Repr."""
         return "DateSorter([{} {}], name={})".format(
             len(self), 'Date' if len(self) == 1 else 'Dates', self.name)
+
+    def __iter__(self):
+        """Iter."""
+        for date in self.data:
+            yield date
+            date.clearcache()
 
     @property
     def name(self):
@@ -737,7 +726,7 @@ class DatePairSorter(UserList):
 
                 for d2 in d2s:
                     tdelta = datetime.strptime(str(d2), '%y%m%d') \
-                             - datetime.strptime(str(d1), '%y%m%d')
+                        - datetime.strptime(str(d1), '%y%m%d')
                     id1, id2 = xday.ids(mouse, d1, d2)
                     if day_distance[0] <= tdelta.days <= day_distance[1] and len(id1) > 0:
                         pairs.append((mouse, d1, d2, id1, id2))
@@ -760,7 +749,8 @@ class RunSorter(UserList):
 
     Notes
     -----
-    Runs are sorted upon initialization so that iterating will always be sorted.
+    Runs are sorted upon initialization so that iterating will always be
+    sorted.
 
     """
 
@@ -777,8 +767,9 @@ class RunSorter(UserList):
 
     def __repr__(self):
         """Repr."""
-        return "RunSorter([{} {}], name={})".format(
-            len(self), 'Run' if len(self) == 1 else 'Runs', self.name)
+        return "{}([{} {}], name={})".format(
+            self.__class__.__name__, len(self),
+            'Run' if len(self) == 1 else 'Runs', self.name)
 
     def __iter__(self):
         """Iter.
@@ -786,16 +777,9 @@ class RunSorter(UserList):
         Clears cached trace2p and classify2p from previous Run as you iterate.
 
         """
-        last_run = None
         for run in self.data:
-            if last_run is not None:
-                last_run._c2p = None
-                last_run._t2p = None
-            last_run = run
             yield run
-        if last_run is not None:
-            last_run._c2p = None
-            last_run._t2p = None
+            run.clearcache()
 
     @property
     def name(self):
@@ -830,7 +814,7 @@ class RunSorter(UserList):
 
         Notes
         -----
-        All arguments are used to filter the experiemntal metadata.
+        All arguments are used to filter the experimental metadata.
         All remaining runs will be included in RunSorter.
 
         Returns
@@ -846,6 +830,21 @@ class RunSorter(UserList):
                     for _, run in meta.iterrows())
 
         return cls(run_objs, name=name)
+
+
+class DateRunSorter(RunSorter):
+    """
+    A RunSorter that does not clear cache after each iteration.
+
+    Cache clearing is handled instead by a the DateSorter, allowing for data
+    to remain cached through multiple iterations of child Run objects.
+
+    """
+
+    def __iter__(self):
+        """Iter."""
+        for run in self.data:
+            yield run
 
 
 def parse_name(args, cs=False):
