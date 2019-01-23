@@ -1,3 +1,4 @@
+from __future__ import print_function
 from copy import deepcopy
 import numpy as np
 import os
@@ -159,8 +160,8 @@ def go(args, defaults={}, classifier=False, trace=False, force=False):
         keys = sorted([key for key in defaults if key[:3] != 'def'])
         print('DEFAULT PARAMETERS:')
         for key in keys:
-            print '\t%s:' % (key),
-            print defaults[key]
+            print('\t%s:' % (key), end=' ')
+            print(defaults[key])
     pars = parsekv(args)
 
     # Account for the various output possibilities
@@ -302,7 +303,7 @@ def classifiers(pars, randomize='', minclassifiers=1, check=False):
         # for i in range(minclassifiers - len(out)):
         #     classify.classify(pars, randomize)
         if minclassifiers - len(out) > 1:
-            print('multiclassify ', minclassifiers - len(out))
+            print(('multiclassify ', minclassifiers - len(out)))
             classify.multiclassify(pars, randomize, minclassifiers - len(out))
         else:
             classify.classify(pars, randomize)
@@ -386,7 +387,7 @@ class RunSorter():
             self.andb = database.db()
             stringed = ''.join([str(v) for v in kvargs['day-analysis'][1:]])
             if '[' not in stringed or ']' not in stringed:
-                print 'ERROR: Variable required. Use square brackets, [], to surround variables.'
+                print('ERROR: Variable required. Use square brackets, [], to surround variables.')
                 exit(0)
 
             self._daylimit = 'limit = %s' % \
@@ -624,7 +625,7 @@ class DaySorter():
             self.andb = database.db()
             stringed = ''.join([str(v) for v in kvargs['day-analysis'][1:]])
             if '[' not in stringed or ']' not in stringed:
-                print 'ERROR: Variable required. Use square brackets, [], to surround variables.'
+                print('ERROR: Variable required. Use square brackets, [], to surround variables.')
                 exit(0)
 
             self._daylimit = 'limit = %s' % (stringed.replace('[', ' self.andb[\''))

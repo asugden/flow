@@ -1,3 +1,4 @@
+from __future__ import print_function
 import math
 import matplotlib as mpl
 # mpl.use('Agg')
@@ -450,7 +451,7 @@ class Grapher():
             #x, y, ignoreerr = self._order_and_combine_data(subset['data'][cell], args)
 
             clr = clr if 'colors' not in xyargs else xyargs['colors']
-            print(len(x), len(y), len(xyargs['colors']), xyargs['colors'][0])
+            print((len(x), len(y), len(xyargs['colors']), xyargs['colors'][0]))
             ax.scatter(x, y, vmin=0.0, vmax=1.0, c=(1.0 - xyargs['colors']),
                        edgecolor='none', alpha=0.6, cmap=self.temp_jetonwhite())
 

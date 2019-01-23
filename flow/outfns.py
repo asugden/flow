@@ -1,3 +1,4 @@
+from __future__ import print_function
 import numpy as np
 from scipy import optimize
 from scipy.spatial.distance import cosine as cosinedist

@@ -1,3 +1,4 @@
+from __future__ import print_function
 # Probably needs to be refactored still: 180821
 import datetime
 import numpy as np
@@ -35,7 +36,7 @@ def repevents(gm, t2p, combframes, reps):
     for i, cs in enumerate(cses):
         evs = np.array(classify2p.peakprobs(gm['results'][cs], 0.05))
         evs = evs[evs > fmin]
-        print(cs, len(evs))
+        print((cs, len(evs)))
 
         ctrace = np.zeros((ncells, len(evs)*(reps + 1)))
         cfmatch = np.zeros((len(evs), 4))  # cs, frame, probability, pupilmask at frame

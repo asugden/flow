@@ -1,3 +1,4 @@
+from __future__ import print_function
 import math
 import numpy as np
 
@@ -461,7 +462,7 @@ def rollingmax(arr, integrate_frames):
         out = np.zeros((np.shape(arr)[0], np.shape(arr)[1] - (integrate_frames - 1)))
     else:
         raise ValueError('Function only handles 1d and 2d arrays')
-    print(arr.dtype, out.dtype)
+    print((arr.dtype, out.dtype))
     runclassifier.rollmax(arr, out, integrate_frames)
     return out
 
