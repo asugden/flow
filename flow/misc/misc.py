@@ -1,4 +1,6 @@
 """Miscellaneous helper functions."""
+from builtins import str
+from past.builtins import basestring
 import argparse
 import collections
 import datetime
@@ -265,7 +267,7 @@ def notebook_word():
     """
     from ipykernel import get_connection_file
 
-    return wordhash.word(unicode(os.path.basename(get_connection_file())))
+    return wordhash.word(str(os.path.basename(get_connection_file())))
 
 
 def notebook_file(word, path=None):
@@ -299,6 +301,6 @@ def notebook_file(word, path=None):
     for p in paths:
         if os.path.isdir(p):
             for file in os.listdir(p):
-                if wordhash.word(unicode(file)) is word:
+                if wordhash.word(str(file)) is word:
                     return file
     return ''

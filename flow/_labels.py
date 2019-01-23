@@ -1,4 +1,7 @@
 from __future__ import print_function
+from builtins import zip
+from builtins import str
+from builtins import range
 import community
 from datetime import datetime
 import networkx as nx
@@ -69,7 +72,7 @@ def categorize(
         # if andb is not None:
         #     lbls = addlabels(lbls, andb)
 
-        ncells = len(lbls[lbls.keys()[0]])
+        ncells = len(lbls[list(lbls.keys())[0]])
 
         out = ['undefined' for i in range(ncells)]
         if 'cluster' in ''.join(categories):

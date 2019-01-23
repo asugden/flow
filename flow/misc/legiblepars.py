@@ -1,3 +1,5 @@
+from builtins import object, range, str
+
 import numpy as np
 
 """
@@ -5,7 +7,7 @@ Save parameters in a legible text format that can easily be read back in
 """
 
 
-class Metadata():
+class Metadata(object):
     def __init__(self, path):
         self.path = path
 

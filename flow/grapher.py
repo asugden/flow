@@ -1,11 +1,17 @@
 from __future__ import print_function
+from __future__ import division
+from builtins import zip
+from builtins import str
+from builtins import range
+from builtins import object
+
 import math
 import matplotlib as mpl
 # mpl.use('Agg')
 import matplotlib.pyplot as plt
 import numpy as np
-import numpy.polynomial.polynomial as poly
-import os, os.path as opath
+import os
+import os.path as opath
 from re import match as rematch
 from scipy.optimize import curve_fit
 import statsmodels.api as sm
@@ -255,7 +261,7 @@ class SuppressErrors(object):
 # =============================================================================================== #
 # Graphing class
 
-class Grapher():
+class Grapher(object):
     def __init__(self, save_directory='', width='full'):
         """
         Optionally set the save directory and width. Width can be full,
@@ -329,9 +335,9 @@ class Grapher():
             if len(x[0]) == 1:
                 x = [i[0] for i in x]
             elif len(x[0]) == 2:
-                x, y = zip(*x)
+                x, y = list(zip(*x))
             else:
-                x, y, err = zip(*x)
+                x, y, err = list(zip(*x))
 
         # If there's only one value, set the other to arange
         if y == []:

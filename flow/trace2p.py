@@ -1,4 +1,9 @@
 from __future__ import print_function
+from __future__ import division
+from builtins import str
+from builtins import range
+from builtins import object
+
 from copy import copy, deepcopy
 import math
 import numpy as np
@@ -10,7 +15,7 @@ from . import config
 from .misc import loadmat
 
 
-class Trace2P:
+class Trace2P(object):
     """
     Trace2P opens and manipulates simplified cellsort files. Pass the
     path to a simplified cellsort .mat file."""
@@ -68,7 +73,7 @@ class Trace2P:
             return []
 
         # Invert dictionary, so you can also index it by value
-        codes_inverted = {val: key for key, val in codes.iteritems()}
+        codes_inverted = {val: key for key, val in codes.items()}
 
         return [codes_inverted[c] for c in condition_ids]
 

@@ -1,4 +1,6 @@
 from __future__ import print_function
+from builtins import range
+
 import argparse
 import httplib2
 import os

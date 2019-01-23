@@ -1,3 +1,4 @@
+from builtins import str
 import numpy as np
 import os.path as opath
 

@@ -1,11 +1,13 @@
-from __future__ import print_function
+from __future__ import division, print_function
+from builtins import object, range
+
 import math
 import numpy as np
 
 import runclassifier
 
 
-class AODE:
+class AODE(object):
     """
     Create a generative model based on binarized spiking data. Use an
     average one-dependency estimator (AODE) to calculate the P(cs|data).
@@ -297,7 +299,7 @@ class AODE:
         if cond is not None:
             self._cond = cond
 
-        self._ncells = np.shape(self._marg.values()[0])[0]
+        self._ncells = np.shape(list(self._marg.values())[0])[0]
 
         if self._nbonly:
             return self._marg
@@ -504,7 +506,8 @@ def temporal_prior(traces, actmn, actvar, fwhm, expand=1):
     xhalfwidth = 100
 
     # Determine a normal function sigma from the full-width at half-maximum
-    def sigma(fwhm_): return fwhm_/(2*np.sqrt(2*np.log(2)))
+    def sigma(fwhm_):
+        return fwhm_/(2*np.sqrt(2*np.log(2)))
 
     # Generate the basis functions and correct population activity for baseline and variation
     basis = np.power(fwhm, np.arange(4) + 1)
@@ -523,7 +526,8 @@ def temporal_prior(traces, actmn, actvar, fwhm, expand=1):
         defrange = int(norm.interval(0.99999, loc=0, scale=sigma(basis[b]))[1]) + 3
         defrange = min(xhalfwidth, defrange)
         bn = np.zeros(2*xhalfwidth + 1)
-        bn[xhalfwidth - defrange:xhalfwidth + defrange + 1] = norm.pdf(range(-defrange, defrange + 1), loc=0, scale=sigma(basis[b]))
+        bn[xhalfwidth - defrange:xhalfwidth + defrange + 1] = norm.pdf(
+            range(-defrange, defrange + 1), loc=0, scale=sigma(basis[b]))
         fits[b-1, :] = np.convolve(popact, b0 - bn, 'same')
 
     # And return the wfits to the narrowest basis function

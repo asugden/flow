@@ -1,4 +1,5 @@
 """Experimental metadata."""
+from builtins import str
 from . import parser
 
 

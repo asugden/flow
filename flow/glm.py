@@ -1,3 +1,8 @@
+from __future__ import division
+from builtins import str
+from builtins import range
+from builtins import object
+
 from copy import deepcopy
 import numpy as np
 from scipy.signal import gaussian
@@ -57,7 +62,7 @@ def unitvectors(mouse, date, trange=(0, 2), rectify=True, hz=None):
         return out.vectors(trange, rectify, hz)
 
 
-class GLM:
+class GLM(object):
     """
     A class that interfaces with a .simpglm file
     """

@@ -1,10 +1,12 @@
+from builtins import range
+from builtins import object
 from copy import deepcopy
 import numpy as np
 
 from .misc import loadmat
 
 
-class Classify2P():
+class Classify2P(object):
     def __init__(self, paths, pars, randomization=''):
         """
         Load in a classifier or classifiers
@@ -190,7 +192,7 @@ def count(result, threshold, all=False, max=2, downfor=2, offsets=False):
     for i in range(len(ons)):
         if np.max(result[ons[i]:offs[i]]) < max:
             if all:
-                out.extend(range(ons[i], offs[i]))
+                out.extend(list(range(ons[i], offs[i])))
             else:
                 out.append(ons[i])
                 outoffs.append(offs[i])

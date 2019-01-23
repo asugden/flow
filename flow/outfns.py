@@ -1,4 +1,8 @@
 from __future__ import print_function
+from __future__ import division
+from builtins import range
+from builtins import object
+
 import numpy as np
 from scipy import optimize
 from scipy.spatial.distance import cosine as cosinedist
@@ -28,13 +32,16 @@ def weightcorr(x, y, w):
         print('ERROR: Wrong lengths')
 
     # Weighted mean
-    def m(x, w): return np.sum(x*w)/np.sum(w)
+    def m(x, w):
+        return np.sum(x*w)/np.sum(w)
 
     # Weighted covariance
-    def cov(x, y, w): return np.sum(w*(x - m(x, w))*(y - m(y, w)))/np.sum(w)
+    def cov(x, y, w):
+        return np.sum(w*(x - m(x, w))*(y - m(y, w)))/np.sum(w)
 
     # Weighted correlation
-    def corr(x, y, w): return cov(x, y, w)/np.sqrt(cov(x, x, w)*cov(y, y, w))
+    def corr(x, y, w):
+        return cov(x, y, w)/np.sqrt(cov(x, x, w)*cov(y, y, w))
 
     return corr(x, y, w)
 
@@ -762,7 +769,7 @@ def runvecstats():
     out = RunningStats(True)
     return out
 
-class RunningStats:
+class RunningStats(object):
     """
     Get a running mean and standard deviation from a huge dataset, so as not to save every possible point
     """

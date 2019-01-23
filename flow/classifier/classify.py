@@ -1,6 +1,8 @@
-from __future__ import print_function
+from __future__ import division, print_function
 # Intended to be temporary and eventually replaced with
 # classsify_reactivations and train_classifier: 180821
+from builtins import object, range, str
+
 from copy import deepcopy
 import datetime
 import math
@@ -36,7 +38,8 @@ def temporal_prior(traces, actmn, actvar, outliers, fwhm, thresh, priors, expand
     xhalfwidth = 100
 
     # Determine a normal function sigma from the full-width at half-maximum
-    def sigma(fwhm_): return fwhm_/(2*np.sqrt(2*np.log(2)))
+    def sigma(fwhm_):
+        return fwhm_/(2*np.sqrt(2*np.log(2)))
 
     # Generate the basis functions and correct population activity for baseline and variation
     basis = np.power(fwhm, np.arange(4) + 1)
@@ -55,7 +58,8 @@ def temporal_prior(traces, actmn, actvar, outliers, fwhm, thresh, priors, expand
         defrange = int(norm.interval(0.99999, loc=0, scale=sigma(basis[b]))[1]) + 3
         defrange = min(xhalfwidth, defrange)
         bn = np.zeros(2*xhalfwidth + 1)
-        bn[xhalfwidth - defrange:xhalfwidth + defrange + 1] = norm.pdf(range(-defrange, defrange + 1), loc=0, scale=sigma(basis[b]))
+        bn[xhalfwidth - defrange:xhalfwidth + defrange + 1] = norm.pdf(
+            range(-defrange, defrange + 1), loc=0, scale=sigma(basis[b]))
         fits[b-1, :] = np.convolve(popact, b0 - bn, 'same')
 
     # And return the wfits to the narrowest basis function
@@ -104,7 +108,8 @@ def temporal_prior_weight(traces, actmn, actvar, outliers, fwhm, thresh, priors,
     xhalfwidth = 100
 
     # Determine a normal function sigma from the full-width at half-maximum
-    def sigma(fwhm_): return fwhm_/(2*np.sqrt(2*np.log(2)))
+    def sigma(fwhm_):
+        return fwhm_/(2*np.sqrt(2*np.log(2)))
 
     # Generate the basis functions and correct population activity for baseline and variation
     basis = np.power(fwhm, np.arange(4) + 1)
@@ -123,7 +128,8 @@ def temporal_prior_weight(traces, actmn, actvar, outliers, fwhm, thresh, priors,
         defrange = int(norm.interval(0.99999, loc=0, scale=sigma(basis[b]))[1]) + 3
         defrange = min(xhalfwidth, defrange)
         bn = np.zeros(2*xhalfwidth + 1)
-        bn[xhalfwidth - defrange:xhalfwidth + defrange + 1] = norm.pdf(range(-defrange, defrange + 1), loc=0, scale=sigma(basis[b]))
+        bn[xhalfwidth - defrange:xhalfwidth + defrange + 1] = norm.pdf(
+            range(-defrange, defrange + 1), loc=0, scale=sigma(basis[b]))
         fits[b-1, :] = np.convolve(popact, b0 - bn, 'same')
 
     # And return the wfits to the narrowest basis function
@@ -154,7 +160,7 @@ def movingmax(a, window):
     return np.nanmax(rolling_window(a, window), a.ndim)
 
 # ===============================================================================
-class ClassifierTrain:
+class ClassifierTrain(object):
     """
     A class to pass data to the classifier and return data from it. This
     software suite depends on three graphing classes, a class for

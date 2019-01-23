@@ -1,4 +1,7 @@
 """General plotting functions."""
+from __future__ import division
+from builtins import zip
+
 from copy import copy
 import matplotlib.pyplot as plt
 import numpy as np

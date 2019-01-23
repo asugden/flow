@@ -1,9 +1,11 @@
+from builtins import range
+from builtins import object
 import community
 import networkx as nx
 import numpy as np
 
 
-class NCGraph:
+class NCGraph(object):
     def __init__(self, nodes, corr, limits=None):
         """
         Generate a graph of noise correlations using networkx

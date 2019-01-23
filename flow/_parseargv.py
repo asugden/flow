@@ -1,4 +1,6 @@
 from __future__ import print_function
+from builtins import str
+from builtins import object
 from copy import deepcopy
 import numpy as np
 import os
@@ -23,7 +25,7 @@ select a classifier.
 """
 
 
-class CommandInputs:
+class CommandInputs(object):
     def __init__(self, args):
         self.t = args
         if len(args) < 4:
@@ -342,7 +344,7 @@ def random(args):
 
     return out
 
-class RunSorter():
+class RunSorter(object):
     def __init__(self, args, classifier=True, trace=False, force=False, multiclassifiers=False, minclassifiers=1, all=False):
         """
         RunSorter class sorts a series of days and has a "next" method
@@ -582,7 +584,7 @@ def matchvalorlist(args, key, val, strict=False):
         return val == args[key]
 
 
-class DaySorter():
+class DaySorter(object):
     def __init__(self, args, classifier=True, traces=False, force=False, multiclassifiers=False, minclassifiers=1):
         """
         RunSorter class sorts a series of days and has a "next" method

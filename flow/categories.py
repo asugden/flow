@@ -1,3 +1,4 @@
+from builtins import range
 import numpy as np
 
 from . import glm
@@ -32,7 +33,7 @@ def labels(day, categories=('lick', 'ensure', 'reward', 'non'), cluster_numbers=
     if additional is not None:
         for key in additional:
             lbls[key] = additional[key]
-    ncells = len(lbls[lbls.keys()[0]])
+    ncells = len(lbls[list(lbls.keys())[0]])
 
     # Add reward and non, if desired
     if cluster_numbers is not None:
