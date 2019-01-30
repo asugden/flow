@@ -26,8 +26,8 @@ class Trace2P(object):
         self._loadoffsets(path)
 
         # Instance variables
-        self.ncells = np.shape(self.d['deconvolved'])[0]
-        self.nframes = np.shape(self.d['deconvolved'])[1]
+        self.ncells = np.shape(self.d['dff'])[0]
+        self.nframes = np.shape(self.d['dff'])[1]
         self.framerate = 15.49 if 'framerate' not in self.d else self.d['framerate']
         if 'onsets' in self.d:
             self.trials = np.copy(self.d['onsets']).astype(np.int32)

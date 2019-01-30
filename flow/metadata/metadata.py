@@ -289,7 +289,7 @@ def add_run(
     metadata['mice'].append(mouse_dict)
 
     parser.save(metadata)
-    parser.meta_dict(reload_=True)
+    parser.meta_dict()
 
 
 def reversal(mouse):
