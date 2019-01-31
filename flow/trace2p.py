@@ -24,10 +24,11 @@ class Trace2P(object):
         self._path = path
         self.d = loadmat(path)
         self._loadoffsets(path)
+        self.subsetted = False
 
         # Instance variables
-        self.ncells = np.shape(self.d['deconvolved'])[0]
-        self.nframes = np.shape(self.d['deconvolved'])[1]
+        self.ncells = np.shape(self.d['dff'])[0]
+        self.nframes = np.shape(self.d['dff'])[1]
         self.framerate = 15.49 if 'framerate' not in self.d else self.d['framerate']
         if 'onsets' in self.d:
             self.trials = np.copy(self.d['onsets']).astype(np.int32)
@@ -36,9 +37,12 @@ class Trace2P(object):
         if 'conditions' in self.d:
             self.conditions = np.copy(self.d['condition'])
         self.type = 'training' if 'onsets' in self.d else 'spontaneous'
+        self.stimulus_length = self._median_stimulus_length()
+        self.ntrials = 0 if 'onsets' not in self.d else min(len(self.trials),
+                                                            len(self.conditions),
+                                                            len(self.d['trialerror']))
 
         # Set some optional variables
-        self.cst = 2  # CS time
         self._addedcses = ['reward', 'punishment']
         self._original_traces = None
 
@@ -59,23 +63,39 @@ class Trace2P(object):
         onsets = self._onsets(cs)
         return len(onsets)
 
-    def conditions(self):
-        """Return the trial label for all trials.
+    def conditions(self, return_as_strings=False):
+        """
+        Return the trial label for all trials.
 
-        :return" list of strings, 1 per trail
+        Parameters
+        ----------
+        return_as_strings : bool
+            If true, return a list of strings. If false, return a vector
+            of integers and a dict of codes.
+
+        Returns
+        -------
+        list of str if return_as_strings or vector of ints
+            The code for each trial
+        optional dict
+            Translating the numerical code into a string
 
         """
+
         try:
             condition_ids = self.d['condition']
             codes = copy(self.d['codes'])
         except KeyError:
             # No trial structure to this recording
-            return []
+            return [] if return_as_strings else [], {}
 
-        # Invert dictionary, so you can also index it by value
-        codes_inverted = {val: key for key, val in codes.items()}
+        if return_as_strings:
+            # Invert dictionary, so you can also index it by value
+            codes_inverted = {val: key for key, val in codes.items()}
 
-        return [codes_inverted[c] for c in condition_ids]
+            return [codes_inverted[c] for c in condition_ids]
+        else:
+            return self.d['condition'][:self.ntrials].astype(np.int16), copy(self.d['codes'])
 
     def csonsets(self, cs='', errortrials=-1, lickcutoff=-1, lickwindow=(-1, 0)):
         """
@@ -145,11 +165,13 @@ class Trace2P(object):
 
         # dff, raw, f0, dec/deconvolved
 
+        self.subsetted = False
         if self._original_traces is not None:
             for key in self._original_traces:
                 self.d[key] = deepcopy(self._original_traces[key])
 
         if vector is not None:
+            self.subsetted = True
             if self._original_traces is None:
                 self._original_traces = {}
                 for key in ['dff', 'raw', 'f0', 'deconvolved']:
@@ -159,7 +181,7 @@ class Trace2P(object):
             for key in self._original_traces:
                 self.d[key] = self._original_traces[key][vector]
 
-        self.ncells = np.shape(self.d['deconvolved'])[0]
+        self.ncells = np.shape(self.d['dff'])[0]
 
     def trialmask(self, cs='', errortrials=-1, fulltrial=False, padpre=0, padpost=0):
         """
@@ -223,7 +245,7 @@ class Trace2P(object):
             return int(round(self.d['onsets'][-1])) + padf
 
     def cstraces(
-            self, cs, start_s=-1, end_s=2, trace_type='deconvolved',
+            self, cs, start_s=-1, end_s=None, trace_type='deconvolved',
             cutoff_before_lick_ms=-1, errortrials=-1, baseline=None, baseline_to_stimulus=True):
         """Return the onsets for a particular cs with flexibility.
 
@@ -236,7 +258,8 @@ class Trace2P(object):
             Time before stim to include, in seconds.
             For backward compatibility, can also be arg dict.
         end_s : float
-            Time after stim to include, in seconds.
+            Time after stim to include, in seconds. If None, will be set to
+            the stimulus length
         trace_type : {'deconvolved', 'raw', 'dff'}
             Type of trace to return.
         cutoff_before_lick_ms : int
@@ -260,6 +283,9 @@ class Trace2P(object):
 
         if isinstance(start_s, dict):
             raise ValueError('Dicts are no longer accepted')
+
+        if end_s is None:
+            end_s = self.stimulus_length
 
         start_frame = int(round(start_s*self.framerate))
         end_frame = int(round(end_s*self.framerate))
@@ -448,7 +474,7 @@ class Trace2P(object):
 
     def stimlicks(self, cs='', mins=2, maxs=4, errortrials=-1):
         """
-        Return the first lick time for all onsets of type cs
+        Return the number of licks for all onsets of type cs
         NOTE: Assumes trial structure of 6 second ITI
 
         :param cs: stimulus type str: plus, minus, or neutral, or empty string for all types
@@ -457,8 +483,6 @@ class Trace2P(object):
         :param errortrials: -1 is all trials, 0 is correct trials, 1 is error trials
         :return: counts of licking in the time interval for each trial of type cs
         """
-
-        # TODO: combine w/ firstlick?
 
         ons = self.csonsets(cs, errortrials=errortrials)
         licks = self.d['licking'].flatten()
@@ -827,17 +851,13 @@ class Trace2P(object):
         if cs is not None and cs not in self.codes:
             return []
 
-        nonsets = len(self.d['onsets'])
         if cs is not None:
-            conds = [self.d['condition'].flatten()[:nonsets] == self.codes[cs]]
+            conds = [self.d['condition'].flatten()[:self.ntrials] == self.codes[cs]]
         else:
-            conds = [np.ones(nonsets, dtype=bool)]
+            conds = [np.ones(self.ntrials, dtype=bool)]
 
-        minlen = min(np.shape(conds)[1],
-                     np.shape(self.d['onsets'])[0],
-                     np.shape(self.d['trialerror'])[0])
         conds = conds[:minlen]
-        out = self.d['trialerror'].flatten()[:minlen][tuple(conds)] % 2
+        out = self.d['trialerror'].flatten()[:self.ntrials][tuple(conds)] % 2
         out = [o for o in out.flatten() if o < self.nframes]
 
         return np.array(out) == 1
@@ -990,21 +1010,6 @@ class Trace2P(object):
         # return self.d['centroid']
         return lateralness, posteriorness
 
-    def conderrs(self):
-        """Get a list of all onsets, errors, and codes.
-
-        :return: onsets, errors, codes
-
-        """
-
-        # TODO: remove?
-
-        maxlen = len(self.d['onsets'].flatten())
-        cond = self.d['condition'].flatten()[:maxlen]
-        errs = self.d['trialerror'].flatten()[:maxlen] % 2
-
-        return cond, errs, self.codes
-
     def _onsets(self, cs='', errortrials=-1):
         """
         Return the onset frames of stimulus cs
@@ -1084,6 +1089,30 @@ class Trace2P(object):
 
         """
         self._roi_ids = tuple(str(uuid1()) for _ in range(self.ncells))
+
+    def _median_stimulus_length(self):
+        """
+        Measure the median stimulus length and convert it to seconds. Accounts
+        for differences between Kelly's data and the rest of the lab's data.
+
+        Returns
+        -------
+        int
+            The length of the stimulus in seconds
+
+        """
+
+        trialdiffs = []
+        for cs in self.cses():
+            if cs != 'pavlovian':
+                ons = self.csonsets(cs)
+                offs = self.csoffsets(cs)
+                ons = ons[:len(offs)]
+
+                trialdiffs.append(ons - offs)
+
+        return int(round(np.nanmedian(trialdiffs)/self.framerate))
+
 
 # Version implemented in flow.misc
 # def loadmatpy(filename):
