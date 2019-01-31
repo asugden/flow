@@ -174,6 +174,19 @@ class Date(object):
     def cells(self):
         return copy(self._cells)
 
+    def set_subset(self, val=None):
+        """
+        Set the cell indices to be subset
+
+        Parameters
+        ----------
+        val : None or array
+            Indices of cells to be kept, or all cells if val is None
+
+        """
+
+        self._cells = val
+
     @property
     def photometry(self):
         """Tuple of photometry information."""
@@ -249,6 +262,9 @@ class Date(object):
             self._runs = {run: Run(mouse=self.mouse, date=self.date, run=run,
                                    cells=self.cells)
                           for run in meta['run']}
+        else:
+            for run in self._runs:
+                self._runs[run].set_subset(self._cells)
 
         meta = metadata.meta(
             mice=[self.mouse], dates=[self.date], runs=runs, tags=tags,
@@ -365,6 +381,19 @@ class Run(object):
     def cells(self):
         return copy(self._cells)
 
+    def set_subset(self, val=None):
+        """
+        Set the cell indices to be subset
+
+        Parameters
+        ----------
+        val : None or array
+            Indices of cells to be kept, or all cells if val is None
+
+        """
+
+        self._cells = val
+
     def _get_metadata(self):
         """Query the metadata and set necessary properties."""
         meta = metadata.meta(
@@ -408,8 +437,7 @@ class Run(object):
             self._t2p = paths.gett2p(
                 self.mouse, self.date, self.run)
 
-            if self._cells is not None:
-                self._t2p.subset(self._cells)
+        self._t2p.subset(self._cells)
 
         return self._t2p
 
