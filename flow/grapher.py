@@ -35,8 +35,8 @@ def color(name='gray'):
         'mint': '#47D1A8',
         'purple': '#C880D1',
         'indigo': '#5E5AE6',
-        'blue': '#47AEED', # previously 4087DD
-        'yellow': '#F2E205',
+        'blue': '#47AEED',  # previously 4087DD
+        'yellow': '#F1C40F',  # previously F2E205, text is C6A105
     }
 
     if isinstance(name, int):
