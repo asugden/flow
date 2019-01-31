@@ -145,6 +145,11 @@ def add_mouse(mouse, tags=None, overwrite=False, update=False):
     """
     if overwrite and update:
         raise ValueError('Cannot both update and overwrite a Mouse.')
+
+    # Automatically format tags to list
+    if isinstance(tags, str):
+        tags = [tags]
+
     mouse_dict = {'name': mouse,
                   'dates': []}
     metadata = parser.meta_dict()
@@ -191,6 +196,11 @@ def add_date(
     """
     if overwrite and update:
         raise ValueError('Cannot both update and overwrite a Date.')
+
+    # Automatically format tags to list
+    if isinstance(tags, str):
+        tags = [tags]
+
     date_dict = {'date': date,
                  'runs': []}
     metadata = parser.meta_dict()
@@ -250,6 +260,11 @@ def add_run(
     """
     if overwrite and update:
         raise ValueError('Cannot both update and overwrite a Run.')
+
+    # Automatically format tags to list
+    if isinstance(tags, str):
+        tags = [tags]
+
     run_dict = {'run': run,
                 'run_type': run_type}
     metadata = parser.meta_dict()
