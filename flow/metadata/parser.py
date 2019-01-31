@@ -41,45 +41,46 @@ def validate(metadata=None):
     return _validate(metadata, schema)
 
 
-def meta_dict(reload_=False):
-    """Return metadata, load if needed."""
-    global _metadata
-    if reload_ or _metadata is None:
-        metadata_path = _get_metadata_path()
-        try:
-            with open(metadata_path, 'r') as f:
-                _metadata = json.load(f)
-        except IOError:
-            _initialize_metadata()
-            with open(metadata_path, 'r') as f:
-                _metadata = json.load(f)
-    return deepcopy(_metadata)
+def meta_dict():
+    """Return metadata directly parsed from json file."""
+    metadata_path = _get_metadata_path()
+    try:
+        with open(metadata_path, 'r') as f:
+            metadata = json.load(f)
+    except IOError:
+        _initialize_metadata()
+        with open(metadata_path, 'r') as f:
+            metadata = json.load(f)
+    return metadata
 
 
 def meta_df(reload_=False):
     """Parse metadata into a pandas dataframe."""
-    out = []
-    meta = meta_dict(reload_=reload_)
-    for mouse in meta['mice']:
-        mouse_name = mouse.get('name')
-        mouse_tags = set(mouse.get('tags', []))
-        for date in mouse['dates']:
-            date_num = date.get('date')
-            date_tags = mouse_tags.union(date.get('tags', []))
-            photometry = date.get('photometry', [])
-            for run in date.get('runs'):
-                run_id = run.get('run')
-                run_type = run.get('run_type')
-                run_tags = date_tags.union(run.get('tags', []))
-                out.append({
-                    'mouse': mouse_name,
-                    'date': date_num,
-                    'photometry': photometry,
-                    'run': run_id,
-                    'tags': sorted(run_tags),
-                    'run_type': run_type
-                })
-    return pd.DataFrame(out)
+    global _metadata
+    if reload_ or _metadata is None:
+        out = []
+        meta = meta_dict()
+        for mouse in meta['mice']:
+            mouse_name = mouse.get('name')
+            mouse_tags = set(mouse.get('tags', []))
+            for date in mouse['dates']:
+                date_num = date.get('date')
+                date_tags = mouse_tags.union(date.get('tags', []))
+                photometry = date.get('photometry', [])
+                for run in date.get('runs'):
+                    run_id = run.get('run')
+                    run_type = run.get('run_type')
+                    run_tags = date_tags.union(run.get('tags', []))
+                    out.append({
+                        'mouse': mouse_name,
+                        'date': date_num,
+                        'photometry': photometry,
+                        'run': run_id,
+                        'tags': sorted(run_tags),
+                        'run_type': run_type
+                    })
+        _metadata = pd.DataFrame(out)
+    return _metadata.copy()
 
 
 def save(metadata):

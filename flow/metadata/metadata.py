@@ -172,7 +172,7 @@ def add_mouse(mouse, tags=None, overwrite=False, update=False):
 
     metadata['mice'].append(mouse_dict)
     parser.save(metadata)
-    parser.meta_dict(reload_=True)
+    parser.meta_dict()
 
 
 def add_date(
@@ -238,7 +238,7 @@ def add_date(
     metadata['mice'].append(mouse_dict)
 
     parser.save(metadata)
-    parser.meta_dict(reload_=True)
+    parser.meta_dict()
 
 
 def add_run(
@@ -304,7 +304,7 @@ def add_run(
     metadata['mice'].append(mouse_dict)
 
     parser.save(metadata)
-    parser.meta_dict(reload_=True)
+    parser.meta_dict()
 
 
 def reversal(mouse):

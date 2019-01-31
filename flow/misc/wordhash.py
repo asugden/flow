@@ -1,5 +1,5 @@
 from __future__ import print_function
-import md5
+import hashlib
 import pickle
 
 
@@ -70,7 +70,7 @@ def word(obj):
 
     obj = sortlist(obj)
 
-    dig = md5.new(pickle.dumps(obj))
+    dig = hashlib.new(pickle.dumps(obj))
     val = int(dig.hexdigest(), 16)%len(wordlist)
     # print wordlist[val]
     return wordlist[val]

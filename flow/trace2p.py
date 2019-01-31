@@ -46,13 +46,23 @@ class Trace2P(object):
         self._addedcses = ['reward', 'punishment']
         self._original_traces = None
 
+        self._codes = None
+
         # Clean things up
         self._loadextramasks(path)
         self._fixmistakes()
         self._initalize_roi_ids()
 
     def __repr__(self):
+        """Repr."""
         return "Trace2P(path={})".format(self._path)
+
+    @property
+    def codes(self):
+        """Return dict of trial number to name mapping."""
+        if self._codes is None:
+            self._codes = self.d['codes'] if 'codes' in self.d else {}
+        return copy(self._codes)
 
     @property
     def roi_ids(self):
@@ -84,7 +94,6 @@ class Trace2P(object):
 
         try:
             condition_ids = self.d['condition']
-            codes = copy(self.d['codes'])
         except KeyError:
             # No trial structure to this recording
             return [] if return_as_strings else [], {}
@@ -97,10 +106,12 @@ class Trace2P(object):
         else:
             return self.d['condition'][:self.ntrials].astype(np.int16), copy(self.d['codes'])
 
-    def csonsets(self, cs='', errortrials=-1, lickcutoff=-1, lickwindow=(-1, 0)):
+    def csonsets(
+            self, cs='', errortrials=-1, lickcutoff=-1, lickwindow=(-1, 0)):
         """
-        Return the trial onset times of a particular stimulus, separating by
-        trial performance and licking
+        Return the trial onset times of a particular stimulus.
+
+        Separating by trial performance and licking.
 
         :param cs: stimulus name, str. If blank, return all trials
         :param errortrials: whether to include all trials (-1), correct trials (0), or error trials (1)
@@ -1072,8 +1083,6 @@ class Trace2P(object):
 
         :return:
         """
-
-        self.codes = self.d['codes'] if 'codes' in self.d else {}
 
         if 'trialerror' in self.d and len(self.d['trialerror']) > len(self.d['onsets']):
             self.d['trialerror'] = self.d['trialerror'][:len(self.d['onsets'])]

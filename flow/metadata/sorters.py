@@ -482,7 +482,6 @@ class Run(object):
 
     def clearcache(self):
         """Clear all cached data for this Run."""
-        print("Clear cache: {}".format(self))
         self._t2p, self._c2p, self._glm = None, None, None
 
 
