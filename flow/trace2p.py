@@ -1113,12 +1113,10 @@ class Trace2P(object):
 
         trialdiffs = []
         for cs in self.cses():
-            if cs != 'pavlovian':
-                ons = self.csonsets(cs)
-                offs = self.csoffsets(cs)
-                ons = ons[:len(offs)]
-
-                trialdiffs.append(ons - offs)
+            if cs != 'pavlovian' and cs != 'blank':
+                ons = self.csonsets(cs)[:self.ntrials]
+                offs = self.csoffsets(cs)[:self.ntrials]
+                trialdiffs.extend(offs - ons)
 
         return int(round(np.nanmedian(trialdiffs)/self.framerate))
 
