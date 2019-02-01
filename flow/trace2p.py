@@ -89,10 +89,11 @@ class Trace2P(object):
                     offs = self.csoffsets(cs)[:self.ntrials]
                     ons = ons[:len(offs)]
 
-                    trialdiffs.extend(ons - offs)
+                    trialdiffs.extend(offs - ons)
 
             self._stimulus_length = \
                 int(round(np.nanmedian(trialdiffs)/self.framerate))
+
         return self._stimulus_length
 
     @property
