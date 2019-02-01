@@ -70,7 +70,7 @@ def word(obj):
 
     obj = sortlist(obj)
 
-    dig = hashlib.new(pickle.dumps(obj))
+    dig = hashlib.md5(pickle.dumps(obj))
     val = int(dig.hexdigest(), 16)%len(wordlist)
     # print wordlist[val]
     return wordlist[val]

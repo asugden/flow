@@ -34,12 +34,13 @@ class Trace2P(object):
             self.trials = np.copy(self.d['onsets']).astype(np.int32)
         if 'offsets' in self.d:
             self.offsets = np.copy(self.d['offsets']).astype(np.int32)
-        if 'conditions' in self.d:
-            self.conditions = np.copy(self.d['condition'])
+        # Jeff, 190131: Renamed to _conditions to avoid conflict with conditions
+        # method. Need to cleanup this and the method.
+        if 'condition' in self.d:
+            self._conditions = np.copy(self.d['condition'])
         self.type = 'training' if 'onsets' in self.d else 'spontaneous'
-        self.stimulus_length = self._median_stimulus_length()
         self.ntrials = 0 if 'onsets' not in self.d else min(len(self.trials),
-                                                            len(self.conditions),
+                                                            len(self._conditions),
                                                             len(self.d['trialerror']))
 
         # Set some optional variables
@@ -47,6 +48,7 @@ class Trace2P(object):
         self._original_traces = None
 
         self._codes = None
+        self._stimulus_length = None
 
         # Clean things up
         self._loadextramasks(path)
@@ -63,6 +65,35 @@ class Trace2P(object):
         if self._codes is None:
             self._codes = self.d['codes'] if 'codes' in self.d else {}
         return copy(self._codes)
+
+    @property
+    def stimulus_length(self):
+        """
+        Measure the median stimulus length and convert it to seconds.
+
+        Accounts for differences between Kelly's data and the rest of the lab's
+        data.
+
+        Returns
+        -------
+        int
+            The length of the stimulus in seconds
+
+        """
+
+        if self._stimulus_length is None:
+            trialdiffs = []
+            for cs in self.cses():
+                if cs != 'pavlovian':
+                    ons = self.csonsets(cs)[:self.ntrials]
+                    offs = self.csoffsets(cs)[:self.ntrials]
+                    ons = ons[:len(offs)]
+
+                    trialdiffs.extend(ons - offs)
+
+            self._stimulus_length = \
+                int(round(np.nanmedian(trialdiffs)/self.framerate))
+        return self._stimulus_length
 
     @property
     def roi_ids(self):
@@ -100,11 +131,11 @@ class Trace2P(object):
 
         if return_as_strings:
             # Invert dictionary, so you can also index it by value
-            codes_inverted = {val: key for key, val in codes.items()}
+            codes_inverted = {val: key for key, val in self.codes.items()}
 
             return [codes_inverted[c] for c in condition_ids]
         else:
-            return self.d['condition'][:self.ntrials].astype(np.int16), copy(self.d['codes'])
+            return self.d['condition'][:self.ntrials].astype(np.int16), self.codes
 
     def csonsets(
             self, cs='', errortrials=-1, lickcutoff=-1, lickwindow=(-1, 0)):
@@ -867,7 +898,6 @@ class Trace2P(object):
         else:
             conds = [np.ones(self.ntrials, dtype=bool)]
 
-        conds = conds[:minlen]
         out = self.d['trialerror'].flatten()[:self.ntrials][tuple(conds)] % 2
         out = [o for o in out.flatten() if o < self.nframes]
 
@@ -1098,27 +1128,6 @@ class Trace2P(object):
 
         """
         self._roi_ids = tuple(str(uuid1()) for _ in range(self.ncells))
-
-    def _median_stimulus_length(self):
-        """
-        Measure the median stimulus length and convert it to seconds. Accounts
-        for differences between Kelly's data and the rest of the lab's data.
-
-        Returns
-        -------
-        int
-            The length of the stimulus in seconds
-
-        """
-
-        trialdiffs = []
-        for cs in self.cses():
-            if cs != 'pavlovian' and cs != 'blank':
-                ons = self.csonsets(cs)[:self.ntrials]
-                offs = self.csoffsets(cs)[:self.ntrials]
-                trialdiffs.extend(offs - ons)
-
-        return int(round(np.nanmedian(trialdiffs)/self.framerate))
 
 
 # Version implemented in flow.misc
