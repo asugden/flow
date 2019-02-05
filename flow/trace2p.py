@@ -48,6 +48,7 @@ class Trace2P(object):
         self._original_traces = None
 
         self._codes = None
+        self._orientations = None
         self._stimulus_length = None
 
         # Clean things up
@@ -67,6 +68,14 @@ class Trace2P(object):
         return copy(self._codes)
 
     @property
+    def orientations(self):
+        """Return dict of trial number to name mapping."""
+        if self._orientations is None:
+            self._orientations = {str(v): k for k, v in self.d['orientations'].items()} \
+                                 if 'orientations' in self.d else {}
+        return copy(self._orientations)
+
+    @property
     def stimulus_length(self):
         """
         Measure the median stimulus length and convert it to seconds.
@@ -80,18 +89,20 @@ class Trace2P(object):
             The length of the stimulus in seconds
 
         """
+
         if self._stimulus_length is None:
             trialdiffs = []
             for cs in self.cses():
                 if cs != 'pavlovian':
-                    ons = self.csonsets(cs)
-                    offs = self.csoffsets(cs)
+                    ons = self.csonsets(cs)[:self.ntrials]
+                    offs = self.csoffsets(cs)[:self.ntrials]
                     ons = ons[:len(offs)]
 
-                    trialdiffs.append(ons - offs)
+                    trialdiffs.extend(offs - ons)
 
             self._stimulus_length = \
-                int(round(np.nanmedian(trialdiffs) / self.framerate))
+                int(round(np.nanmedian(trialdiffs)/self.framerate))
+
         return self._stimulus_length
 
     @property
@@ -1062,6 +1073,10 @@ class Trace2P(object):
         if 'onsets' not in self.d:
             return []
 
+        if cs == '0' or cs == '45' or cs == '90' or cs == '135' \
+           or cs == '225' or cs == '270' or cs == '315' or cs == '360':
+            cs = self.orientations[cs]
+
         # Account for all trial types
         if len(cs) == 0:
             out = np.copy(self.d['onsets'])
@@ -1127,3 +1142,33 @@ class Trace2P(object):
 
         """
         self._roi_ids = tuple(str(uuid1()) for _ in range(self.ncells))
+
+
+# Version implemented in flow.misc
+# def loadmatpy(filename):
+#     """
+#     A modified loadmat that can account for structs as dicts.
+#     """
+
+#     data = spio.loadmat(filename, struct_as_record=False, squeeze_me=True, appendmat=False)
+#     for key in data:
+#         if isinstance(data[key], spio.matlab.mio5_params.mat_struct):
+#             data[key] = _mattodict(data[key])
+#     return data
+
+# def _mattodict(matobj):
+#     """
+#     Recursively convert matobjs into dicts.
+
+#     :param matobj: matlab object from _check_keys
+#     :return: dict
+#     """
+
+#     out = {}
+#     for strg in matobj._fieldnames:
+#         el = matobj.__dict__[strg]
+#         if isinstance(el, spio.matlab.mio5_params.mat_struct):
+#             out[strg] = _mattodict(el)
+#         else:
+#             out[strg] = el
+#     return out
