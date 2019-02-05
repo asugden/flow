@@ -64,6 +64,10 @@ class Mouse(object):
         """Return repr of Mouse."""
         return "Mouse(mouse='{}', tags={})".format(self.mouse, self.tags)
 
+    def __hash__(self):
+        """Hash of a Mouse."""
+        return hash(self.__repr__())
+
     def __str__(self):
         """Return str of Mouse."""
         return self.mouse
@@ -211,6 +215,10 @@ class Date(object):
         """Return repr of Date."""
         return "Date(mouse='{}', date={}, tags={}, photometry={})".format(
             self.mouse, self.date, self.tags, self.photometry)
+
+    def __hash__(self):
+        """Hash of a Date."""
+        return hash(self.__repr__())
 
     def __str__(self):
         """Return str of Date."""
@@ -407,6 +415,10 @@ class Run(object):
         """Return repr of Run."""
         return "Run(mouse='{}', date={}, run={}, run_type='{}', tags={})".format(
             self.mouse, self.date, self.run, self.run_type, self.tags)
+
+    def __hash__(self):
+        """Hash of a Run."""
+        return hash(self.__repr__())
 
     def __str__(self):
         """Return str of Run."""
@@ -859,6 +871,22 @@ class RunSorter(UserList):
                     for _, run in meta.iterrows())
 
         return cls(run_objs, name=name)
+
+    def dates(self, name=None):
+        """
+        Return DateSorter of all the parent Date objects.
+
+        Returns
+        -------
+        DateSorter
+
+        """
+        if name is None:
+            name = self.name + ' Dates'
+
+        dates = {run.parent for run in self}
+
+        return DateSorter(dates, name=name)
 
 
 class DateRunSorter(RunSorter):
