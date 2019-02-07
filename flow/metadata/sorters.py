@@ -151,6 +151,7 @@ class Date(object):
         self._parent = Mouse(mouse=self.mouse)
         self._tags, self._photometry = None, None
         self._glm, self._runs = None, None
+        self._framerate = None
 
     @property
     def mouse(self):
@@ -177,6 +178,23 @@ class Date(object):
     @property
     def cells(self):
         return copy(self._cells)
+
+    @property
+    def framerate(self):
+        """Imaging framerate for this date."""
+        if self._framerate is None:
+            for run in self.runs():
+                try:
+                    t2p = run.trace2p()
+                except IOError:
+                    continue
+                self._framerate = t2p.framerate
+                break
+            if self._framerate is None:
+                raise ValueError(
+                    'Unable to determine framerate for {}'.format(self) +
+                    ', no imaging data available.')
+        return self._framerate
 
     def set_subset(self, val=None):
         """
@@ -291,7 +309,7 @@ class Date(object):
 
         """
         if self._glm is None:
-            self._glm = glm.glm(self.mouse, self.date)
+            self._glm = glm.glm(self.mouse, self.date, self.framerate)
 
             if self._cells is not None:
                 self._glm.subset(self._cells)
@@ -391,7 +409,7 @@ class Run(object):
 
     def set_subset(self, val=None):
         """
-        Set the cell indices to be subset
+        Set the cell indices to be subset.
 
         Parameters
         ----------
