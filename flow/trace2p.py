@@ -48,6 +48,7 @@ class Trace2P(object):
         self._original_traces = None
 
         self._codes = None
+        self._orientations = None
         self._stimulus_length = None
 
         # Clean things up
@@ -65,6 +66,14 @@ class Trace2P(object):
         if self._codes is None:
             self._codes = self.d['codes'] if 'codes' in self.d else {}
         return copy(self._codes)
+
+    @property
+    def orientations(self):
+        """Return dict of trial number to name mapping."""
+        if self._orientations is None:
+            self._orientations = {str(v): k for k, v in self.d['orientations'].items()} \
+                                 if 'orientations' in self.d else {}
+        return copy(self._orientations)
 
     @property
     def stimulus_length(self):
@@ -1146,6 +1155,10 @@ class Trace2P(object):
 
         if 'onsets' not in self.d:
             return []
+
+        if cs == '0' or cs == '45' or cs == '90' or cs == '135' \
+           or cs == '225' or cs == '270' or cs == '315' or cs == '360':
+            cs = self.orientations[cs]
 
         # Account for all trial types
         if len(cs) == 0:

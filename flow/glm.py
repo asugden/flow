@@ -1,34 +1,42 @@
+"""Interface for simpglm files."""
 from __future__ import division
 from builtins import str
 from builtins import range
 from builtins import object
 
+try:
+    from bottleneck import nanmean, nansum
+except ImportError:
+    from numpy import nanmean, nansum
 from copy import deepcopy
 import numpy as np
+from scipy import optimize
 from scipy.signal import gaussian
-import scipy.io as spio
+import warnings
 
+from . import misc
 from . import paths
 
 
-def glm(mouse, date):
+def glm(mouse, date, hz=None):
     """
-    Return a new instance of a GLM
+    Return a new instance of a GLM.
 
     :param mouse: mouse name, str
     :param date: date, str
     :return: instance of class GLM
     """
 
-    out = GLM(mouse, date)
+    out = GLM(mouse, date, hz=hz)
     if not out.exists:
         return False
     else:
         return out
 
+
 def labels(mouse, date, minpred=0.01, minfrac=0.05):
     """
-    Return the GLM labels for a particular mouse and date
+    Return the GLM labels for a particular mouse and date.
 
     :param mouse: mouse name, str
     :param date: date, str
@@ -43,6 +51,7 @@ def labels(mouse, date, minpred=0.01, minfrac=0.05):
     else:
         return out.labels(minpred, minfrac)
 
+
 def unitvectors(mouse, date, trange=(0, 2), rectify=True, hz=None):
     """
     Get expected values across a time range given GLM coefficients.
@@ -55,27 +64,30 @@ def unitvectors(mouse, date, trange=(0, 2), rectify=True, hz=None):
     :return: a dict of the unit vectors for each group
     """
 
-    out = GLM(mouse, date)
+    out = GLM(mouse, date, hz=hz)
     if not out.exists:
         return False
     else:
-        return out.vectors(trange, rectify, hz)
+        return out.vectors(trange, rectify)
 
 
 class GLM(object):
-    """
-    A class that interfaces with a .simpglm file
-    """
+    """A class that interfaces with a .simpglm file."""
 
-    def __init__(self, mouse, date):
+    def __init__(self, mouse, date, hz=None):
         """
-        Create a new GLM instance with a given mouse and date
+        Create a new GLM instance with a given mouse and date.
+
         :param mouse: mouse name, str
         :param date: date, str
-        """
 
+        """
         self.mouse = mouse
         self.date = date
+        if hz is None:
+            self.hz = 15.49
+        else:
+            self.hz = hz
         self.exists = False
         self.freq = None
 
@@ -85,7 +97,7 @@ class GLM(object):
         path = paths.glmpath(mouse, date)
 
         if path is not None:
-            self.d = loadmatpy(path)
+            self.d = misc.loadmat(path)
 
             if 'behaviornames' in self.d:
                 self.exists = True
@@ -102,7 +114,7 @@ class GLM(object):
 
     def groups(self, short=False):
         """
-        Return a list of all cellgroups
+        Return a list of all cellgroups.
 
         :param short: set to True if only simple cell groups should be returned
         :return: list of cell groups, str
@@ -136,16 +148,24 @@ class GLM(object):
             self.coeffs = self.coeffs[vector, :]
             self.devexp = self.devexp[vector, :]
 
-    def basis(self, group, trange=(0, 2), hz=15.49):
+    def basis(self, group, trange=(0, 2), hz=None):
         """
-        Reconstruct a basis function
+        Reconstruct a basis function.
 
         :param group: the group name over which to reconstruct the basis function
         :param trange: time range to include
-        :param hz: frequency of the recording, will automatically find if necessary
+        :param hz: the frequency of the recording, will automatically find if necessary
         :return: a matrix of ncells x ntimes with basis vectors relative to stimulus
         """
-
+        if hz is None:
+            hz = self.hz
+        else:
+            # 190207
+            warnings.warn(
+                "Pass framerate argument to the GLM init.",
+                DeprecationWarning)
+        if group not in self.groups():
+            raise ValueError('Group not found.')
         ncells = np.shape(self.coeffs)[0]
         ncoeffs = np.shape(self.coeffs)[1]
         grnames = np.arange(ncoeffs)[np.array([name == group for name in self.names])]
@@ -178,10 +198,14 @@ class GLM(object):
         :param hz: the frequency of the recording, will automatically find if necessary
         :return: a dict of the unit vectors for each group
         """
-
+        if hz is not None:
+            # 190207
+            warnings.warn(
+                "Pass framerate argument to the GLM init.",
+                DeprecationWarning)
         out = {}
-        for group in self.groups():
-            unit = self.basis(group, trange, hz)  # ncells x ntimes
+        for group in set(self.groups()):
+            unit = self.basis(group, trange, hz=hz)  # ncells x ntimes
             if rectify:
                 unit[unit < 0] = 0
 
@@ -193,19 +217,96 @@ class GLM(object):
 
         return out
 
+    def protovector(
+            self, group, trange=(0, 1), rectify=False, err=-1,
+            remove_group=None):
+        """
+        Get the prototypical vector of a GLM group.
+
+        Parameters
+        ----------
+        group : str
+            Group name from glm.groups().
+        trange : 2-element tuple of float
+            Time range in seconds.
+        rectify : bool
+            If True, set all negative components to 0.
+        err : {-1, 0, 1}
+            Determined handling of trial errors for visual groups. -1 for all
+            trials, 0 for correct trials, 1 for incorrect trials.
+        remove_group : str, optional
+            If not None, remove the given group response from the protovector.
+
+        Returns
+        -------
+        np.ndarray
+
+        """
+        if group in ['plus', 'neutral', 'minus']:
+            if err == -1:
+                correct = self.protovector(
+                    group + '_correct', trange=trange, rectify=rectify)
+                try:
+                    miss = self.protovector(
+                        group + '_miss', trange=trange, rectify=rectify)
+                except ValueError:
+                    return correct
+                else:
+                    return (correct + miss) / 2.
+            elif err == 0:
+                return self.protovector(
+                    group + '_correct', trange=trange, rectify=rectify)
+            elif err == 1:
+                return self.protovector(
+                    group + '_miss', trange=trange, rectify=rectify)
+            else:
+                raise ValueError(
+                    'Unrecognized err argument, must be in {-1, 0, 1}')
+
+        # From GLM.vectors()
+        unit = self.basis(group, trange)
+        if rectify:
+            unit[unit < 0] = 0
+        unit = nanmean(unit, axis=1)
+        if nansum(unit) == 0:
+            unit.fill(np.nan)
+        else:
+            unit /= nansum(unit)
+
+        # From outfns._remove_visual_components
+        if remove_group is not None:
+            def fitfun(vs, x):
+                return vs[0]*x
+
+            def errfun(vs, x, y):
+                return fitfun(vs, x) - y
+
+            sub_proto = self.protovector(
+                remove_group, trange=trange, rectify=rectify)
+            [vscalc, success] = optimize.leastsq(
+                errfun, [0.5], args=(sub_proto, unit))
+            unit -= vscalc[0]*sub_proto
+            unit /= nansum(np.abs(unit))
+
+        return unit
+
     def meanresp(self, trange=(0, 2), rectify=False, hz=None):
         """
-        Get the mean responses to each of the groups
+        Get the mean responses to each of the groups.
 
         :param trange: time range in seconds
         :param rectify: set values < 0 equal to 0 if True
-        :param hz: frequency of the recording, will automatically find if necessary
+        :param hz: the frequency of the recording, will automatically find if necessary
         :return: a dict of the unit vectors for each group
         """
-
+        if hz is not None:
+            # 190207
+            warnings.warn(
+                "Pass framerate argument to the GLM init.",
+                DeprecationWarning)
         out = {}
         for group in self.groups():
-            vec = self.basis(group, trange, hz)  # ncells x ntimes
+            vec = self.basis(group, trange, hz=hz)  # ncells x ntimes
             if rectify:
                 vec[vec < 0] = 0
             out[group] = vec
@@ -214,7 +315,7 @@ class GLM(object):
 
     def labels(self, minpred=0.01, minfrac=0.05):
         """
-        Label cells by their GLM filter responses
+        Label cells by their GLM filter responses.
 
         :param minpred: the minimum variance predicted by all glm filters
         :param minfrac: the minimum fraction of glm variance explained by filters for each cell type
@@ -276,32 +377,3 @@ class GLM(object):
             odict[name] = groupdev[:, i]
 
         return odict
-
-
-def loadmatpy(filename):
-    """
-    A modified loadmat that can account for structs as dicts.
-    """
-
-    data = spio.loadmat(filename, struct_as_record=False, squeeze_me=True, appendmat=False)
-    for key in data:
-        if isinstance(data[key], spio.matlab.mio5_params.mat_struct):
-            data[key] = _mattodict(data[key])
-    return data
-
-def _mattodict(matobj):
-    """
-    Recursively convert matobjs into dicts.
-
-    :param matobj: matlab object from _check_keys
-    :return: dict
-    """
-
-    out = {}
-    for strg in matobj._fieldnames:
-        el = matobj.__dict__[strg]
-        if isinstance(el, spio.matlab.mio5_params.mat_struct):
-            out[strg] = _mattodict(el)
-        else:
-            out[strg] = el
-    return out
