@@ -4,8 +4,13 @@ from builtins import str
 from builtins import range
 from builtins import object
 
+try:
+    from bottleneck import nanmean, nansum
+except ImportError:
+    from numpy import nanmean, nansum
 from copy import deepcopy
 import numpy as np
+from scipy import optimize
 from scipy.signal import gaussian
 import warnings
 
@@ -159,6 +164,8 @@ class GLM(object):
             warnings.warn(
                 "Pass framerate argument to the GLM init.",
                 DeprecationWarning)
+        if group not in self.groups():
+            raise ValueError('Group not found.')
         ncells = np.shape(self.coeffs)[0]
         ncoeffs = np.shape(self.coeffs)[1]
         grnames = np.arange(ncoeffs)[np.array([name == group for name in self.names])]
@@ -209,6 +216,79 @@ class GLM(object):
                 out[group] = unit/np.nansum(unit)
 
         return out
+
+    def protovector(
+            self, group, trange=(0, 1), rectify=False, err=-1,
+            remove_group=None):
+        """
+        Get the prototypical vector of a GLM group.
+
+        Parameters
+        ----------
+        group : str
+            Group name from glm.groups().
+        trange : 2-element tuple of float
+            Time range in seconds.
+        rectify : bool
+            If True, set all negative components to 0.
+        err : {-1, 0, 1}
+            Determined handling of trial errors for visual groups. -1 for all
+            trials, 0 for correct trials, 1 for incorrect trials.
+        remove_group : str, optional
+            If not None, remove the given group response from the protovector.
+
+        Returns
+        -------
+        np.ndarray
+
+        """
+        if group in ['plus', 'neutral', 'minus']:
+            if err == -1:
+                correct = self.protovector(
+                    group + '_correct', trange=trange, rectify=rectify)
+                try:
+                    miss = self.protovector(
+                        group + '_miss', trange=trange, rectify=rectify)
+                except ValueError:
+                    return correct
+                else:
+                    return (correct + miss) / 2.
+            elif err == 0:
+                return self.protovector(
+                    group + '_correct', trange=trange, rectify=rectify)
+            elif err == 1:
+                return self.protovector(
+                    group + '_miss', trange=trange, rectify=rectify)
+            else:
+                raise ValueError(
+                    'Unrecognized err argument, must be in {-1, 0, 1}')
+
+        # From GLM.vectors()
+        unit = self.basis(group, trange)
+        if rectify:
+            unit[unit < 0] = 0
+        unit = nanmean(unit, axis=1)
+        if nansum(unit) == 0:
+            unit.fill(np.nan)
+        else:
+            unit /= nansum(unit)
+
+        # From outfns._remove_visual_components
+        if remove_group is not None:
+            def fitfun(vs, x):
+                return vs[0]*x
+
+            def errfun(vs, x, y):
+                return fitfun(vs, x) - y
+
+            sub_proto = self.protovector(
+                remove_group, trange=trange, rectify=rectify)
+            [vscalc, success] = optimize.leastsq(
+                errfun, [0.5], args=(sub_proto, unit))
+            unit -= vscalc[0]*sub_proto
+            unit /= nansum(np.abs(unit))
+
+        return unit
 
     def meanresp(self, trange=(0, 2), rectify=False, hz=None):
         """
