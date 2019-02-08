@@ -384,6 +384,89 @@ class Trace2P(object):
 
         return out
 
+    def warpcstraces(self, cs, start_s=0, end_s=None, trace_type='deconvolved',
+                     cutoff_before_lick_ms=-1, errortrials=-1, baseline=None,
+                     baseline_to_stimulus=True, move_outcome_to=3, warp_offset=False):
+        """
+        Return the onsets for a particular cs. Warp the outcome to a
+        particular time point using interpolation.
+
+        Parameters
+        ----------
+        cs : string
+            CS-type to return traces of, Should be one of values returned by
+            t2p.cses().
+        start_s : float
+            Time before stim to include, in seconds.
+            For backward compatibility, can also be arg dict.
+        end_s : float
+            Time after stim to include, in seconds. If None, will be set to
+            the stimulus length
+        trace_type : {'deconvolved', 'raw', 'dff'}
+            Type of trace to return.
+        cutoff_before_lick_ms : int
+            Exclude all time around licks by adding NaN's this many ms before
+            the first lick after the stim.
+        errortrials : {-1, 0, 1}
+            -1 is all trials, 0 is only correct trials, 1 is error trials
+        baseline : tuple of 2 ints, optional
+            Use this interval (in seconds) as a baseline to subtract off from
+            all traces each trial.
+        baseline_to_stimulus : bool
+            If true and the cs is either ensure or quinine, the baseline will be
+            relative to the stimulus onset rather than relative to the cs onset.
+        move_outcome_to : float
+            Interpolate the activity such that the outcome is moved to a
+            fixed time point in seconds
+        warp_offset : bool
+            If true, warp the time of the offset to be the median stimulus
+            offset time. NOT IMPLEMENTED YET.
+            :TODO
+            Implement warp_offset
+
+        Returns
+        -------
+        ndarray
+            ncells x frames x nstimuli/onsets
+
+        """
+
+        from scipy.interpolate import interp1d
+
+        trs = self.cstraces(cs, start_s, end_s + 2, trace_type,
+                            cutoff_before_lick_ms, errortrials,
+                            baseline, baseline_to_stimulus)
+        outcomes = self.outcomes(cs, errortrials)
+
+        stim_frames = int(round((self.stimulus_length - start_s)*self.framerate))
+        outcome_frame = int(round((move_outcome_to - start_s)*self.framerate))
+        total_frames = int(round((end_s - start_s)*self.framerate))
+
+        median = np.nanmedian(outcomes)
+        if median < 0 or np.isnan(median):
+            median = outcome_frame
+
+        outcomes[np.isnan(outcomes)] = median
+        outcomes[outcomes < 0] = median
+
+        ntrials = np.shape(trs)[2]
+        if len(outcomes) != ntrials:
+            raise ValueError('Stimulus and outcome lengths do not match')
+
+        warped = np.zeros((self.ncells, total_frames, ntrials))
+        warped[:, :, :] = np.nan
+        for i, outcome in enumerate(outcomes):
+            warped[:, 0:stim_frames, :] = trs[:, 0:stim_frames, :]
+            for trial in range(ntrials):
+                old_frames = np.linspace(0.0, 1.0, outcome - stim_frames)
+                new_frames = np.linspace(0.0, 1.0, outcome_frame - stim_frames)
+                remaining_frames = total_frames - outcome_frame
+                interpolate_fn = interp1d(old_frames, trs[:, stim_frames:outcome, trial])
+                warped[:, stim_frames:outcome_frame, trial] = interpolate_fn(new_frames)
+                warped[:, outcome_frame:, trial] = trs[:, outcome:outcome + remaining_frames, trial]
+
+        return warped
+
     def outcomes(self, cs, errortrials=-1, maxdiff=6):
         """
         Return the outcome times for each trial, i.e. ensure or quinine
