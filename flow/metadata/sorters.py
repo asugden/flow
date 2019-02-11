@@ -372,6 +372,7 @@ class Run(object):
         self._parent = Date(mouse=self.mouse, date=self.date)
         self._run_type, self._tags = None, None
         self._t2p, self._c2p, self._glm = None, None, None
+        self._default_pars = None
 
     @property
     def mouse(self):
@@ -476,7 +477,8 @@ class Run(object):
         return self._t2p
 
     def classify2p(self, newpars=None, randomize=''):
-        """Return classifier.
+        """
+        Return classifier.
 
         Parameters
         ----------
@@ -489,34 +491,43 @@ class Run(object):
         Classify2P
 
         """
-        pars = config.default()
-        running_runs = metadata.meta(
-            mice=[self.mouse], dates=[self.date], run_types=['running'])
-        training_runs = metadata.meta(
-            mice=[self.mouse], dates=[self.date], run_types=['training'])
-        # TODO: Add option to train on a different day
-        pars.update({'mouse': self.mouse,
-                     'comparison-date': str(self.date),
-                     'comparison-run': self.run,
-                     'training-date': str(self.date),
-                     'training-other-running-runs': sorted(running_runs.run),
-                     'training-runs': sorted(training_runs.run)})
-
         if newpars is None:
             if self._c2p is None:
+                pars = self._default_classifier_pars()
                 self._c2p = paths.classifier2p(
                     self.mouse, self.date, self.run, pars, randomize)
             return self._c2p
         else:
-            for key in newpars:
-                pars[key] = newpars[key]
+            pars = self._default_classifier_pars()
+            pars.update(newpars)
 
             return paths.classifier2p(
                 self.mouse, self.date, self.run, pars, randomize)
 
+    def _default_classifier_pars(self):
+        """Return the default classifier parameters for the this Run."""
+        if self._default_pars is None:
+            pars = config.default()
+            runs = metadata.meta(
+                mice=self.mouse, dates=self.date)
+            running_runs = runs.loc[runs.run_type == 'running']
+            training_runs = runs.loc[runs.run_type == 'training']
+            pars.update({'mouse': self.mouse,
+                         'comparison-date': str(self.date),
+                         'comparison-run': self.run,
+                         'training-date': str(self.date),
+                         'training-other-running-runs': sorted(
+                             running_runs.index.get_level_values('run')),
+                         'training-runs': sorted(
+                             training_runs.index.get_level_values('run'))
+                         })
+            self._default_pars = pars
+        return copy(self._default_pars)
+
     def clearcache(self):
         """Clear all cached data for this Run."""
         self._t2p, self._c2p, self._glm = None, None, None
+        self._default_pars = None
 
 
 class MouseSorter(UserList):
