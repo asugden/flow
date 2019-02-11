@@ -106,16 +106,8 @@ class Mouse(object):
         if name is None:
             name = str(self) + ' dates'
 
-        # Convert single argument to a list
-        if dates is not None and not isinstance(dates, list):
-            dates = [dates]
-        if tags is not None and not isinstance(tags, list):
-            tags = [tags]
-        if exclude_tags is not None and not isinstance(exclude_tags, list):
-            exclude_tags = [exclude_tags]
-
         meta = metadata.meta(
-            mice=[self.mouse], dates=dates, tags=tags,
+            mice=self.mouse, dates=dates, tags=tags,
             exclude_tags=exclude_tags)
         meta_dates = meta.index.get_level_values('date').unique()
 
@@ -293,18 +285,8 @@ class Date(object):
         if name is None:
             name = str(self) + ' runs'
 
-        # Convert single argument to a list
-        if run_types is not None and not isinstance(run_types, list):
-            run_types = [run_types]
-        if runs is not None and not isinstance(runs, list):
-            runs = [runs]
-        if tags is not None and not isinstance(tags, list):
-            tags = [tags]
-        if exclude_tags is not None and not isinstance(exclude_tags, list):
-            exclude_tags = [exclude_tags]
-
         if self._runs is None:
-            meta_all = metadata.meta(mice=[self.mouse], dates=[self.date])
+            meta_all = metadata.meta(mice=self.mouse, dates=self.date)
             meta_all_runs = meta_all.index.get_level_values('run')
             self._runs = {run: Run(mouse=self.mouse, date=self.date, run=run,
                                    cells=self.cells)
@@ -314,8 +296,8 @@ class Date(object):
                 self._runs[run].set_subset(self._cells)
 
         meta = metadata.meta(
-            mice=[self.mouse], dates=[self.date], runs=runs, tags=tags,
-            run_types=run_types, exclude_tags=exclude_tags)
+            mice=self.mouse, dates=self.date, runs=runs, run_types=run_types,
+            tags=tags, exclude_tags=exclude_tags)
         meta_runs = meta.index.get_level_values('run')
 
         run_objs = (self._runs[run] for run in meta_runs)
@@ -612,14 +594,6 @@ class MouseSorter(UserList):
         MouseSorter
 
         """
-        # Convert single argument to a list
-        if mice is not None and not isinstance(mice, list):
-            mice = [mice]
-        if tags is not None and not isinstance(tags, list):
-            tags = [tags]
-        if exclude_tags is not None and not isinstance(exclude_tags, list):
-            exclude_tags = [exclude_tags]
-
         meta = metadata.meta(mice=mice, tags=tags, exclude_tags=exclude_tags)
         meta_mice = meta.index.get_level_values('mouse').unique()
 
@@ -686,8 +660,8 @@ class DateSorter(UserList):
 
     @classmethod
     def frommeta(
-            cls, mice=None, dates=None, tags=None, exclude_tags='bad',
-            photometry=None, name=None):
+            cls, mice=None, dates=None, photometry=None, tags=None,
+            exclude_tags='bad', name=None):
         """Initialize a DateSorter from metadata.
 
         Parameters
@@ -696,12 +670,12 @@ class DateSorter(UserList):
             List of mice to include. Can also be a single mouse.
         dates : list of int, optional
             List of dates to include. Can also be a single date.
+        photometry : list of str, optional
+            List of photometry labels to include. Can also be a single label.
         tags : list of str, optional
             List of tags to filter on. Can also be a single tag.
         exclude_tags : list of str, optional
             List of tags to exclude. Can also be a single tag.
-        photometry : list of str, optional
-            List of photometry labels to include. Can also be a single label.
         name : str, optional
             A name to label the sorter, optional.
 
@@ -715,21 +689,9 @@ class DateSorter(UserList):
         DateSorter
 
         """
-        # Convert single argument to a list
-        if mice is not None and not isinstance(mice, list):
-            mice = [mice]
-        if dates is not None and not isinstance(dates, list):
-            dates = [dates]
-        if tags is not None and not isinstance(tags, list):
-            tags = [tags]
-        if exclude_tags is not None and not isinstance(exclude_tags, list):
-            exclude_tags = [exclude_tags]
-        if photometry is not None and not isinstance(photometry, list):
-            photometry = [photometry]
-
         meta = metadata.meta(
-            mice=mice, dates=dates, tags=tags, exclude_tags=exclude_tags,
-            photometry=photometry)
+            mice=mice, dates=dates, photometry=photometry, tags=tags,
+            exclude_tags=exclude_tags)
         mouse_date_pairs = set(zip(meta.index.get_level_values('mouse'),
                                    meta.index.get_level_values('date')))
 
@@ -791,8 +753,8 @@ class DatePairSorter(UserList):
 
     @classmethod
     def frommeta(
-            cls, mice=None, dates=None, tags=None, exclude_tags='bad',
-            photometry=None, day_distance=None, sequential=True,
+            cls, mice=None, dates=None, photometry=None, tags=None,
+            exclude_tags='bad', day_distance=None, sequential=True,
             cross_reversal=False, name=None):
         """Initialize a DatePairSorter from metadata.
 
@@ -824,21 +786,9 @@ class DatePairSorter(UserList):
         DatePairSorter
 
         """
-        # Convert single argument to a list
-        if mice is not None and not isinstance(mice, list):
-            mice = [mice]
-        if dates is not None and not isinstance(dates, list):
-            dates = [dates]
-        if tags is not None and not isinstance(tags, list):
-            tags = [tags]
-        if exclude_tags is not None and not isinstance(exclude_tags, list):
-            exclude_tags = [exclude_tags]
-        if photometry is not None and not isinstance(photometry, list):
-            photometry = [photometry]
-
         meta = metadata.meta(
-            mice=mice, dates=dates, tags=tags, exclude_tags=exclude_tags,
-            photometry=photometry)
+            mice=mice, dates=dates, photometry=photometry, tags=tags,
+            exclude_tags=exclude_tags)
         meta['reversal'] = 0
 
         # Set reversal
@@ -927,8 +877,8 @@ class RunSorter(UserList):
 
     @classmethod
     def frommeta(
-            cls, mice=None, dates=None, runs=None, run_types=None, tags=None,
-            exclude_tags='bad', photometry=None, name=None):
+            cls, mice=None, dates=None, runs=None, run_types=None,
+            photometry=None, tags=None, exclude_tags='bad', name=None):
         """Initialize a RunSorter from metadata.
 
         Parameters
@@ -941,12 +891,12 @@ class RunSorter(UserList):
             List of run indices to include. Can also be a single index.
         run_types : list of str, optional
             List of run_types to include. Can also be a single type.
+        photometry : list of str, optional
+            List of photometry labels to include. Can also be a single label.
         tags : list of str, optional
             List of tags to filter on. Can also be a single tag.
         exclude_tags : list of str, optional
             List of tags to exclude. Can also be a single tag.
-        photometry : list of str, optional
-            List of photometry labels to include. Can also be a single label.
         name : str, optional
             A name to label the sorter, optional.
 
@@ -960,22 +910,6 @@ class RunSorter(UserList):
         RunSorter
 
         """
-        # Convert single argument to a list
-        if mice is not None and not isinstance(mice, list):
-            mice = [mice]
-        if dates is not None and not isinstance(dates, list):
-            dates = [dates]
-        if runs is not None and not isinstance(runs, list):
-            runs = [runs]
-        if run_types is not None and not isinstance(run_types, list):
-            run_types = [run_types]
-        if tags is not None and not isinstance(tags, list):
-            tags = [tags]
-        if exclude_tags is not None and not isinstance(exclude_tags, list):
-            exclude_tags = [exclude_tags]
-        if photometry is not None and not isinstance(photometry, list):
-            photometry = [photometry]
-
         meta = metadata.meta(
             mice=mice, dates=dates, runs=runs, run_types=run_types, tags=tags,
             exclude_tags=exclude_tags, photometry=photometry)

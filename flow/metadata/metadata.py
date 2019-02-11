@@ -78,8 +78,8 @@ sleep = {
 
 
 def meta(
-        mice=None, dates=None, runs=None, run_types=None, tags=None,
-        photometry=None, exclude_tags=('bad',), reload_=False):
+        mice=None, dates=None, runs=None, run_types=None, photometry=None,
+        tags=None, exclude_tags='bad', reload_=False):
     """Return metadata as a DataFrame, optionally filtering on any columns.
 
     All parameters are optional and if passed will be used to filter the
@@ -87,14 +87,23 @@ def meta(
 
     Parameters
     ----------
-    mice : list of str
-    dates : list of int
-    runs : list of int
-    run_types : list of str
-    tags : list of str
-    photometry : list of str
-    exclude_tags : list of str
-        List of tags to exclude from result.
+    mice : list of str, optional
+        List of mice to include. Can also be a single mouse.
+    dates : list of int, optional
+        List of dates to include. Can also be a single date.
+    runs : list of int, optional
+        List of run indices to include. Can also be a single index.
+    run_types : list of str, optional
+        List of run_types to include. Can also be a single type.
+    photometry : list of str, optional
+        List of photometry labels to include. Can also be a single label.
+    tags : list of str, optional
+        List of tags to filter on. Can also be a single tag.
+    exclude_tags : list of str, optional
+        List of tags to exclude. Can also be a single tag.
+    reload_ : bool
+        If True, reload the DataFrame from disk, otherwise the entire
+        un-filtered DataFrame is kept in memory.
 
     Returns
     -------
@@ -103,8 +112,26 @@ def meta(
         Columns=('run_type', 'tags', 'photometry')
 
     """
+    # Convert single argument to a list
+    if mice is not None and not isinstance(mice, list):
+        mice = [mice]
+    if dates is not None and not isinstance(dates, list):
+        dates = [dates]
+    if runs is not None and not isinstance(runs, list):
+        runs = [runs]
+    if run_types is not None and not isinstance(run_types, list):
+        run_types = [run_types]
+    if tags is not None and not isinstance(tags, list):
+        tags = [tags]
+    if exclude_tags is not None and not isinstance(exclude_tags, list):
+        exclude_tags = [exclude_tags]
+    if photometry is not None and not isinstance(photometry, list):
+        photometry = [photometry]
+
+    # Load all data
     df = parser.meta_df(reload_=reload_)
 
+    # Slice on indices
     if mice is not None:
         mouse_slice = list(mice)
     else:
