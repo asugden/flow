@@ -1,5 +1,7 @@
 """Experimental metadata."""
 from builtins import str
+import numpy as np
+
 from . import parser
 
 
@@ -77,11 +79,11 @@ sleep = {
 
 def meta(
         mice=None, dates=None, runs=None, run_types=None, tags=None,
-        photometry=None, exclude_tags=('bad',), sort=False, reload_=False):
+        photometry=None, exclude_tags=('bad',), reload_=False):
     """Return metadata as a DataFrame, optionally filtering on any columns.
 
     All parameters are optional and if passed will be used to filter the
-    columns of the resulting dataframe.
+    columns of the resulting DataFrame.
 
     Parameters
     ----------
@@ -93,27 +95,34 @@ def meta(
     photometry : list of str
     exclude_tags : list of str
         List of tags to exclude from result.
-    sort : bool
-        If True, sort rows by (mouse, date, run).
 
     Returns
     -------
     pd.DataFrame
-        Columns=('mouse', 'date', 'run', 'run_type', 'tags', 'photometry')
+        Index=('mouse', 'date', 'run')
+        Columns=('run_type', 'tags', 'photometry')
 
     """
     df = parser.meta_df(reload_=reload_)
 
     if mice is not None:
-        df = df[df.mouse.isin(mice)]
+        mouse_slice = list(mice)
+    else:
+        mouse_slice = slice(None)
     if dates is not None:
-        df = df[df.date.isin(dates)]
+        date_slice = list(dates)
+    else:
+        date_slice = slice(None)
     if runs is not None:
-        df = df[df.run.isin(runs)]
+        run_slice = list(runs)
+    else:
+        run_slice = slice(None)
+    df = df.loc(axis=0)[mouse_slice, date_slice, run_slice]
+
     if run_types is not None:
         df = df[df.run_type.isin(run_types)]
 
-    # Filters that use an apply don't work right on empty dataframes
+    # Filters that use an apply don't work right on empty DataFrames
     if tags is not None and len(df):
         df = df[df.tags.apply(
             lambda x: all(tag in x for tag in tags))]
@@ -123,9 +132,6 @@ def meta(
     if exclude_tags is not None and len(df):
         df = df[~ df.tags.apply(
             lambda x: any(tag in x for tag in exclude_tags))]
-
-    if sort:
-        df = df.sort_values(by=['mouse', 'date', 'run']).reset_index(drop=True)
 
     return df
 
