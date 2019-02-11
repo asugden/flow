@@ -179,6 +179,8 @@ def add_mouse(mouse, tags=None, overwrite=False, update=False):
     metadata['mice'].append(mouse_dict)
     parser.save(metadata)
     parser.meta_dict()
+    # Clear DataFrame cache
+    parser._metadata = None
 
 
 def add_date(
@@ -245,6 +247,8 @@ def add_date(
 
     parser.save(metadata)
     parser.meta_dict()
+    # Clear DataFrame cache
+    parser._metadata = None
 
 
 def add_run(
@@ -311,6 +315,8 @@ def add_run(
 
     parser.save(metadata)
     parser.meta_dict()
+    # Clear DataFrame cache
+    parser._metadata = None
 
 
 def reversal(mouse):
@@ -318,38 +324,6 @@ def reversal(mouse):
     if mouse not in reversals:
         return None
     return int(reversals[mouse])
-
-
-# def checkreversal(mouse, date, match=None, optmatch=None):
-#     """Check whether a mouse and date are pre- or post-reversal.
-#
-#     Parameters
-#     ----------
-#     mouse : str
-#     date : int
-#     match : str
-#         'pre' or 'post' to match pre- or post-reversal. Any other value
-#         will always return True. Alternatively, a dictionary and will be used
-#         with optmatch.
-#     optmatch : str, optional
-#         Check if optmatch is in match. Match must be a dictionary.
-#
-#     """
-#     if match is None:
-#         match = ''
-#
-#     if optmatch is not None:
-#         if optmatch not in match:
-#             return True
-#         else:
-#             match = match[optmatch]
-#
-#     if match.lower() == 'pre':
-#         return date < reversals[mouse]
-#     elif match.lower() == 'post':
-#         return date >= reversals[mouse]
-#     else:
-#         return True
 
 
 def mice(tags=None):
@@ -367,7 +341,7 @@ def mice(tags=None):
 
     """
     data = meta(tags=tags)
-    return sorted(data['mouse'].unique())
+    return sorted(data.index.get_level_values('mouse').unique())
 
 
 def dates(mouse, tags=None):
@@ -386,7 +360,7 @@ def dates(mouse, tags=None):
 
     """
     data = meta(mice=[mouse], tags=tags)
-    return sorted(data['date'].unique())
+    return sorted(data.index.get_level_values('date').unique())
 
 
 def runs(mouse, date, run_types=None, tags=None):
@@ -408,8 +382,8 @@ def runs(mouse, date, run_types=None, tags=None):
 
     """
     data = meta(
-        mice=[mouse], dates=[date], run_types=run_types, tags=tags, sort=True)
-    return sorted(data['run'])
+        mice=[mouse], dates=[date], run_types=run_types, tags=tags)
+    return sorted(data.index.get_level_values('run'))
 
 
 def data(mouse, date):
@@ -436,12 +410,13 @@ def data(mouse, date):
     date_df = meta(mice=[mouse], dates=[date])
 
     for run_type, run_type_df in date_df.groupby('run_type'):
-        out[str(run_type)] = sorted(run_type_df.run)
+        out[str(run_type)] = sorted(run_type_df.index.get_level_values('run'))
 
-    spont_df = date_df[date_df.run_type == 'spontaneous']
-    out['hungry'] = sorted(
-        spont_df.ix[spont_df.tags.apply(lambda x: 'hungry' in x), 'run'])
-    out['sated'] = sorted(
-        spont_df.ix[spont_df.tags.apply(lambda x: 'sated' in x), 'run'])
+    hungry = date_df.loc[(date_df.run_type == 'spontaneous') &
+                         date_df.tags.apply(lambda x: 'hungry' in x)]
+    out['hungry'] = sorted(hungry.index.get_level_values('run'))
+    sated = date_df.loc[(date_df.run_type == 'spontaneous') &
+                        date_df.tags.apply(lambda x: 'sated' in x)]
+    out['sated'] = sorted(sated.index.get_level_values('run'))
 
     return out
