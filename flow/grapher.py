@@ -287,12 +287,12 @@ class Grapher(object):
         integer. Height can be full or an integer.
         """
 
-        if isinstance(width, str):
+        if isinstance(width, basestring):
             w = 7.5 if width == 'half' else 14.35
         else:
             w = width
 
-        if isinstance(height, str):
+        if isinstance(height, basestring):
             h = 6
         else:
             h = height
