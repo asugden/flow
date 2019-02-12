@@ -107,7 +107,7 @@ class Mouse(object):
             name = str(self) + ' dates'
 
         meta = metadata.meta(
-            mice=self.mouse, dates=dates, tags=tags,
+            mice=[self.mouse], dates=dates, tags=tags,
             exclude_tags=exclude_tags)
         meta_dates = meta.index.get_level_values('date').unique()
 
@@ -286,7 +286,7 @@ class Date(object):
             name = str(self) + ' runs'
 
         if self._runs is None:
-            meta_all = metadata.meta(mice=self.mouse, dates=self.date)
+            meta_all = metadata.meta(mice=[self.mouse], dates=[self.date])
             meta_all_runs = meta_all.index.get_level_values('run')
             self._runs = {run: Run(mouse=self.mouse, date=self.date, run=run,
                                    cells=self.cells)
@@ -296,8 +296,8 @@ class Date(object):
                 self._runs[run].set_subset(self._cells)
 
         meta = metadata.meta(
-            mice=self.mouse, dates=self.date, runs=runs, run_types=run_types,
-            tags=tags, exclude_tags=exclude_tags)
+            mice=[self.mouse], dates=[self.date], runs=runs,
+            run_types=run_types, tags=tags, exclude_tags=exclude_tags)
         meta_runs = meta.index.get_level_values('run')
 
         run_objs = (self._runs[run] for run in meta_runs)
@@ -494,15 +494,13 @@ class Run(object):
         if newpars is None:
             if self._c2p is None:
                 pars = self._default_classifier_pars()
-                self._c2p = paths.classifier2p(
-                    self.mouse, self.date, self.run, pars, randomize)
+                self._c2p = paths.classifier2p(self, pars, randomize)
             return self._c2p
         else:
             pars = self._default_classifier_pars()
             pars.update(newpars)
 
-            return paths.classifier2p(
-                self.mouse, self.date, self.run, pars, randomize)
+            return paths.classifier2p(self, pars, randomize)
 
     def _default_classifier_pars(self):
         """Return the default classifier parameters for the this Run."""

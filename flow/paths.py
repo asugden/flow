@@ -7,6 +7,7 @@ from scipy.io import loadmat
 
 from .misc import wordhash
 from .trace2p import Trace2P
+from .classifier.train import train_classifier
 from .classify2p import Classify2P
 from . import config
 
@@ -40,22 +41,28 @@ def gett2p(mouse, date, run):
     out = Trace2P(path)
     return out
 
-def classifier2p(mouse, date, run, pars, randomize=''):
+def classifier2p(run, pars, randomize=''):
     path = output(pars)
     fs = os.listdir(path)[::-1]
-    out = []
+    paths = []
 
     # Change what you open whether real or random
     if len(randomize) == 0:
         for f in fs:
             if f[:4] == 'real':
-                out.append(opath.join(path, f))
+                paths.append(opath.join(path, f))
     else:
         for f in fs:
             if f[:4] == 'rand' and f[5:5 + len(randomize)] == randomize:
-                out.append(opath.join(path, f))
+                paths.append(opath.join(path, f))
 
-    out = Classify2P(out, pars, randomize)
+    # If we can't find a classifier output, try re-running it.
+    if not len(paths):
+        train_classifier(run.parent, pars)
+        return classifier2p(run, pars, randomize)
+
+    out = Classify2P(paths, pars, randomize)
+
     return out
 
 def getonsets(mouse, date=None, run=None):
