@@ -39,9 +39,6 @@ class Trace2P(object):
         if 'condition' in self.d:
             self._conditions = np.copy(self.d['condition'])
         self.type = 'training' if 'onsets' in self.d else 'spontaneous'
-        self.ntrials = 0 if 'onsets' not in self.d else min(len(self.trials),
-                                                            len(self._conditions),
-                                                            len(self.d['trialerror']))
 
         # Set some optional variables
         self._addedcses = ['reward', 'punishment']
@@ -50,6 +47,7 @@ class Trace2P(object):
         self._codes = None
         self._orientations = None
         self._stimulus_length = None
+        self._ntrials = None
 
         # Clean things up
         self._loadextramasks(path)
@@ -66,6 +64,18 @@ class Trace2P(object):
         if self._codes is None:
             self._codes = self.d['codes'] if 'codes' in self.d else {}
         return copy(self._codes)
+
+    @property
+    def ntrials(self):
+        """Return the number of total trials shown."""
+        if self._ntrials is None:
+            if 'onsets' not in self.d:
+                self._ntrials = 0
+            else:
+                self._ntrials = min(len(self.trials),
+                                    len(self._conditions),
+                                    len(self.d['trialerror']))
+        return self._ntrials
 
     @property
     def orientations(self):
@@ -686,6 +696,36 @@ class Trace2P(object):
                 return ((self.d['dff'].T - mu)/sigma).T
 
         return self.d[tracetype]
+
+    def add_trace(self, trace_type, data):
+        """
+        Add in new trace data, such as data z-scored only on ITIs.
+
+        Parameters
+        ----------
+        trace_type : str
+            The name of the trace. Will be used to match via t2p.trace().
+            Cannot be 'dff', 'deconvolved', 'raw', or 'zscore'.
+        data : matrix
+            The trace data as a numpy matrix of size ncells x ntimes
+
+        Returns
+        -------
+        self
+        """
+
+        if trace_type in ['dec', 'deconvolved', 'raw', 'dff', 'zscore',
+                          'onsets', 'offsets', 'licking', 'running']:
+            raise ValueError('Trace type must not be a reserved name.')
+
+        if np.shape(data)[0] != self.ncells:
+            raise ValueError('The first dimension must be ncells.')
+
+        if np.shape(data)[1] != self.nframes:
+            raise ValueError('The second dimension must be nframes.')
+
+        self.d[trace_type] = data
+        return self
 
     def pupilmask(self, include_phase=False):
         """
