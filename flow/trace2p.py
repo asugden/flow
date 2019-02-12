@@ -32,8 +32,6 @@ class Trace2P(object):
         self.framerate = 15.49 if 'framerate' not in self.d else self.d['framerate']
         if 'onsets' in self.d:
             self.trials = np.copy(self.d['onsets']).astype(np.int32)
-        if 'offsets' in self.d:
-            self.offsets = np.copy(self.d['offsets']).astype(np.int32)
         # Jeff, 190131: Renamed to _conditions to avoid conflict with conditions
         # method. Need to cleanup this and the method.
         if 'condition' in self.d:
@@ -45,6 +43,7 @@ class Trace2P(object):
         self._original_traces = None
 
         self._codes = None
+        self._offsets = None
         self._orientations = None
         self._stimulus_length = None
         self._ntrials = None
@@ -78,11 +77,24 @@ class Trace2P(object):
         return self._ntrials
 
     @property
+    def offsets(self):
+        """Return offset frames."""
+        if self._offsets is None:
+            if 'offsets' in self.d:
+                self._offsets = np.copy(self.d['offsets']).astype(np.int32)
+            else:
+                print('WARNING: Estimating trial offsets')
+                self._offsets = self._onsets() + \
+                    int(round(2*self.framerate + 0.5))
+        return self._offsets
+
+    @property
     def orientations(self):
         """Return dict of trial number to name mapping."""
         if self._orientations is None:
-            self._orientations = {str(v): k for k, v in self.d['orientations'].items()} \
-                                 if 'orientations' in self.d else {}
+            self._orientations = \
+                {str(v): k for k, v in self.d['orientations'].items()} \
+                if 'orientations' in self.d else {}
         return copy(self._orientations)
 
     @property
@@ -280,11 +292,12 @@ class Trace2P(object):
             trial_length = int(np.nanmedian(self.trials[1:] - self.trials[:-1]))
             all_offsets = np.append(self.trials, self.trials[-1] + trial_length) - 1
         else:
-            if 'offsets' in self.d:
-                tends = self.d['offsets'].flatten().astype(np.int32)
-            else:
-                print('WARNING: Estimating trial offsets')
-                tends = onsets + int(round(2*self.framerate + 0.5))
+            tends = self.offsets
+            # if 'offsets' in self.d:
+            #     tends = self.d['offsets'].flatten().astype(np.int32)
+            # else:
+            #     print('WARNING: Estimating trial offsets')
+            #     tends = onsets + int(round(2*self.framerate + 0.5))
 
             all_offsets = np.append(tends, min(tends[-1] + np.nanmedian(tends).astype(np.int32), self.nframes))
 
@@ -949,7 +962,7 @@ class Trace2P(object):
             safety_frames = (safety_frames, safety_frames)
 
         # Set the time period of the safety-padded start and end times
-        stimlen = int(math.ceil(self.cst*self.framerate))
+        stimlen = int(math.ceil(self.stimulus_length*self.framerate))
         starts = np.array([0] + cses) + stimlen + safety_frames[0]
         ends = np.array(cses + [self.nframes]) - safety_frames[1]
 
@@ -1265,33 +1278,3 @@ class Trace2P(object):
 
         """
         self._roi_ids = tuple(str(uuid1()) for _ in range(self.ncells))
-
-
-# Version implemented in flow.misc
-# def loadmatpy(filename):
-#     """
-#     A modified loadmat that can account for structs as dicts.
-#     """
-
-#     data = spio.loadmat(filename, struct_as_record=False, squeeze_me=True, appendmat=False)
-#     for key in data:
-#         if isinstance(data[key], spio.matlab.mio5_params.mat_struct):
-#             data[key] = _mattodict(data[key])
-#     return data
-
-# def _mattodict(matobj):
-#     """
-#     Recursively convert matobjs into dicts.
-
-#     :param matobj: matlab object from _check_keys
-#     :return: dict
-#     """
-
-#     out = {}
-#     for strg in matobj._fieldnames:
-#         el = matobj.__dict__[strg]
-#         if isinstance(el, spio.matlab.mio5_params.mat_struct):
-#             out[strg] = _mattodict(el)
-#         else:
-#             out[strg] = el
-#     return out

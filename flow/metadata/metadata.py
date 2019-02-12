@@ -1,5 +1,7 @@
 """Experimental metadata."""
 from builtins import str
+import numpy as np
+
 from . import parser
 
 
@@ -76,44 +78,78 @@ sleep = {
 
 
 def meta(
-        mice=None, dates=None, runs=None, run_types=None, tags=None,
-        photometry=None, exclude_tags=('bad',), sort=False, reload_=False):
+        mice=None, dates=None, runs=None, run_types=None, photometry=None,
+        tags=None, exclude_tags='bad', reload_=False):
     """Return metadata as a DataFrame, optionally filtering on any columns.
 
     All parameters are optional and if passed will be used to filter the
-    columns of the resulting dataframe.
+    columns of the resulting DataFrame.
 
     Parameters
     ----------
-    mice : list of str
-    dates : list of int
-    runs : list of int
-    run_types : list of str
-    tags : list of str
-    photometry : list of str
-    exclude_tags : list of str
-        List of tags to exclude from result.
-    sort : bool
-        If True, sort rows by (mouse, date, run).
+    mice : list of str, optional
+        List of mice to include. Can also be a single mouse.
+    dates : list of int, optional
+        List of dates to include. Can also be a single date.
+    runs : list of int, optional
+        List of run indices to include. Can also be a single index.
+    run_types : list of str, optional
+        List of run_types to include. Can also be a single type.
+    photometry : list of str, optional
+        List of photometry labels to include. Can also be a single label.
+    tags : list of str, optional
+        List of tags to filter on. Can also be a single tag.
+    exclude_tags : list of str, optional
+        List of tags to exclude. Can also be a single tag.
+    reload_ : bool
+        If True, reload the DataFrame from disk, otherwise the entire
+        un-filtered DataFrame is kept in memory.
 
     Returns
     -------
     pd.DataFrame
-        Columns=('mouse', 'date', 'run', 'run_type', 'tags', 'photometry')
+        Index=('mouse', 'date', 'run')
+        Columns=('run_type', 'tags', 'photometry')
 
     """
+    # Convert single argument to a list
+    if mice is not None and not isinstance(mice, list):
+        mice = [mice]
+    if dates is not None and not isinstance(dates, list):
+        dates = [dates]
+    if runs is not None and not isinstance(runs, list):
+        runs = [runs]
+    if run_types is not None and not isinstance(run_types, list):
+        run_types = [run_types]
+    if tags is not None and not isinstance(tags, list):
+        tags = [tags]
+    if exclude_tags is not None and not isinstance(exclude_tags, list):
+        exclude_tags = [exclude_tags]
+    if photometry is not None and not isinstance(photometry, list):
+        photometry = [photometry]
+
+    # Load all data
     df = parser.meta_df(reload_=reload_)
 
+    # Slice on indices
     if mice is not None:
-        df = df[df.mouse.isin(mice)]
+        mouse_slice = list(mice)
+    else:
+        mouse_slice = slice(None)
     if dates is not None:
-        df = df[df.date.isin(dates)]
+        date_slice = list(dates)
+    else:
+        date_slice = slice(None)
     if runs is not None:
-        df = df[df.run.isin(runs)]
+        run_slice = list(runs)
+    else:
+        run_slice = slice(None)
+    df = df.loc(axis=0)[mouse_slice, date_slice, run_slice]
+
     if run_types is not None:
         df = df[df.run_type.isin(run_types)]
 
-    # Filters that use an apply don't work right on empty dataframes
+    # Filters that use an apply don't work right on empty DataFrames
     if tags is not None and len(df):
         df = df[df.tags.apply(
             lambda x: all(tag in x for tag in tags))]
@@ -123,9 +159,6 @@ def meta(
     if exclude_tags is not None and len(df):
         df = df[~ df.tags.apply(
             lambda x: any(tag in x for tag in exclude_tags))]
-
-    if sort:
-        df = df.sort_values(by=['mouse', 'date', 'run']).reset_index(drop=True)
 
     return df
 
@@ -173,6 +206,8 @@ def add_mouse(mouse, tags=None, overwrite=False, update=False):
     metadata['mice'].append(mouse_dict)
     parser.save(metadata)
     parser.meta_dict()
+    # Clear DataFrame cache
+    parser._metadata = None
 
 
 def add_date(
@@ -239,6 +274,8 @@ def add_date(
 
     parser.save(metadata)
     parser.meta_dict()
+    # Clear DataFrame cache
+    parser._metadata = None
 
 
 def add_run(
@@ -305,6 +342,8 @@ def add_run(
 
     parser.save(metadata)
     parser.meta_dict()
+    # Clear DataFrame cache
+    parser._metadata = None
 
 
 def reversal(mouse):
@@ -312,38 +351,6 @@ def reversal(mouse):
     if mouse not in reversals:
         return None
     return int(reversals[mouse])
-
-
-# def checkreversal(mouse, date, match=None, optmatch=None):
-#     """Check whether a mouse and date are pre- or post-reversal.
-#
-#     Parameters
-#     ----------
-#     mouse : str
-#     date : int
-#     match : str
-#         'pre' or 'post' to match pre- or post-reversal. Any other value
-#         will always return True. Alternatively, a dictionary and will be used
-#         with optmatch.
-#     optmatch : str, optional
-#         Check if optmatch is in match. Match must be a dictionary.
-#
-#     """
-#     if match is None:
-#         match = ''
-#
-#     if optmatch is not None:
-#         if optmatch not in match:
-#             return True
-#         else:
-#             match = match[optmatch]
-#
-#     if match.lower() == 'pre':
-#         return date < reversals[mouse]
-#     elif match.lower() == 'post':
-#         return date >= reversals[mouse]
-#     else:
-#         return True
 
 
 def mice(tags=None):
@@ -361,7 +368,7 @@ def mice(tags=None):
 
     """
     data = meta(tags=tags)
-    return sorted(data['mouse'].unique())
+    return sorted(data.index.get_level_values('mouse').unique())
 
 
 def dates(mouse, tags=None):
@@ -380,7 +387,7 @@ def dates(mouse, tags=None):
 
     """
     data = meta(mice=[mouse], tags=tags)
-    return sorted(data['date'].unique())
+    return sorted(data.index.get_level_values('date').unique())
 
 
 def runs(mouse, date, run_types=None, tags=None):
@@ -402,8 +409,8 @@ def runs(mouse, date, run_types=None, tags=None):
 
     """
     data = meta(
-        mice=[mouse], dates=[date], run_types=run_types, tags=tags, sort=True)
-    return sorted(data['run'])
+        mice=[mouse], dates=[date], run_types=run_types, tags=tags)
+    return sorted(data.index.get_level_values('run'))
 
 
 def data(mouse, date):
@@ -430,12 +437,13 @@ def data(mouse, date):
     date_df = meta(mice=[mouse], dates=[date])
 
     for run_type, run_type_df in date_df.groupby('run_type'):
-        out[str(run_type)] = sorted(run_type_df.run)
+        out[str(run_type)] = sorted(run_type_df.index.get_level_values('run'))
 
-    spont_df = date_df[date_df.run_type == 'spontaneous']
-    out['hungry'] = sorted(
-        spont_df.ix[spont_df.tags.apply(lambda x: 'hungry' in x), 'run'])
-    out['sated'] = sorted(
-        spont_df.ix[spont_df.tags.apply(lambda x: 'sated' in x), 'run'])
+    hungry = date_df.loc[(date_df.run_type == 'spontaneous') &
+                         date_df.tags.apply(lambda x: 'hungry' in x)]
+    out['hungry'] = sorted(hungry.index.get_level_values('run'))
+    sated = date_df.loc[(date_df.run_type == 'spontaneous') &
+                        date_df.tags.apply(lambda x: 'sated' in x)]
+    out['sated'] = sorted(sated.index.get_level_values('run'))
 
     return out

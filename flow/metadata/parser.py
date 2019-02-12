@@ -1,5 +1,4 @@
 """Parser for experiment metadata."""
-from copy import deepcopy
 import json
 import jsonschema
 from operator import itemgetter
@@ -55,7 +54,7 @@ def meta_dict():
 
 
 def meta_df(reload_=False):
-    """Parse metadata into a pandas dataframe."""
+    """Parse metadata into a pandas DataFrame."""
     global _metadata
     if reload_ or _metadata is None:
         out = []
@@ -79,7 +78,11 @@ def meta_df(reload_=False):
                         'tags': sorted(run_tags),
                         'run_type': run_type
                     })
-        _metadata = pd.DataFrame(out)
+        _metadata = (pd
+                     .DataFrame(out)
+                     .set_index(['mouse', 'date', 'run'], drop=True)
+                     .sort_index()
+                     )
     return _metadata.copy()
 
 

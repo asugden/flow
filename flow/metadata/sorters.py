@@ -10,6 +10,7 @@ from copy import copy
 from datetime import datetime
 from future.moves.collections import UserList
 import numpy as np
+from pandas import IndexSlice as Idx
 
 from . import metadata
 from .. import config, glm, paths, xday
@@ -81,7 +82,7 @@ class Mouse(object):
         """Test equivalence."""
         return isinstance(other, type(self)) and self.mouse == other.mouse
 
-    def dates(self, dates=None, tags=None, name=None):
+    def dates(self, dates=None, tags=None, exclude_tags='bad', name=None):
         """Return a DateSorter of associated Dates.
 
         Can optionally filter Dates by tags.
@@ -89,9 +90,11 @@ class Mouse(object):
         Parameters
         ----------
         dates : list of int, optional
-            List of dates to filter on.
+            List of dates to include. Can also be a single date.
         tags : list of str, optional
-            List of tags to filter on.
+            List of tags to filter on. Can also be a single tag.
+        exclude_tags : list of str, optional
+            List of tags to exclude. Can also be a single tag.
         name : str, optional
             Name of resulting DateSorter.
 
@@ -103,10 +106,12 @@ class Mouse(object):
         if name is None:
             name = str(self) + ' dates'
 
-        meta = metadata.meta(mice=[self.mouse], dates=dates, tags=tags)
+        meta = metadata.meta(
+            mice=[self.mouse], dates=dates, tags=tags,
+            exclude_tags=exclude_tags)
+        meta_dates = meta.index.get_level_values('date').unique()
 
-        date_objs = (Date(mouse=self.mouse, date=date)
-                     for date in meta['date'].unique())
+        date_objs = (Date(mouse=self.mouse, date=date) for date in meta_dates)
 
         return DateSorter(date_objs, name=name)
 
@@ -198,7 +203,7 @@ class Date(object):
 
     def set_subset(self, val=None):
         """
-        Set the cell indices to be subset
+        Set the cell indices to be subset.
 
         Parameters
         ----------
@@ -253,7 +258,8 @@ class Date(object):
         return isinstance(other, type(self)) and self.mouse == other.mouse \
             and self.date == other.date
 
-    def runs(self, run_types=None, runs=None, tags=None, name=None):
+    def runs(self, run_types=None, runs=None, tags=None,
+             exclude_tags='bad', name=None):
         """Return a RunSorter of associated runs.
 
         Can optionally filter runs by runtype or other tags.
@@ -261,12 +267,13 @@ class Date(object):
         Parameters
         ----------
         run_types : list of str, optional
-            List of run_types to include. Defaults to all types. Can also be
-            a single run_type.
+            List of run_types to include. Can also be a single type.
         runs : list of int
-            List of run numbers to include. Defaults to all runs.
+            List of run indices to include. Can also be a single index.
         tags : list of str, optional
-            List of tags to filter on. Can also be single tag.
+            List of tags to filter on. Can also be a single tag.
+        exclude_tags : list of str, optional
+            List of tags to exclude. Can also be a single tag.
         name : str, optional
             Name of resulting RunSorter.
 
@@ -278,25 +285,22 @@ class Date(object):
         if name is None:
             name = str(self) + ' runs'
 
-        if run_types is not None and not isinstance(run_types, list):
-            run_types = [run_types]
-        if tags is not None and not isinstance(tags, list):
-            tags = [tags]
-
         if self._runs is None:
-            meta = metadata.meta(mice=[self.mouse], dates=[self.date])
+            meta_all = metadata.meta(mice=[self.mouse], dates=[self.date])
+            meta_all_runs = meta_all.index.get_level_values('run')
             self._runs = {run: Run(mouse=self.mouse, date=self.date, run=run,
                                    cells=self.cells)
-                          for run in meta['run']}
+                          for run in meta_all_runs}
         else:
             for run in self._runs:
                 self._runs[run].set_subset(self._cells)
 
         meta = metadata.meta(
-            mice=[self.mouse], dates=[self.date], runs=runs, tags=tags,
-            run_types=run_types)
+            mice=[self.mouse], dates=[self.date], runs=runs,
+            run_types=run_types, tags=tags, exclude_tags=exclude_tags)
+        meta_runs = meta.index.get_level_values('run')
 
-        run_objs = (self._runs[run] for run in meta['run'])
+        run_objs = (self._runs[run] for run in meta_runs)
 
         return DateRunSorter(run_objs, name=name)
 
@@ -368,6 +372,7 @@ class Run(object):
         self._parent = Date(mouse=self.mouse, date=self.date)
         self._run_type, self._tags = None, None
         self._t2p, self._c2p, self._glm = None, None, None
+        self._default_pars = None
 
     @property
     def mouse(self):
@@ -472,7 +477,8 @@ class Run(object):
         return self._t2p
 
     def classify2p(self, newpars=None, randomize=''):
-        """Return classifier.
+        """
+        Return classifier.
 
         Parameters
         ----------
@@ -485,34 +491,41 @@ class Run(object):
         Classify2P
 
         """
-        pars = config.default()
-        running_runs = metadata.meta(
-            mice=[self.mouse], dates=[self.date], run_types=['running'])
-        training_runs = metadata.meta(
-            mice=[self.mouse], dates=[self.date], run_types=['training'])
-        # TODO: Add option to train on a different day
-        pars.update({'mouse': self.mouse,
-                     'comparison-date': str(self.date),
-                     'comparison-run': self.run,
-                     'training-date': str(self.date),
-                     'training-other-running-runs': sorted(running_runs.run),
-                     'training-runs': sorted(training_runs.run)})
-
         if newpars is None:
             if self._c2p is None:
-                self._c2p = paths.classifier2p(
-                    self.mouse, self.date, self.run, pars, randomize)
+                pars = self._default_classifier_pars()
+                self._c2p = paths.classifier2p(self, pars, randomize)
             return self._c2p
         else:
-            for key in newpars:
-                pars[key] = newpars[key]
+            pars = self._default_classifier_pars()
+            pars.update(newpars)
 
-            return paths.classifier2p(
-                self.mouse, self.date, self.run, pars, randomize)
+            return paths.classifier2p(self, pars, randomize)
+
+    def _default_classifier_pars(self):
+        """Return the default classifier parameters for the this Run."""
+        if self._default_pars is None:
+            pars = config.default()
+            runs = metadata.meta(
+                mice=self.mouse, dates=self.date)
+            running_runs = runs.loc[runs.run_type == 'running']
+            training_runs = runs.loc[runs.run_type == 'training']
+            pars.update({'mouse': self.mouse,
+                         'comparison-date': str(self.date),
+                         'comparison-run': self.run,
+                         'training-date': str(self.date),
+                         'training-other-running-runs': sorted(
+                             running_runs.index.get_level_values('run')),
+                         'training-runs': sorted(
+                             training_runs.index.get_level_values('run'))
+                         })
+            self._default_pars = pars
+        return copy(self._default_pars)
 
     def clearcache(self):
         """Clear all cached data for this Run."""
         self._t2p, self._c2p, self._glm = None, None, None
+        self._default_pars = None
 
 
 class MouseSorter(UserList):
@@ -565,15 +578,20 @@ class MouseSorter(UserList):
             return self._name
 
     @classmethod
-    def frommeta(cls, mice=None, tags=None, name=None):
+    def frommeta(cls, mice=None, tags=None, exclude_tags='bad', name=None):
         """Initialize a MouseSorter from metadata.
 
         Parameters
         ----------
         mice : list of str, optional
+            List of mice to include. Can also be a single mouse.
         tags : list of str, optional
+            List of tags to filter on. Can also be a single tag.
+        exclude_tags : list of str, optional
+            List of tags to exclude. Can also be a single tag.
         name : str, optional
-            Name/label for Sorter.
+            A name to label the sorter, optional.
+
 
         Notes
         -----
@@ -585,9 +603,10 @@ class MouseSorter(UserList):
         MouseSorter
 
         """
-        meta = metadata.meta(mice=mice, tags=tags)
+        meta = metadata.meta(mice=mice, tags=tags, exclude_tags=exclude_tags)
+        meta_mice = meta.index.get_level_values('mouse').unique()
 
-        mouse_objs = (Mouse(mouse=mouse) for mouse in meta.mouse.unique())
+        mouse_objs = (Mouse(mouse=mouse) for mouse in meta_mice)
 
         return cls(mouse_objs, name=name)
 
@@ -650,17 +669,24 @@ class DateSorter(UserList):
 
     @classmethod
     def frommeta(
-            cls, mice=None, dates=None, tags=None, photometry=None, name=None):
+            cls, mice=None, dates=None, photometry=None, tags=None,
+            exclude_tags='bad', name=None):
         """Initialize a DateSorter from metadata.
 
         Parameters
         ----------
         mice : list of str, optional
+            List of mice to include. Can also be a single mouse.
         dates : list of int, optional
-        tags : list of str, optional
+            List of dates to include. Can also be a single date.
         photometry : list of str, optional
+            List of photometry labels to include. Can also be a single label.
+        tags : list of str, optional
+            List of tags to filter on. Can also be a single tag.
+        exclude_tags : list of str, optional
+            List of tags to exclude. Can also be a single tag.
         name : str, optional
-            Name/label for Sorter.
+            A name to label the sorter, optional.
 
         Notes
         -----
@@ -673,11 +699,13 @@ class DateSorter(UserList):
 
         """
         meta = metadata.meta(
-            mice=mice, dates=dates, tags=tags, photometry=photometry)
+            mice=mice, dates=dates, photometry=photometry, tags=tags,
+            exclude_tags=exclude_tags)
+        mouse_date_pairs = set(zip(meta.index.get_level_values('mouse'),
+                                   meta.index.get_level_values('date')))
 
-        date_objs = (
-            Date(mouse=date_df.mouse, date=date_df.date) for _, date_df in
-            meta.groupby(['mouse', 'date'], as_index=False).first().iterrows())
+        date_objs = (Date(mouse=mouse, date=date)
+                     for mouse, date in mouse_date_pairs)
 
         return cls(date_objs, name=name)
 
@@ -721,7 +749,8 @@ class DatePairSorter(UserList):
 
     def __repr__(self):
         return "DatePairSorter([{} {}], name={})".format(
-            len(self), 'Date' if len(self) == 1 else 'Dates', self.name)
+            len(self), 'Date pair' if len(self) == 1 else 'Date pairs',
+            self.name)
 
     @property
     def name(self):
@@ -733,22 +762,28 @@ class DatePairSorter(UserList):
 
     @classmethod
     def frommeta(
-            cls, mice=None, dates=None, tags=None, photometry=None,
-            day_distance=None, sequential=True, cross_reversal=False,
-            name=None):
+            cls, mice=None, dates=None, photometry=None, tags=None,
+            exclude_tags='bad', day_distance=None, sequential=True,
+            cross_reversal=False, name=None):
         """Initialize a DatePairSorter from metadata.
 
         Parameters
         ----------
         mice : list of str, optional
+            List of mice to include. Can also be a single mouse.
         dates : list of int, optional
+            List of dates to include. Can also be a single date.
         tags : list of str, optional
+            List of tags to filter on. Can also be a single tag.
+        exclude_tags : list of str, optional
+            List of tags to exclude. Can also be a single tag.
         photometry : list of str, optional
+            List of photometry labels to include. Can also be a single label.
         day_distance : tuple of ints, optional
         sequential : bool, optional
         cross_reversal : bool
         name : str, optional
-            Name/label for Sorter.
+            A name to label the sorter, optional.
 
         Notes
         -----
@@ -761,23 +796,20 @@ class DatePairSorter(UserList):
 
         """
         meta = metadata.meta(
-            mice=mice, dates=dates, tags=tags, photometry=photometry)
+            mice=mice, dates=dates, photometry=photometry, tags=tags,
+            exclude_tags=exclude_tags)
         meta['reversal'] = 0
 
         # Set reversal
         if not cross_reversal:
-            for mouse in [ddf.mouse for _, ddf in
-                          meta.groupby('mouse', as_index=False).first().iterrows()]:
+            for mouse in meta.index.get_level_values('mouse').unique():
                 rev = metadata.reversal(mouse)
-                meta.loc[(meta['mouse'] == mouse) & (meta['date'] >= rev), 'reversal'] = 1
+                meta.loc[Idx[mouse, rev:], 'reversal'] = 1
 
         # Iterate over pair-able dates
         pairs = []
-        for mouse, rev in [(ddf.mouse, ddf.reversal) for _, ddf in
-                           meta.groupby(['mouse', 'reversal'], as_index=False).first().iterrows()]:
-            ds = np.array([ddf.date for _, ddf in meta.loc[(meta['mouse'] == mouse)
-                          & (meta['reversal'] == rev), :].groupby('date', as_index=False).first().iterrows()])
-
+        for (mouse, rev), ddf in meta.groupby(['mouse', 'reversal']):
+            ds = np.array(ddf.index.get_level_values('date').unique())
             for d1 in ds:
                 d2s = ds[ds > d1]
                 if sequential and len(d2s) > 0:
@@ -787,11 +819,15 @@ class DatePairSorter(UserList):
                     tdelta = datetime.strptime(str(d2), '%y%m%d') \
                         - datetime.strptime(str(d1), '%y%m%d')
                     id1, id2 = xday.ids(mouse, d1, d2)
-                    if day_distance[0] <= tdelta.days <= day_distance[1] and len(id1) > 0:
+                    if len(id1) > 0 and \
+                        (day_distance is None or
+                         day_distance[0] <= tdelta.days <= day_distance[1]):
+                        print([d1, d2])
                         pairs.append((mouse, d1, d2, id1, id2))
 
         # Return a tuple of date tuples
-        date_objs = ((Date(mouse=mouse, date=d1, cells=id1), Date(mouse=mouse, date=d2, cells=id2))
+        date_objs = ((Date(mouse=mouse, date=d1, cells=id1),
+                      Date(mouse=mouse, date=d2, cells=id2))
                      for mouse, d1, d2, id1, id2 in pairs)
 
         return cls(date_objs, name=name)
@@ -850,24 +886,26 @@ class RunSorter(UserList):
 
     @classmethod
     def frommeta(
-            cls, mice=None, dates=None, runs=None, run_types=None, tags=None,
-            photometry=None, name=None):
+            cls, mice=None, dates=None, runs=None, run_types=None,
+            photometry=None, tags=None, exclude_tags='bad', name=None):
         """Initialize a RunSorter from metadata.
 
         Parameters
         ----------
         mice : list of str, optional
-            List of mice to include.
+            List of mice to include. Can also be a single mouse.
         dates : list of int, optional
-            List of dates to include.
+            List of dates to include. Can also be a single date.
         runs : list of int, optional
-            List of run indices to include.
+            List of run indices to include. Can also be a single index.
         run_types : list of str, optional
-            List of run_types to include.
-        tags : list of str, optional
-            List of tags that must be present.
+            List of run_types to include. Can also be a single type.
         photometry : list of str, optional
-            List of photometry labels that must be present.
+            List of photometry labels to include. Can also be a single label.
+        tags : list of str, optional
+            List of tags to filter on. Can also be a single tag.
+        exclude_tags : list of str, optional
+            List of tags to exclude. Can also be a single tag.
         name : str, optional
             A name to label the sorter, optional.
 
@@ -883,11 +921,13 @@ class RunSorter(UserList):
         """
         meta = metadata.meta(
             mice=mice, dates=dates, runs=runs, run_types=run_types, tags=tags,
-            photometry=photometry)
+            exclude_tags=exclude_tags, photometry=photometry)
+        mouse_date_run_pairs = set(zip(meta.index.get_level_values('mouse'),
+                                       meta.index.get_level_values('date'),
+                                       meta.index.get_level_values('run')))
 
-        run_objs = (Run(mouse=run.mouse, date=run.date, run=run.run)
-                    for _, run in meta.iterrows())
-
+        run_objs = (Run(mouse=mouse, date=date, run=run)
+                    for mouse, date, run in mouse_date_run_pairs)
         return cls(run_objs, name=name)
 
     def dates(self, name=None):
