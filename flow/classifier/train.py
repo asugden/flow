@@ -6,30 +6,28 @@ except ImportError:
 import numpy as np
 
 from .. import config
-from ..metadata.sorters import Date
 
 
 def train_classifier(
-        date, training_runs=None, training_running_runs=None, outliers=None,
-        training_date_int=None, **pars):
+        run, training_runs=None, training_running_runs=None, outliers=None,
+        training_date=None, **pars):
     """
     Function to prepare all data to train the classifier.
 
     Parameters
     ----------
-    date : Date
-        Date that the classifier will be applied to (and usually run on).
+    run : Run
+        Run that the classifier will be applied to.
     training_runs : RunSorter, optional
-        If specified, use these runs to train the classifier. They should match
-        the date or training_date_int. If not passed, defaults to all runs
-        from the date of run_type == 'training'.
+        If specified, use these runs to train the classifier. If not passed,
+        defaults to all runs from the date of run_type == 'training'.
     training_running_runs : RunSorter, optional
         If specified, use these runs to train running period for the
-        classifier. They should match the date or training_date_int. If not
-        passed, defaults to all runs from the date of run_type == 'running'.
+        classifier. If not passed, defaults to all runs from the date of
+        run_type == 'running'.
     outliers : list, optional
         Remove outlier cells from the classifier.
-    training_date_int : int, optional
+    training_date : Date, optional
         Optionally train on an alternate date.
     **pars
         All other classifier parameters are collect as keyword arguments. These
@@ -38,10 +36,13 @@ def train_classifier(
     """
     # Allow for training on a different date than the date that we want to
     # classify.
-    if training_date_int is None:
-        training_date = date
+    if training_date is None:
+        training_date = run.parent
     else:
-        training_date = Date(date.mouse, training_date_int)
+        # This hasn't really been tested. First person to use it, feel free to
+        # change the input to whatever is useful (Date object, relative day
+        # shift, absolute date int, etc.).
+        raise NotImplementedError
 
     # Get default parameters and update with any new ones passed in.
     classifier_parameters = config.default()
@@ -56,8 +57,12 @@ def train_classifier(
 
     if training_runs is None:
         training_runs = training_date.runs(run_types=['training'])
+    else:
+        assert all(run.parent==training_date for run in training_runs)
     if training_running_runs is None:
         training_running_runs = training_date.runs(run_types=['running'])
+    else:
+        assert all(run.parent==training_date for run in training_running_runs)
 
     traces = _get_traces(
         training_runs, training_running_runs, all_cses, classifier_parameters)
@@ -73,6 +78,10 @@ def train_classifier(
         outliers = np.bitwise_and(outliers, _nan_cells(traces))
 
     # CALL THE CLASSIFIER
+    # rc = classify_reactivations.ReactivationClassifier(default, outliers)
+    # rc.train(cses, default['classifier'])
+
+    # return rc, default, {cs: default['probability'][cs] for cs in cses}
 
 
 def _get_traces(runs, running_runs, all_cses, pars):
@@ -96,7 +105,9 @@ def _get_traces(runs, running_runs, all_cses, pars):
         Keys are cs name, value is nonsets x ncells x nframes
 
     """
-    # Prepare our background values
+    # Prepare running baseline data.
+    # NOTE: running thresholding is done differently here than later during
+    # stimulus runs.
     out = {'other-running': _get_run_onsets(
         runs=running_runs, length_fr=pars['stimulus-frames'],
         pad_fr=pars['excluded-time-around-onsets-frames'],
@@ -113,6 +124,8 @@ def _get_traces(runs, running_runs, all_cses, pars):
         for ncs in t2p.cses():  # t.cses(self._pars['add-ensure-quinine']):
             if ncs in all_cses:
                 # Remap cs name if needed
+                # NOTE: blank trials are just labeled 'other' and not checked
+                # for running.
                 cs = all_cses[ncs]
                 # Initialize output
                 if cs not in out:
@@ -134,7 +147,6 @@ def _get_traces(runs, running_runs, all_cses, pars):
             pars['stimulus-frames'],
             pars['excluded-time-around-onsets-frames'], -1)
 
-        # Counts as running at speeds of 4 cm/s
         if len(t2p.speed()) > 0:
             running = t2p.speed() > pars['other-running-speed-threshold-cms']
             for ot in others:
@@ -195,7 +207,6 @@ def _get_run_onsets(
         others = t2p.nocs(length_fr, pad_fr,
                           running_threshold_cms)
         for ot in others:
-            # NOTE: what is this offset for?
             start = ot + offset_fr
             out.append(tr[:, start:start + length_fr])
 

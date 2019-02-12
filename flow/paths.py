@@ -58,7 +58,7 @@ def classifier2p(run, pars, randomize=''):
 
     # If we can't find a classifier output, try re-running it.
     if not len(paths):
-        train_classifier(run.parent, pars)
+        train_classifier(run, **pars)
         return classifier2p(run, pars, randomize)
 
     out = Classify2P(paths, pars, randomize)
