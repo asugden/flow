@@ -85,7 +85,7 @@ def word(obj, use_new=False):
 
 def old_hash(obj):
     """Original hash function that is not consistent in both of Py2/3."""
-    return hashlib.md5(pickle.dumps(obj, protocol=2))
+    return hashlib.md5(pickle.dumps(obj, protocol=0))
 
 
 def new_hash(obj):
