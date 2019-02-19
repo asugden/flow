@@ -88,6 +88,9 @@ def mixed_effects_model(df, y, x=(), random_effects=(), categorical=(),
 
     # Curate the data to a minimal size
     df_keys = _mixed_keys(y, x, random_effects, categorical, continuous_random_effects)
+    for key in df_keys:
+        if key not in df.keys():
+            raise ValueError('Dataframe does not have column %s' % key)
     sub = df.loc[:, df_keys].copy()
     if dropzeros:
         sub.replace(0, np.nan, inplace=True)
@@ -116,17 +119,17 @@ def mixed_effects_model(df, y, x=(), random_effects=(), categorical=(),
     if len(random_effects) == 0 and len(continuous_random_effects) == 0:
         y, X = patsy.dmatrices(formula, sub, return_type='dataframe')
 
-        if link.lower() == 'log':
-            linkfn = sm.families.links.log
-        else:
-            linkfn = sm.families.links.identity
-
         if family.lower() == 'gamma':
+            linkfn = sm.families.links.log
             family = sm.families.Gamma(link=linkfn)
         elif family.lower() == 'gaussian' or family == 'normal':
+            linkfn = sm.families.links.identity
             family = sm.families.Gaussian(link=linkfn)
         else:
+            linkfn = sm.families.links.log
             family = sm.families.Poisson(link=linkfn)
+
+        # import pdb;pdb.set_trace()
 
         model = sm.GLM(y, X, family=family)
         glm_results = model.fit()
@@ -139,12 +142,13 @@ def mixed_effects_model(df, y, x=(), random_effects=(), categorical=(),
         # stats = importr('stats')
         afex = importr('afex')
 
-        if nonlinear:
+        if nonlinear or family != 'gaussian':
             model = afex.mixed(formula=formula, data=rdf, method='PB', family=family)
         else:
             model = afex.mixed(formula=formula, data=rdf)
 
         print(base.summary(model))
+        # print(model)
 
     return model
 
