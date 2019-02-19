@@ -434,7 +434,11 @@ def data(mouse, date):
     """
     out = {'mouse': mouse, 'date': date}
 
-    date_df = meta(mice=[mouse], dates=[date])
+    # Date needs to be an int for new metadata, but otherwise leave the input
+    # as is for maximum compatibility with old code.
+    date_df = meta(mice=[mouse], dates=[int(date)])
+    if not len(date_df):
+        raise ValueError('{}-{} not found in metadata.'.format(mouse, date))
 
     for run_type, run_type_df in date_df.groupby('run_type'):
         out[str(run_type)] = sorted(run_type_df.index.get_level_values('run'))
