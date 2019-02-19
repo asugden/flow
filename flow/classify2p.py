@@ -48,7 +48,7 @@ class Classify2P(object):
     def __repr__(self):
         return "Classify2P(paths={})".format(self._paths)
 
-    def results(self, cs='', xmask=False):
+    def results(self, cs='', xmask=True):
         """
         Return the classifier results.
 
@@ -142,6 +142,7 @@ class Classify2P(object):
             for cs in nonother:
                 self.xresults[cs][self.xresults[cs] < maxact] = 0
 
+
 def count(result, threshold, all=False, max=2, downfor=2, offsets=False):
     """Count the number of replay events of non-"other" stimuli.
 
@@ -202,6 +203,7 @@ def count(result, threshold, all=False, max=2, downfor=2, offsets=False):
     else:
         return np.array(out)
 
+
 def peaks(result, trs, threshold, max=2, downfor=2, maxlen=-1, fmin=-1, saferange=(-5, 5)):
     """Return the times of peak activity of replay events found by counts
 
@@ -236,28 +238,6 @@ def peaks(result, trs, threshold, max=2, downfor=2, maxlen=-1, fmin=-1, saferang
 
     return out
 
-def classpeaks(result, threshold, max=2, downfor=2, maxlen=-1):
-    """
-    Return the times of peak classification of replay events found by counts
-
-    :param result: classifier vector for a single cs, e.g. classifier['results']['plus']
-    :param threshold: the minimum value above which it will be classified as a replay event
-    :param max: the maximum value to allow
-    :param downfor: the number of frames during which the classifier has to dip below threshold
-    :param maxlen: only return those events that are above threshold for less long than maxlen
-    :return: a vector of events in which the value went above threshold centered on max population activity
-    """
-
-    # Get all onsets and offsets
-    out = []
-    evs, evoffs = count(result, threshold, False, max, downfor, True)
-
-    # Find the point in each event with the highest deconvolved activity
-    for i in range(len(evs)):
-        if maxlen < 1 or evoffs[i] - evs[i] < maxlen:
-            out.append(evs[i] + np.argmax(result[evs[i]:evoffs[i]]))
-
-    return out
 
 def peakprobs(result, threshold, max=2, downfor=2, maxlen=-1):
     """
@@ -281,24 +261,4 @@ def peakprobs(result, threshold, max=2, downfor=2, maxlen=-1):
             act = result[evs[i]:evoffs[i]]
             out.append(evs[i] + np.argmax(act))
 
-    return out
-
-def counts(results, threshold, all=False, max=2):
-    """
-    Return count for each cs that is not other
-
-    :param results: results dict from classifier, e.g. classifier['results']
-    :param threshold: probability threshold above which one should count
-    :param all: return all time points if True, otherwise just event onsets
-    :param max: maximum allowed
-    :return: dict of frame numbers
-    """
-
-    # Account for calling mistake, if classifier is directly passed
-    if 'results' in results: results = results['results']
-
-    out = {}
-    for key in results:
-        if 'other' not in key:
-            out[key] = count(results[key], threshold, all, max)
     return out
