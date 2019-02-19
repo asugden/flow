@@ -1278,3 +1278,18 @@ class Trace2P(object):
 
         """
         self._roi_ids = tuple(str(uuid1()) for _ in range(self.ncells))
+
+    def conderrs(self):
+        """Get a list of all onsets, errors, and codes.
+
+        :return: onsets, errors, codes
+
+        """
+
+        # TODO: remove?
+
+        maxlen = len(self.d['onsets'].flatten())
+        cond = self.d['condition'].flatten()[:maxlen]
+        errs = self.d['trialerror'].flatten()[:maxlen]%2
+
+        return cond, errs, self.codes
