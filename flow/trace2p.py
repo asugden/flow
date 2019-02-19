@@ -1211,7 +1211,10 @@ class Trace2P(object):
 
         if cs == '0' or cs == '45' or cs == '90' or cs == '135' \
            or cs == '225' or cs == '270' or cs == '315' or cs == '360':
-            cs = self.orientations[cs]
+            if cs not in self.orientations:
+                return []
+            else:
+                cs = self.orientations[cs]
 
         # Account for all trial types
         if len(cs) == 0:
