@@ -134,15 +134,17 @@ def mixed_effects_model(df, y, x=(), random_effects=(), categorical=(),
         model = sm.GLM(y, X, family=family)
         glm_results = model.fit()
         print(glm_results.summary2())
-
-    if nonlinear or len(random_effects) > 1 or R:
+    else:
         rdf = pandas2ri.py2ri(sub)
         pandas2ri.activate()
         base = importr('base')
         # stats = importr('stats')
         afex = importr('afex')
 
-        if nonlinear or family != 'gaussian':
+        if family == 'gamma':
+            family = 'Gamma'
+
+        if nonlinear or family.lower() != 'gaussian':
             model = afex.mixed(formula=formula, data=rdf, method='PB', family=family)
         else:
             model = afex.mixed(formula=formula, data=rdf)
