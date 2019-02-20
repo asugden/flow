@@ -822,7 +822,6 @@ class DatePairSorter(UserList):
                     if len(id1) > 0 and \
                         (day_distance is None or
                          day_distance[0] <= tdelta.days <= day_distance[1]):
-                        print([d1, d2])
                         pairs.append((mouse, d1, d2, id1, id2))
 
         # Return a tuple of date tuples
