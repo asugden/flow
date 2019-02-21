@@ -164,8 +164,8 @@ class GLM(object):
             warnings.warn(
                 "Pass framerate argument to the GLM init.",
                 DeprecationWarning)
-        if group not in self.groups():
-            raise ValueError('Group not found.')
+        if group not in set(self.groups()):
+            raise ValueError('Group not found: {}'.format(group))
         ncells = np.shape(self.coeffs)[0]
         ncoeffs = np.shape(self.coeffs)[1]
         grnames = np.arange(ncoeffs)[np.array([name == group for name in self.names])]
