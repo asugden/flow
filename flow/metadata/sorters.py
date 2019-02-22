@@ -74,13 +74,30 @@ class Mouse(object):
         return self.mouse
 
     def __lt__(self, other):
-        """Make mice sortable."""
-        assert isinstance(other, type(self))
+        """Less than."""
+        if not isinstance(other, type(self)):
+            raise NotImplemented
         return self.mouse < other.mouse
 
+    def __le__(self, other):
+        """Less than or equal to."""
+        return self.__eq__(other) or self.__lt__(other)
+
+    def __gt__(self, other):
+        """Greater than."""
+        return not self.__le__(other)
+
+    def __ge__(self, other):
+        """Greater than or equal to."""
+        return not self.__lt__(other)
+
     def __eq__(self, other):
-        """Test equivalence."""
+        """Equal."""
         return isinstance(other, type(self)) and self.mouse == other.mouse
+
+    def __ne__(self, other):
+        """Not equal."""
+        return not self.__eq__(other)
 
     def dates(self, dates=None, tags=None, exclude_tags='bad', name=None):
         """Return a DateSorter of associated Dates.
@@ -248,15 +265,32 @@ class Date(object):
         return "{}_{}".format(self.mouse, self.date)
 
     def __lt__(self, other):
-        """Make dates sortable."""
-        assert isinstance(other, type(self))
+        """Less than."""
+        if not isinstance(other, type(self)):
+            raise NotImplementedError
         return self.mouse < other.mouse or \
             (self.mouse == other.mouse and self.date < other.date)
 
+    def __le__(self, other):
+        """Less than or equal to."""
+        return self.__eq__(other) or self.__lt__(other)
+
+    def __gt__(self, other):
+        """Greater than."""
+        return not self.__le__(other)
+
+    def __ge__(self, other):
+        """Greater than or equal to."""
+        return not self.__lt__(other)
+
     def __eq__(self, other):
-        """Test equivalence."""
+        """Equal."""
         return isinstance(other, type(self)) and self.mouse == other.mouse \
             and self.date == other.date
+
+    def __ne__(self, other):
+        """Not equal."""
+        return not self.__eq__(other)
 
     def runs(self, run_types=None, runs=None, tags=None,
              exclude_tags='bad', name=None):
@@ -448,17 +482,34 @@ class Run(object):
         return "{}_{}_{}".format(self.mouse, self.date, self.run)
 
     def __lt__(self, other):
-        """Make runs sortable, by (mouse, date, run)."""
-        assert isinstance(other, type(self))
+        """Less than."""
+        if not isinstance(other, type(self)):
+            raise NotImplemented
         return self.mouse < other.mouse or \
             (self.mouse == other.mouse and self.date < other.date) or \
             (self.mouse == other.mouse and self.date == other.date and
              self.run < other.run)
 
+    def __le__(self, other):
+        """Less than or equal to."""
+        return self.__eq__(other) or self.__lt__(other)
+
+    def __gt__(self, other):
+        """Greater than."""
+        return not self.__le__(other)
+
+    def __ge__(self, other):
+        """Greater than or equal to."""
+        return not self.__lt__(other)
+
     def __eq__(self, other):
-        """Test equivalence."""
+        """Equal."""
         return isinstance(other, type(self)) and self.mouse == other.mouse \
             and self.date == other.date and self.run == other.run
+
+    def __ne__(self, other):
+        """Not equal."""
+        return not self.__eq__(other)
 
     def trace2p(self):
         """Return trace2p data.

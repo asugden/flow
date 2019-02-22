@@ -118,12 +118,15 @@ class Trace2P(object):
                 if cs != 'pavlovian':
                     ons = self.csonsets(cs)[:self.ntrials]
                     offs = self.csoffsets(cs)[:self.ntrials]
-                    ons = ons[:len(offs)]
+                    if len(offs):
+                        ons = ons[:len(offs)]
+                        trialdiffs.extend(offs - ons)
 
-                    trialdiffs.extend(offs - ons)
-
-            self._stimulus_length = \
-                int(round(np.nanmedian(trialdiffs)/self.framerate))
+            if len(trialdiffs):
+                self._stimulus_length = \
+                    int(round(np.nanmedian(trialdiffs)/self.framerate))
+            else:
+                self._stimulus_length = None
 
         return self._stimulus_length
 
@@ -293,12 +296,6 @@ class Trace2P(object):
             all_offsets = np.append(self.trials, self.trials[-1] + trial_length) - 1
         else:
             tends = self.offsets
-            # if 'offsets' in self.d:
-            #     tends = self.d['offsets'].flatten().astype(np.int32)
-            # else:
-            #     print('WARNING: Estimating trial offsets')
-            #     tends = onsets + int(round(2*self.framerate + 0.5))
-
             all_offsets = np.append(tends, min(tends[-1] + np.nanmedian(tends).astype(np.int32), self.nframes))
 
         for ons in onsets:
@@ -957,14 +954,17 @@ class Trace2P(object):
             cses.extend(self._onsets(code))
         cses.sort()
 
-        # Allow safety_frames to be a tuple or an integer
-        if isinstance(safety_frames, int):
-            safety_frames = (safety_frames, safety_frames)
+        if len(cses):
+            # Allow safety_frames to be a tuple or an integer
+            if isinstance(safety_frames, int):
+                safety_frames = (safety_frames, safety_frames)
 
-        # Set the time period of the safety-padded start and end times
-        stimlen = int(math.ceil(self.stimulus_length*self.framerate))
-        starts = np.array([0] + cses) + stimlen + safety_frames[0]
-        ends = np.array(cses + [self.nframes]) - safety_frames[1]
+            # Set the time period of the safety-padded start and end times
+            stimlen = int(math.ceil(self.stimulus_length*self.framerate))
+            starts = np.array([0] + cses) + stimlen + safety_frames[0]
+            ends = np.array(cses + [self.nframes]) - safety_frames[1]
+        else:
+            starts, ends = [0], [self.nframes]
 
         # Add running speed cutoff
         starts, ends = self._limit_to_running(starts, ends, running_threshold)
