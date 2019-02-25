@@ -12,8 +12,8 @@ from future.moves.collections import UserList
 import numpy as np
 from pandas import IndexSlice as Idx
 
-from . import metadata
-from .. import config, glm, paths, xday
+from .metadata import metadata
+from . import config, glm, paths, xday
 
 
 class Mouse(object):
