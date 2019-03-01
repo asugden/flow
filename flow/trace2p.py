@@ -83,7 +83,7 @@ class Trace2P(object):
             if 'offsets' in self.d:
                 self._offsets = np.copy(self.d['offsets']).astype(np.int32)
             else:
-                print('WARNING: Estimating trial offsets')
+                warnings.warn('Estimating trial offsets')
                 self._offsets = self._onsets() + \
                     int(round(2*self.framerate + 0.5))
         return self._offsets
