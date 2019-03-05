@@ -126,7 +126,7 @@ class Trace2P(object):
                 self._stimulus_length = \
                     int(round(np.nanmedian(trialdiffs)/self.framerate))
             else:
-                self._stimulus_length = None
+                self._stimulus_length = 0
 
         return self._stimulus_length
 
@@ -954,17 +954,22 @@ class Trace2P(object):
             cses.extend(self._onsets(code))
         cses.sort()
 
-        if len(cses):
-            # Allow safety_frames to be a tuple or an integer
-            if isinstance(safety_frames, int):
-                safety_frames = (safety_frames, safety_frames)
+        # Allow safety_frames to be a tuple or an integer
+        if isinstance(safety_frames, int):
+            safety_frames = (safety_frames, safety_frames)
 
-            # Set the time period of the safety-padded start and end times
-            stimlen = int(math.ceil(self.stimulus_length*self.framerate))
-            starts = np.array([0] + cses) + stimlen + safety_frames[0]
-            ends = np.array(cses + [self.nframes]) - safety_frames[1]
+        if self.stimulus_length == 0:
+            # If there are no stimuli, still pad out the start of the session
+            # to avoid initial ringing.
+            assert(len(cses) == 0)
+            stim_len_s = 2
         else:
-            starts, ends = [0], [self.nframes]
+            stim_len_s = self.stimulus_length
+
+        # Set the time period of the safety-padded start and end times
+        stimlen = int(math.ceil(stim_len_s*self.framerate))
+        starts = np.array([0] + cses) + stimlen + safety_frames[0]
+        ends = np.array(cses + [self.nframes]) - safety_frames[1]
 
         # Add running speed cutoff
         starts, ends = self._limit_to_running(starts, ends, running_threshold)
