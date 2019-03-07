@@ -1,13 +1,9 @@
 """Train the reactivation classifier."""
-from copy import copy
 try:
     from bottleneck import nanmean
 except ImportError:
     from numpy import nanmean
 import numpy as np
-
-# from flow.classifier import _old_classify
-# from replay.lib import classify_reactivations
 
 from .. import config
 
@@ -75,8 +71,19 @@ def train_classifier(
                 if 'disengaged' not in key}
     all_cses.update(params['training-equivalent'])
 
+    # Pull all training data
     traces = _get_traces(
-        training_runs, running_runs, all_cses, params)
+        training_runs, running_runs, all_cses,
+        trace_type=params['trace-type'],
+        length_fr=params['stimulus-frames'],
+        pad_fr=params['excluded-time-around-onsets-frames'],
+        offset_fr=params['stimulus-offset-frames'],
+        running_threshold_cms=params['other-running-speed-threshold-cms'],
+        lick_cutoff=params['lick-cutoff'],
+        lick_window=params['lick-window'],
+        correct_trials=params['train-only-on-positives'],
+        running_fraction=params['other-running-fraction'],
+        max_n_onsets=params['maximum-cs-onsets'])
 
     # Remove any binarization
     for cs in traces:
@@ -84,12 +91,13 @@ def train_classifier(
         traces[cs] = np.clip(traces[cs], 0, 1)
 
     # Calculate baseline and variance for each cell, and identify outliers
-    baseline, variance, outliers = activity(
+    baseline, variance, outliers = _activity(
         run,
         baseline_activity=params['temporal-prior-baseline-activity'],
         baseline_sigma=params['temporal-prior-baseline-sigma'],
         trace_type=params['trace-type'])
 
+    # We want to at least mask out cells with NaN's, maybe also outliers.
     if not remove_outliers:
         outliers = _nan_cells(traces)
     else:
@@ -135,17 +143,8 @@ def train_classifier(
 
     return out
 
-    # return rc, params, \
-    #     {cs: params['probability'][cs] for cs in traces}
 
-    # CALL THE CLASSIFIER
-    # rc = classify_reactivations.ReactivationClassifier(default, outliers)
-    # rc.train(cses, default['classifier'])
-
-    # return rc, default, {cs: default['probability'][cs] for cs in cses}
-
-
-def activity(
+def _activity(
         run, baseline_activity=0., baseline_sigma=3.0,
         trace_type='deconvolved'):
     """
@@ -245,7 +244,12 @@ def activity(
 
     return baseline, variance, outliers
 
-def _get_traces(runs, running_runs, all_cses, pars):
+
+def _get_traces(
+        runs, running_runs, all_cses, trace_type='deconvolved', length_fr=15,
+        pad_fr=31, offset_fr=1, running_threshold_cms=4., correct_trials=False,
+        lick_cutoff=-1, lick_window=(-1, 0), running_fraction=0.3,
+        max_n_onsets=-1):
     """
     Return all trace data by stimulus chopped into same sized intervals.
 
@@ -257,8 +261,26 @@ def _get_traces(runs, running_runs, all_cses, pars):
         Running-only runs used to train running times.
     all_cses : dict
         Re-map cs names in order to combine some cses.
-    pars : dict
-        All the classifier parameters.
+    length_fr : int
+        Chop up the training data into chunks of this many frames.
+    pad_fr : int or (int, int)
+        Number of frames to pad around the stimulus onset.
+    offset_fr : int
+        Number of frames to pad around the stimulus offset.
+    running_threshold_cms : float
+        Minimum threshold above which the mouse is considered to be running.
+    correct_trials : bool
+        Limit training to only correct trials.
+    lick_cutoff : int, optional
+        Toss trials with more than lick_cutoff licks.
+    lick_window : tuple, optional
+        Count licks within this window to choose which to toss out.
+    running_fraction : float
+        Intervals must have greater than this fraction of frames to be
+        considered running.
+    max_n_onsets : int, optional
+        If >0, limit the number of allowed onsets to this number, to match
+        the amount of training data across states.
 
     Returns
     -------
@@ -270,16 +292,17 @@ def _get_traces(runs, running_runs, all_cses, pars):
     # NOTE: running thresholding is done differently here than later during
     # stimulus runs.
     out = {'other-running': _get_run_onsets(
-        runs=running_runs, length_fr=pars['stimulus-frames'],
-        pad_fr=pars['excluded-time-around-onsets-frames'],
-        running_threshold_cms=pars['other-running-speed-threshold-cms'],
-        offset_fr=pars['stimulus-offset-frames'])}
+        runs=running_runs,
+        length_fr=length_fr,
+        pad_fr=pad_fr,
+        offset_fr=offset_fr,
+        running_threshold_cms=running_threshold_cms)}
 
     for run in runs:
         t2p = run.trace2p()
 
         # Get the trace from which to extract time points
-        trs = t2p.trace(pars['trace-type'])
+        trs = t2p.trace(trace_type)
 
         # Search through all stimulus onsets, correctly coding them
         for ncs in t2p.cses():  # t.cses(self._pars['add-ensure-quinine']):
@@ -293,43 +316,40 @@ def _get_traces(runs, running_runs, all_cses, pars):
                     out[cs] = []
 
                 ons = t2p.csonsets(
-                    ncs, 0 if pars['train-only-on-positives'] else -1,
-                    pars['lick-cutoff'], pars['lick-window'])
+                    ncs, 0 if correct_trials else -1, lick_cutoff, lick_window)
 
                 for on in ons:
-                    start = on + pars['stimulus-offset-frames']
-                    toappend = trs[:, start:start + pars['stimulus-frames']]
+                    start = on + offset_fr
+                    toappend = trs[:, start:start + length_fr]
                     # Make sure interval didn't run off the end.
-                    if toappend.shape[1] == pars['stimulus-frames']:
+                    if toappend.shape[1] == length_fr:
                         out[cs].append(toappend)
 
         # Add all onsets of "other" frames
-        others = t2p.nocs(
-            pars['stimulus-frames'],
-            pars['excluded-time-around-onsets-frames'], -1)
+        others = t2p.nocs(length_fr, pad_fr, -1)
 
         if len(t2p.speed()) > 0:
-            running = t2p.speed() > pars['other-running-speed-threshold-cms']
+            running = t2p.speed() > running_threshold_cms
             for ot in others:
-                start = ot + pars['stimulus-offset-frames']
-                if nanmean(running[start:start + pars['stimulus-frames']]) > \
-                        pars['other-running-fraction']:
+                start = ot + offset_fr
+                if nanmean(running[start:start + length_fr]) > \
+                        running_fraction:
                     out['other-running'].append(
-                        trs[:, start:start + pars['stimulus-frames']])
+                        trs[:, start:start + length_fr])
                 else:
                     out['other'].append(
-                        trs[:, start:start + pars['stimulus-frames']])
+                        trs[:, start:start + length_fr])
 
     # Selectively remove onsets if necessary
-    if pars['maximum-cs-onsets'] > 0:
+    if max_n_onsets > 0:
         for cs in out:
             if 'other' not in cs:
                 print('WARNING: Have not yet checked new timing version')
 
                 # Account for shape of array
-                if len(out[cs]) > pars['maximum-cs-onsets']:
+                if len(out[cs]) > max_n_onsets:
                     out[cs] = np.random.choice(
-                        out[cs], pars['maximum-cs-onsets'], replace=False)
+                        out[cs], max_n_onsets, replace=False)
 
     for cs in out:
         out[cs] = np.array(out[cs])

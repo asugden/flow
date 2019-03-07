@@ -1,10 +1,8 @@
-from copy import deepcopy
 from numpy.testing import \
     run_module_suite, assert_, assert_allclose, assert_equal
 
 import flow
 from replay.lib import classify_reactivations
-# from replay.lib import classify, matdict, settings
 
 mdr = {'mouse': 'AS41', 'date': 171130, 'run': 9}
 
