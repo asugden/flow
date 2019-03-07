@@ -1,15 +1,19 @@
 """Train the reactivation classifier."""
+from copy import copy
 try:
     from bottleneck import nanmean
 except ImportError:
     from numpy import nanmean
 import numpy as np
 
+# from flow.classifier import _old_classify
+# from replay.lib import classify_reactivations
+
 from .. import config
 
 
 def train_classifier(
-        run, training_runs=None, training_running_runs=None, outliers=None,
+        run, training_runs=None, running_runs=None, remove_outliers=True,
         training_date=None, **pars):
     """
     Function to prepare all data to train the classifier.
@@ -21,12 +25,12 @@ def train_classifier(
     training_runs : RunSorter, optional
         If specified, use these runs to train the classifier. If not passed,
         defaults to all runs from the date of run_type == 'training'.
-    training_running_runs : RunSorter, optional
+    running_runs : RunSorter, optional
         If specified, use these runs to train running period for the
         classifier. If not passed, defaults to all runs from the date of
         run_type == 'running'.
-    outliers : list, optional
-        Remove outlier cells from the classifier.
+    remove_outliers : bool
+        Remove outlier cells from the temporal prior.
     training_date : Date, optional
         Optionally train on an alternate date.
     **pars
@@ -34,6 +38,7 @@ def train_classifier(
         will override the default arguments in ..config.default().
 
     """
+    from replay.lib import classify_reactivations
     # Allow for training on a different date than the date that we want to
     # classify.
     if training_date is None:
@@ -42,40 +47,96 @@ def train_classifier(
         # This hasn't really been tested. First person to use it, feel free to
         # change the input to whatever is useful (Date object, relative day
         # shift, absolute date int, etc.).
-        raise NotImplementedError
+        if training_date != run.parent:
+            raise NotImplementedError
 
-    # Get default parameters and update with any new ones passed in.
-    classifier_parameters = config.default()
-    classifier_parameters.update(pars)
-
-    classifier_parameters = _convert_time_to_frames(
-        classifier_parameters, training_date.framerate)
-
-    all_cses = {key: key for key in classifier_parameters['probability']
-                if 'disengaged' not in key}
-    all_cses.update(classifier_parameters['training-equivalent'])
-
+    # Infer training and running runs if they are not specified
     if training_runs is None:
-        training_runs = training_date.runs(run_types=['training'])
+        training_runs = training_date.runs(
+            run_types=['training'], tags=['hungry'])
     else:
         assert all(run.parent==training_date for run in training_runs)
-    if training_running_runs is None:
-        training_running_runs = training_date.runs(run_types=['running'])
+    if running_runs is None:
+        running_runs = training_date.runs(
+            run_types=['running'], tags=['hungry'])
     else:
-        assert all(run.parent==training_date for run in training_running_runs)
+        assert all(run.parent==training_date for run in running_runs)
+
+    # Get default parameters and update with any new ones passed in.
+    params = config.default()
+    params.update(pars)
+
+    # Convert parameters specified in seconds into frames.
+    params = _convert_time_to_frames(
+        params, training_date.framerate)
+
+    # Collect all classifier states
+    all_cses = {key: key for key in params['probability']
+                if 'disengaged' not in key}
+    all_cses.update(params['training-equivalent'])
 
     traces = _get_traces(
-        training_runs, training_running_runs, all_cses, classifier_parameters)
+        training_runs, running_runs, all_cses, params)
 
-    # Removed any binarization
+    # Remove any binarization
     for cs in traces:
-        traces[cs] *= classifier_parameters['analog-training-multiplier']
+        traces[cs] *= params['analog-training-multiplier']
         traces[cs] = np.clip(traces[cs], 0, 1)
 
-    if outliers is None:
+    # Calculate baseline and variance for each cell, and identify outliers
+    baseline, variance, outliers = activity(
+        run,
+        baseline_activity=params['temporal-prior-baseline-activity'],
+        baseline_sigma=params['temporal-prior-baseline-sigma'],
+        trace_type=params['trace-type'])
+
+    if not remove_outliers:
         outliers = _nan_cells(traces)
     else:
-        outliers = np.bitwise_and(outliers, _nan_cells(traces))
+        outliers = np.bitwise_or(outliers, _nan_cells(traces))
+
+    ##
+    ## All code below this can be replaced with new classifier code
+    ##
+    priors = {cs: params['probability'][cs] for cs in traces}
+    rc = classify_reactivations.ReactivationClassifier(
+        params, outliers)
+    rc.train(traces, params['classifier'])
+
+    full_traces = run.trace2p().trace(params['trace-type'])
+
+    rc.compare(
+        full_traces,
+        priors,
+        integrate_frames=params['classification-frames'],
+        analog_scalefactor=params['analog-comparison-multiplier'],
+        fwhm=params['temporal-prior-fwhm-frames'],
+        actmn=baseline,
+        actvar=variance,
+        tprior_outliers=outliers,
+        skip_temporal_prior=False,
+        reassigning_data=False,
+        merge_cses=[])
+
+    params.update({'comparison-date': run.date,
+                   'comparison-run': run.run,
+                   'mouse': unicode(run.mouse),
+                   'training-date': training_date.date,
+                   'training-other-running-runs':
+                       sorted(r.run for r in running_runs),
+                   'training-runs':
+                       sorted(r.run for r in training_runs)})
+
+    out = {'parameters': params,
+           'results': rc._model_results,
+           'likelihood': rc._model_likelihood,
+           'marginal': rc.model._marg,
+           'priors': rc._used_priors}
+
+    return out
+
+    # return rc, params, \
+    #     {cs: params['probability'][cs] for cs in traces}
 
     # CALL THE CLASSIFIER
     # rc = classify_reactivations.ReactivationClassifier(default, outliers)
@@ -83,6 +144,106 @@ def train_classifier(
 
     # return rc, default, {cs: default['probability'][cs] for cs in cses}
 
+
+def activity(
+        run, baseline_activity=0., baseline_sigma=3.0,
+        trace_type='deconvolved'):
+    """
+    Get the activity levels for the temporal classifier.
+
+    Parameters
+    ----------
+    run : Run
+    baseline_activity : float
+        Scale factor of baseline activity.
+        'temporal-prior-baseline-activity' in classifier parameters.
+    baseline_sigma : float
+        Scale factor of baseline variance.
+        'temporal-prior-baseline-sigma' in classifier parameters.
+    trace_type : {'deconvolved'}
+        This only works on deconvolved data for now.
+
+    Returns
+    -------
+    baseline activity, variance of activity, outliers
+
+    """
+    if trace_type != 'deconvolved':
+        raise ValueError('Temporal classifier only implemented for deconvolved data.')
+
+    if 'sated' in run.tags:
+        runs = run.parent.runs(run_types=['spontaneous'], tags=['sated'])
+        spontaneous = True
+    elif 'hungry' in run.tags:
+        runs = run.parent.runs(run_types=['spontaneous'], tags=['hungry'])
+        spontaneous = True
+    else:
+        runs = run.parent.runs(run_types=['training'])
+        spontaneous = False
+
+    baseline, variance, outliers = None, None, None
+    if spontaneous:
+        popact, outliers = [], []
+        for r in runs:
+            t2p = r.trace2p()
+            pact = t2p.trace('deconvolved')
+            fmin = t2p.lastonset()
+            mask = t2p.inactivity()
+            mask[:fmin] = False
+
+            if len(popact):
+                popact = np.concatenate([popact, pact[:, mask]], axis=1)
+            else:
+                popact = pact[:, mask]
+
+            trs = t2p.trace('deconvolved')[:, fmin:]
+            cellact = np.nanmean(trs, axis=1)
+            outs = cellact > np.nanmedian(cellact) + 2*np.std(cellact)
+
+            if len(outliers) == 0:
+                outliers = outs
+            else:
+                outliers = np.bitwise_or(outliers, outs)
+
+        if len(popact):
+            popact = np.nanmean(popact[np.invert(outliers), :], axis=0)
+
+            baseline = np.median(popact)
+            variance = np.std(popact)
+            outliers = outliers
+    else:
+        popact = []
+        for r in runs:
+            t2p = r.trace2p()
+            ncells = t2p.ncells
+            pact = np.nanmean(t2p.trace('deconvolved'), axis=0)
+            skipframes = int(t2p.framerate*4)
+
+            for cs in ['plus', 'neutral', 'minus', 'pavlovian']:
+                onsets = t2p.csonsets(cs)
+                for ons in onsets:
+                    pact[ons:ons+skipframes] = np.nan
+            popact = np.concatenate([popact, pact[np.isfinite(pact)]])
+
+        if len(popact):
+            baseline = np.median(popact)
+
+            # Exclude extremes
+            percent = 2.0
+            popact = np.sort(popact)
+            trim = int(percent*popact.size/100.)
+            popact = popact[trim:-trim]
+
+            variance = np.str(popact)
+            outliers = np.zeros(ncells, dtype=bool)
+
+    if baseline is None:
+        baseline, variance = 0.01, 0.08*baseline_sigma
+    else:
+        baseline *= baseline_activity
+        variance *= baseline_sigma
+
+    return baseline, variance, outliers
 
 def _get_traces(runs, running_runs, all_cses, pars):
     """
@@ -118,7 +279,7 @@ def _get_traces(runs, running_runs, all_cses, pars):
         t2p = run.trace2p()
 
         # Get the trace from which to extract time points
-        trs = t2p.trace('deconvolved')
+        trs = t2p.trace(pars['trace-type'])
 
         # Search through all stimulus onsets, correctly coding them
         for ncs in t2p.cses():  # t.cses(self._pars['add-ensure-quinine']):
