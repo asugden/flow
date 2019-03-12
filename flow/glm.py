@@ -271,7 +271,7 @@ class GLM(object):
         if nansum(unit) == 0:
             unit.fill(np.nan)
         else:
-            unit /= nansum(unit)
+            unit /= nansum(np.abs(unit))
 
         # From outfns._remove_visual_components
         if remove_group is not None:

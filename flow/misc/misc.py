@@ -6,6 +6,7 @@ import collections
 import datetime
 import errno
 from getpass import getuser
+import hashlib
 import matplotlib.pyplot as plt
 import os
 import pprint
@@ -304,3 +305,17 @@ def notebook_file(word, path=None):
                 if wordhash.word(str(file)) is word:
                     return file
     return ''
+
+
+def md5(fname):
+    """Calculate the md5 hash of a file.
+
+    Copied from Stack Overflow:
+    https://stackoverflow.com/questions/3431825/generating-an-md5-checksum-of-a-file
+
+    """
+    hash_md5 = hashlib.md5()
+    with open(fname, "rb") as f:
+        for chunk in iter(lambda: f.read(4096), b""):
+            hash_md5.update(chunk)
+    return hash_md5.hexdigest()

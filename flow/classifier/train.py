@@ -9,7 +9,7 @@ from .. import config
 
 
 def train_classifier(
-        run, training_runs=None, training_running_runs=None, outliers=None,
+        run, training_runs=None, running_runs=None, remove_outliers=True,
         training_date=None, **pars):
     """
     Function to prepare all data to train the classifier.
@@ -21,12 +21,12 @@ def train_classifier(
     training_runs : RunSorter, optional
         If specified, use these runs to train the classifier. If not passed,
         defaults to all runs from the date of run_type == 'training'.
-    training_running_runs : RunSorter, optional
+    running_runs : RunSorter, optional
         If specified, use these runs to train running period for the
         classifier. If not passed, defaults to all runs from the date of
         run_type == 'running'.
-    outliers : list, optional
-        Remove outlier cells from the classifier.
+    remove_outliers : bool
+        Remove outlier cells from the temporal prior.
     training_date : Date, optional
         Optionally train on an alternate date.
     **pars
@@ -34,6 +34,7 @@ def train_classifier(
         will override the default arguments in ..config.default().
 
     """
+    from replay.lib import classify_reactivations
     # Allow for training on a different date than the date that we want to
     # classify.
     if training_date is None:
@@ -42,49 +43,213 @@ def train_classifier(
         # This hasn't really been tested. First person to use it, feel free to
         # change the input to whatever is useful (Date object, relative day
         # shift, absolute date int, etc.).
-        raise NotImplementedError
+        if training_date != run.parent:
+            raise NotImplementedError
 
-    # Get default parameters and update with any new ones passed in.
-    classifier_parameters = config.default()
-    classifier_parameters.update(pars)
-
-    classifier_parameters = _convert_time_to_frames(
-        classifier_parameters, training_date.framerate)
-
-    all_cses = {key: key for key in classifier_parameters['probability']
-                if 'disengaged' not in key}
-    all_cses.update(classifier_parameters['training-equivalent'])
-
+    # Infer training and running runs if they are not specified
     if training_runs is None:
-        training_runs = training_date.runs(run_types=['training'])
+        training_runs = training_date.runs(
+            run_types=['training'], tags=['hungry'])
     else:
         assert all(run.parent==training_date for run in training_runs)
-    if training_running_runs is None:
-        training_running_runs = training_date.runs(run_types=['running'])
+    if running_runs is None:
+        running_runs = training_date.runs(
+            run_types=['running'], tags=['hungry'])
     else:
-        assert all(run.parent==training_date for run in training_running_runs)
+        assert all(run.parent==training_date for run in running_runs)
 
+    # Get default parameters and update with any new ones passed in.
+    params = config.default()
+    params.update(pars)
+
+    # Convert parameters specified in seconds into frames.
+    params = _convert_time_to_frames(
+        params, training_date.framerate)
+
+    # Collect all classifier states
+    all_cses = {key: key for key in params['probability']
+                if 'disengaged' not in key}
+    all_cses.update(params['training-equivalent'])
+
+    # Pull all training data
     traces = _get_traces(
-        training_runs, training_running_runs, all_cses, classifier_parameters)
+        training_runs, running_runs, all_cses,
+        trace_type=params['trace-type'],
+        length_fr=params['stimulus-frames'],
+        pad_fr=params['excluded-time-around-onsets-frames'],
+        offset_fr=params['stimulus-offset-frames'],
+        running_threshold_cms=params['other-running-speed-threshold-cms'],
+        lick_cutoff=params['lick-cutoff'],
+        lick_window=params['lick-window'],
+        correct_trials=params['train-only-on-positives'],
+        running_fraction=params['other-running-fraction'],
+        max_n_onsets=params['maximum-cs-onsets'])
 
-    # Removed any binarization
+    # Remove any binarization
     for cs in traces:
-        traces[cs] *= classifier_parameters['analog-training-multiplier']
+        traces[cs] *= params['analog-training-multiplier']
         traces[cs] = np.clip(traces[cs], 0, 1)
 
-    if outliers is None:
+    # Calculate baseline and variance for each cell, and identify outliers
+    baseline, variance, outliers = _activity(
+        run,
+        baseline_activity=params['temporal-prior-baseline-activity'],
+        baseline_sigma=params['temporal-prior-baseline-sigma'],
+        trace_type=params['trace-type'])
+
+    # We want to at least mask out cells with NaN's, maybe also outliers.
+    if not remove_outliers:
         outliers = _nan_cells(traces)
     else:
-        outliers = np.bitwise_and(outliers, _nan_cells(traces))
+        outliers = np.bitwise_or(outliers, _nan_cells(traces))
 
-    # CALL THE CLASSIFIER
-    # rc = classify_reactivations.ReactivationClassifier(default, outliers)
-    # rc.train(cses, default['classifier'])
+    ##
+    ## All code below this can be replaced with new classifier code
+    ##
+    priors = {cs: params['probability'][cs] for cs in traces}
+    rc = classify_reactivations.ReactivationClassifier(
+        params, outliers)
+    rc.train(traces, params['classifier'])
 
-    # return rc, default, {cs: default['probability'][cs] for cs in cses}
+    full_traces = run.trace2p().trace(params['trace-type'])
+
+    rc.compare(
+        full_traces,
+        priors,
+        integrate_frames=params['classification-frames'],
+        analog_scalefactor=params['analog-comparison-multiplier'],
+        fwhm=params['temporal-prior-fwhm-frames'],
+        actmn=baseline,
+        actvar=variance,
+        tprior_outliers=outliers,
+        skip_temporal_prior=False,
+        reassigning_data=False,
+        merge_cses=[])
+
+    params.update({'comparison-date': run.date,
+                   'comparison-run': run.run,
+                   'mouse': unicode(run.mouse),
+                   'training-date': training_date.date,
+                   'training-other-running-runs':
+                       sorted(r.run for r in running_runs),
+                   'training-runs':
+                       sorted(r.run for r in training_runs)})
+
+    out = {'parameters': params,
+           'results': rc._model_results,
+           'likelihood': rc._model_likelihood,
+           'marginal': rc.model._marg,
+           'priors': rc._used_priors}
+
+    return out
 
 
-def _get_traces(runs, running_runs, all_cses, pars):
+def _activity(
+        run, baseline_activity=0., baseline_sigma=3.0,
+        trace_type='deconvolved'):
+    """
+    Get the activity levels for the temporal classifier.
+
+    Parameters
+    ----------
+    run : Run
+    baseline_activity : float
+        Scale factor of baseline activity.
+        'temporal-prior-baseline-activity' in classifier parameters.
+    baseline_sigma : float
+        Scale factor of baseline variance.
+        'temporal-prior-baseline-sigma' in classifier parameters.
+    trace_type : {'deconvolved'}
+        This only works on deconvolved data for now.
+
+    Returns
+    -------
+    baseline activity, variance of activity, outliers
+
+    """
+    if trace_type != 'deconvolved':
+        raise ValueError('Temporal classifier only implemented for deconvolved data.')
+
+    if 'sated' in run.tags:
+        runs = run.parent.runs(run_types=['spontaneous'], tags=['sated'])
+        spontaneous = True
+    elif 'hungry' in run.tags:
+        runs = run.parent.runs(run_types=['spontaneous'], tags=['hungry'])
+        spontaneous = True
+    else:
+        runs = run.parent.runs(run_types=['training'])
+        spontaneous = False
+
+    baseline, variance, outliers = None, None, None
+    if spontaneous:
+        popact, outliers = [], []
+        for r in runs:
+            t2p = r.trace2p()
+            pact = t2p.trace('deconvolved')
+            fmin = t2p.lastonset()
+            mask = t2p.inactivity()
+            mask[:fmin] = False
+
+            if len(popact):
+                popact = np.concatenate([popact, pact[:, mask]], axis=1)
+            else:
+                popact = pact[:, mask]
+
+            trs = t2p.trace('deconvolved')[:, fmin:]
+            cellact = np.nanmean(trs, axis=1)
+            outs = cellact > np.nanmedian(cellact) + 2*np.std(cellact)
+
+            if len(outliers) == 0:
+                outliers = outs
+            else:
+                outliers = np.bitwise_or(outliers, outs)
+
+        if len(popact):
+            popact = np.nanmean(popact[np.invert(outliers), :], axis=0)
+
+            baseline = np.median(popact)
+            variance = np.std(popact)
+            outliers = outliers
+    else:
+        popact = []
+        for r in runs:
+            t2p = r.trace2p()
+            ncells = t2p.ncells
+            pact = np.nanmean(t2p.trace('deconvolved'), axis=0)
+            skipframes = int(t2p.framerate*4)
+
+            for cs in ['plus', 'neutral', 'minus', 'pavlovian']:
+                onsets = t2p.csonsets(cs)
+                for ons in onsets:
+                    pact[ons:ons+skipframes] = np.nan
+            popact = np.concatenate([popact, pact[np.isfinite(pact)]])
+
+        if len(popact):
+            baseline = np.median(popact)
+
+            # Exclude extremes
+            percent = 2.0
+            popact = np.sort(popact)
+            trim = int(percent*popact.size/100.)
+            popact = popact[trim:-trim]
+
+            variance = np.str(popact)
+            outliers = np.zeros(ncells, dtype=bool)
+
+    if baseline is None:
+        baseline, variance = 0.01, 0.08*baseline_sigma
+    else:
+        baseline *= baseline_activity
+        variance *= baseline_sigma
+
+    return baseline, variance, outliers
+
+
+def _get_traces(
+        runs, running_runs, all_cses, trace_type='deconvolved', length_fr=15,
+        pad_fr=31, offset_fr=1, running_threshold_cms=4., correct_trials=False,
+        lick_cutoff=-1, lick_window=(-1, 0), running_fraction=0.3,
+        max_n_onsets=-1):
     """
     Return all trace data by stimulus chopped into same sized intervals.
 
@@ -96,8 +261,26 @@ def _get_traces(runs, running_runs, all_cses, pars):
         Running-only runs used to train running times.
     all_cses : dict
         Re-map cs names in order to combine some cses.
-    pars : dict
-        All the classifier parameters.
+    length_fr : int
+        Chop up the training data into chunks of this many frames.
+    pad_fr : int or (int, int)
+        Number of frames to pad around the stimulus onset.
+    offset_fr : int
+        Number of frames to pad around the stimulus offset.
+    running_threshold_cms : float
+        Minimum threshold above which the mouse is considered to be running.
+    correct_trials : bool
+        Limit training to only correct trials.
+    lick_cutoff : int, optional
+        Toss trials with more than lick_cutoff licks.
+    lick_window : tuple, optional
+        Count licks within this window to choose which to toss out.
+    running_fraction : float
+        Intervals must have greater than this fraction of frames to be
+        considered running.
+    max_n_onsets : int, optional
+        If >0, limit the number of allowed onsets to this number, to match
+        the amount of training data across states.
 
     Returns
     -------
@@ -109,16 +292,17 @@ def _get_traces(runs, running_runs, all_cses, pars):
     # NOTE: running thresholding is done differently here than later during
     # stimulus runs.
     out = {'other-running': _get_run_onsets(
-        runs=running_runs, length_fr=pars['stimulus-frames'],
-        pad_fr=pars['excluded-time-around-onsets-frames'],
-        running_threshold_cms=pars['other-running-speed-threshold-cms'],
-        offset_fr=pars['stimulus-offset-frames'])}
+        runs=running_runs,
+        length_fr=length_fr,
+        pad_fr=pad_fr,
+        offset_fr=offset_fr,
+        running_threshold_cms=running_threshold_cms)}
 
     for run in runs:
         t2p = run.trace2p()
 
         # Get the trace from which to extract time points
-        trs = t2p.trace('deconvolved')
+        trs = t2p.trace(trace_type)
 
         # Search through all stimulus onsets, correctly coding them
         for ncs in t2p.cses():  # t.cses(self._pars['add-ensure-quinine']):
@@ -132,43 +316,40 @@ def _get_traces(runs, running_runs, all_cses, pars):
                     out[cs] = []
 
                 ons = t2p.csonsets(
-                    ncs, 0 if pars['train-only-on-positives'] else -1,
-                    pars['lick-cutoff'], pars['lick-window'])
+                    ncs, 0 if correct_trials else -1, lick_cutoff, lick_window)
 
                 for on in ons:
-                    start = on + pars['stimulus-offset-frames']
-                    toappend = trs[:, start:start + pars['stimulus-frames']]
+                    start = on + offset_fr
+                    toappend = trs[:, start:start + length_fr]
                     # Make sure interval didn't run off the end.
-                    if toappend.shape[1] == pars['stimulus-frames']:
+                    if toappend.shape[1] == length_fr:
                         out[cs].append(toappend)
 
         # Add all onsets of "other" frames
-        others = t2p.nocs(
-            pars['stimulus-frames'],
-            pars['excluded-time-around-onsets-frames'], -1)
+        others = t2p.nocs(length_fr, pad_fr, -1)
 
         if len(t2p.speed()) > 0:
-            running = t2p.speed() > pars['other-running-speed-threshold-cms']
+            running = t2p.speed() > running_threshold_cms
             for ot in others:
-                start = ot + pars['stimulus-offset-frames']
-                if nanmean(running[start:start + pars['stimulus-frames']]) > \
-                        pars['other-running-fraction']:
+                start = ot + offset_fr
+                if nanmean(running[start:start + length_fr]) > \
+                        running_fraction:
                     out['other-running'].append(
-                        trs[:, start:start + pars['stimulus-frames']])
+                        trs[:, start:start + length_fr])
                 else:
                     out['other'].append(
-                        trs[:, start:start + pars['stimulus-frames']])
+                        trs[:, start:start + length_fr])
 
     # Selectively remove onsets if necessary
-    if pars['maximum-cs-onsets'] > 0:
+    if max_n_onsets > 0:
         for cs in out:
             if 'other' not in cs:
                 print('WARNING: Have not yet checked new timing version')
 
                 # Account for shape of array
-                if len(out[cs]) > pars['maximum-cs-onsets']:
+                if len(out[cs]) > max_n_onsets:
                     out[cs] = np.random.choice(
-                        out[cs], pars['maximum-cs-onsets'], replace=False)
+                        out[cs], max_n_onsets, replace=False)
 
     for cs in out:
         out[cs] = np.array(out[cs])
