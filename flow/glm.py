@@ -18,7 +18,7 @@ from . import misc
 from . import paths
 
 
-def glm(mouse, date, hz=None):
+def glm(mouse, date, hz=None, glm_type='simpglm'):
     """
     Return a new instance of a GLM.
 
@@ -27,14 +27,14 @@ def glm(mouse, date, hz=None):
     :return: instance of class GLM
     """
 
-    out = GLM(mouse, date, hz=hz)
+    out = GLM(mouse, date, hz=hz, glm_type=glm_type)
     if not out.exists:
         return False
     else:
         return out
 
 
-def labels(mouse, date, minpred=0.01, minfrac=0.05):
+def labels(mouse, date, minpred=0.01, minfrac=0.05, glm_type='simpglm'):
     """
     Return the GLM labels for a particular mouse and date.
 
@@ -45,14 +45,14 @@ def labels(mouse, date, minpred=0.01, minfrac=0.05):
     :return: a dict of the unit vectors for each group
     """
 
-    out = GLM(mouse, date)
+    out = GLM(mouse, date, glm_type=glm_type)
     if not out.exists:
         return False
     else:
         return out.labels(minpred, minfrac)
 
 
-def unitvectors(mouse, date, trange=(0, 2), rectify=True, hz=None):
+def unitvectors(mouse, date, trange=(0, 2), rectify=True, hz=None, glm_type='simpglm'):
     """
     Get expected values across a time range given GLM coefficients.
 
@@ -64,7 +64,7 @@ def unitvectors(mouse, date, trange=(0, 2), rectify=True, hz=None):
     :return: a dict of the unit vectors for each group
     """
 
-    out = GLM(mouse, date, hz=hz)
+    out = GLM(mouse, date, hz=hz, glm_type=glm_type)
     if not out.exists:
         return False
     else:
@@ -74,7 +74,7 @@ def unitvectors(mouse, date, trange=(0, 2), rectify=True, hz=None):
 class GLM(object):
     """A class that interfaces with a .simpglm file."""
 
-    def __init__(self, mouse, date, hz=None):
+    def __init__(self, mouse, date, hz=None, glm_type='simpglm'):
         """
         Create a new GLM instance with a given mouse and date.
 
@@ -94,7 +94,7 @@ class GLM(object):
         self._original_coeffs = None
         self._original_devexp = None
 
-        path = paths.glmpath(mouse, date)
+        path = paths.glmpath(mouse, date, glm_type)
 
         if path is not None:
             self.d = misc.loadmat(path)
