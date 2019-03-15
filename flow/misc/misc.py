@@ -118,6 +118,10 @@ def save_figs(save_path, figs):
                 pp.savefig(fig)
                 plt.close(fig)
             pp.close()
+        else:
+            assert len(figs) == 1
+            fig.savefig(temp_save_path)
+            plt.close(fig)
     except:
         raise
     else:
