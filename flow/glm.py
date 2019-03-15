@@ -246,10 +246,9 @@ class GLM(object):
             if err == -1:
                 correct = self.protovector(
                     group + '_correct', trange=trange, rectify=rectify)
-                try:
-                    miss = self.protovector(
-                        group + '_miss', trange=trange, rectify=rectify)
-                except ValueError:
+                miss = self.protovector(
+                    group + '_miss', trange=trange, rectify=rectify)
+                if np.all(np.isnan(miss)):
                     return correct
                 else:
                     return (correct + miss) / 2.
