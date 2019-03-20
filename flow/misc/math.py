@@ -154,80 +154,6 @@ def mixed_effects_model(df, y, x=(), random_effects=(), categorical=(),
 
     return model
 
-def icc(data, icc_type='icc2'):
-    """
-    Calculate intraclass correlation coefficient for data within
-        Brain_Data class
-    ICC Formulas are based on:
-    Shrout, P. E., & Fleiss, J. L. (1979). Intraclass correlations: uses in
-    assessing rater reliability. Psychological bulletin, 86(2), 420.
-    icc1:  x_ij = mu + beta_j + w_ij
-    icc2/3:  x_ij = mu + alpha_i + beta_j + (ab)_ij + epsilon_ij
-    Code modifed from nipype algorithms.icc
-    https://github.com/nipy/nipype/blob/master/nipype/algorithms/icc.py
-    Args:
-        icc_type: type of icc to calculate (icc: voxel random effect,
-                icc2: voxel and column random effect, icc3: voxel and
-                column fixed effect)
-    Returns:
-        ICC: intraclass correlation coefficient
-
-    from: https://github.com/cosanlab/nltools/blob/master/nltools/data/brain_data.py
-    """
-
-    Y = data  # Transpose?
-    [n, k] = Y.shape
-
-    # Degrees of Freedom
-    dfc = k - 1
-    dfe = (n - 1)*(k - 1)
-    dfr = n - 1
-
-    # Sum Square Total
-    mean_Y = np.mean(Y)
-    SST = ((Y - mean_Y)**2).sum()
-
-    # create the design matrix for the different levels
-    x = np.kron(np.eye(k), np.ones((n, 1)))  # sessions
-    x0 = np.tile(np.eye(n), (k, 1))  # subjects
-    X = np.hstack([x, x0])
-
-    # Sum Square Error
-    predicted_Y = np.dot(np.dot(np.dot(X, np.linalg.pinv(np.dot(X.T, X))),
-                                X.T), Y.flatten('F'))
-    residuals = Y.flatten('F') - predicted_Y
-    SSE = (residuals**2).sum()
-
-    MSE = SSE/dfe
-
-    # Sum square column effect - between colums
-    SSC = ((np.mean(Y, 0) - mean_Y)**2).sum()*n
-    MSC = SSC/dfc/n
-
-    # Sum Square subject effect - between rows/subjects
-    SSR = SST - SSC - SSE
-    MSR = SSR/dfr
-
-    if icc_type == 'icc1':
-        # ICC(2,1) = (mean square subject - mean square error) /
-        # (mean square subject + (k-1)*mean square error +
-        # k*(mean square columns - mean square error)/n)
-        # ICC = (MSR - MSRW) / (MSR + (k-1) * MSRW)
-        NotImplementedError("This method isn't implemented yet.")
-
-    elif icc_type == 'icc2':
-        # ICC(2,1) = (mean square subject - mean square error) /
-        # (mean square subject + (k-1)*mean square error +
-        # k*(mean square columns - mean square error)/n)
-        ICC = (MSR - MSE)/(MSR + (k - 1)*MSE + k*(MSC - MSE)/n)
-
-    elif icc_type == 'icc3':
-        # ICC(3,1) = (mean square subject - mean square error) /
-        # (mean square subject + (k-1)*mean square error)
-        ICC = (MSR - MSE)/(MSR + (k - 1)*MSE)
-
-    return ICC
-
 def glm(formula, df, family='gaussian', link='identity', dropzeros=True, r=False):
     """
     Apply a GLM using formula to the data in the dataframe data
@@ -392,3 +318,239 @@ def smooth(x, window_len=5, window='flat'):
 
     y = np.convolve(w/w.sum(), s, mode='valid')
     return y[(window_len/2-1):-(window_len/2)]
+
+
+# ----------------------------------------------------------
+# NaN operations
+
+def nandivide(a, b):
+    """
+    Return nan if divide by 0 without error
+    """
+
+    if b == 0:
+        return np.nan
+    else:
+        return float(a)/b
+
+def weightcorr(x, y, w):
+    """
+    Return the weighted correlation of two vectors, x and y, and the weights w
+    :param x:
+    :param y:
+    :return:
+    """
+
+    if len(x) != len(y) or len(x) != len(w):
+        print('ERROR: Wrong lengths')
+
+    # Weighted mean
+    def m(x, w):
+        return np.sum(x*w)/np.sum(w)
+
+    # Weighted covariance
+    def cov(x, y, w):
+        return np.sum(w*(x - m(x, w))*(y - m(y, w)))/np.sum(w)
+
+    # Weighted correlation
+    def corr(x, y, w):
+        return cov(x, y, w)/np.sqrt(cov(x, x, w)*cov(y, y, w))
+
+    return corr(x, y, w)
+
+def nancorr(v1, v2):
+    """
+    Return the correlation r and p value, ignoring positions with nan.
+    :param v1: vector 1
+    :param v2: vector 2, of length v1
+    :return: (pearson r, p value)
+    """
+
+    # p value is defined as
+    # t = (r*sqrt(n - 2))/sqrt(1-r*r)
+    # where r is correlation coeffcient, n is number of observations, and the T is n - 2 degrees of freedom
+
+    if len(v1) < 2 or len(v2) < 2: return (np.nan, np.nan)
+    v1, v2 = np.array(v1), np.array(v2)
+    nnans = np.bitwise_and(np.isfinite(v1), np.isfinite(v2))
+    if np.sum(nnans) == 0: return (np.nan, np.nan)
+    return pearsonr(v1[nnans], v2[nnans])
+
+def nanpearson(v1, v2):
+    """Same as nancorr."""
+    return nancorr(v1, v2)
+
+def nanspearman(v1, v2):
+    """
+    Return the correlation rho and p value, ignoring positions with nan.
+    :param v1: vector 1
+    :param v2: vector 2, of length v1
+    :return: (spearman rho, p value)
+    """
+
+    v1, v2 = np.array(v1), np.array(v2)
+    nnans = np.bitwise_and(np.isfinite(v1), np.isfinite(v2))
+    return spearmanr(v1[nnans], v2[nnans])
+
+def nanlinregress(v1, v2):
+    """
+    Return the linear regression accounting for nans
+    :param v1:
+    :param v2:
+    :return:
+    """
+
+    v1, v2 = np.array(v1), np.array(v2)
+    nnans = np.bitwise_and(np.isfinite(v1), np.isfinite(v2))
+    return linregress(v1[nnans], v2[nnans])
+
+def nannone(val):
+    """
+    Return value, converting None to np.nan for printing as floats
+    :param val: value
+    :return: float value
+    """
+
+    if val is None: return np.nan
+    else: return val
+
+def zeronone(val):
+    """
+    Return value, converting None to zero for printing as floats
+    :param val: value
+    :return: float value
+    """
+
+    if val is None: return 0.0
+    else: return val
+
+def emptynone(val):
+    """
+    Return value, converting None to empty lists
+    :param val: value
+    :return: listed value
+    """
+
+    if val is None:
+        return []
+    else:
+        return val
+
+
+# ----------------------------------------------------------
+# Running statistics
+# Based on http://www.johndcook.com/standard_deviation.html
+def runstats(keep=0):
+    """
+    A function to return a new instance of RunningStats
+    :return: instance of RunningStats
+    """
+
+    out = RunningStats(False, keep)
+    return out
+
+
+def runvecstats():
+    """
+    A function to return a new instance of RunningStats
+    :return: instance of RunningStats
+    """
+
+    out = RunningStats(True)
+    return out
+
+
+class RunningStats(object):
+    """
+    Get a running mean and standard deviation from a huge dataset, so as not to save every possible point
+    """
+    def __init__(self, vec=False, keep=0):
+        """
+        Initialize with parameter keep. If keep > 0, a random
+        sample of fraction keep will be kept for future statistics.
+        :param keep: fraction (0-1) of examples to be kept
+        """
+        self.n = 0
+        self.old_m = 0
+        self.new_m = 0
+        self.old_s = 0
+        self.new_s = 0
+        self.vec = vec
+        self.keep = keep
+        self.subset = []
+
+    def clear(self):
+        """
+        Start from zero again
+        :return: None
+        """
+        self.n = 0
+        self.subset = []
+
+    def push(self, x):
+        """
+        Add a new point to the vector
+        :param x: point to add
+        :return: None
+        """
+
+        if not self.vec and isinstance(x, (list, tuple, np.ndarray)):
+            for v in x:
+                self.push(v)
+
+        self.n += 1
+        if (0 < self.keep < 1 and np.random.random() < self.keep) or self.keep == 1:
+            self.subset.append(x)
+
+        if self.n == 1:
+            self.old_m = self.new_m = x
+            self.old_s = 0 if not self.vec else np.zeros(len(x))
+
+            if self.vec:
+                self.old_m[np.invert(np.isfinite(x))] = 0
+                self.new_s = np.copy(self.old_s)
+
+        else:
+            if self.vec:
+                gx = np.isfinite(x)  # good x values
+                self.new_m[gx] = self.old_m[gx] + (x[gx] - self.old_m[gx])/self.n
+                self.new_s[gx] = self.old_s[gx] + (x[gx] - self.old_m[gx])*(x[gx] - self.new_m[gx])
+
+            else:
+                self.new_m = self.old_m + (x - self.old_m)/self.n
+                self.new_s = self.old_s + (x - self.old_m)*(x - self.new_m)
+
+            self.old_m = self.new_m
+            self.old_s = self.new_s
+
+    def mean(self):
+        """
+        :return: The running mean from the data
+        """
+        return self.new_m if self.n else 0.0
+
+    def variance(self):
+        """
+        :return: The running variance from the data
+        """
+        return self.new_s/(self.n - 1) if self.n > 1 else 0.0
+
+    def standard_deviation(self):
+        """
+        :return: The running standard deviation
+        """
+        return np.sqrt(self.variance())
+
+    def standard_error(self):
+        """
+        Added by Arthur-- compute the running standard error
+        :return: std err
+        """
+        return np.sqrt(self.variance())/np.sqrt(self.n)
+
+    def samples(self):
+        """
+        Return reserved samples for use in statistics
+        :return: vector, self.subset
+        """
+        return self.subset
