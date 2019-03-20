@@ -13,7 +13,7 @@ import os.path as opath
 from . import config
 from . import metadata as metadata
 from . import paths
-from .classifier import classify
+from .classifier import _old_classify
 from .metadata import metadata_old
 from .misc import loadmat
 # from .misc import Parser
@@ -271,7 +271,7 @@ def classifier(pars, randomize='', force=False):
 
     if len(out) == 0 and not force: return {}
     elif len(out) == 0 and force:
-        classify.classify(pars, randomize)
+        _old_classify.classify(pars, randomize)
         return classifier(pars, randomize, False)
     else:
         return loadmat(out)
@@ -306,9 +306,9 @@ def classifiers(pars, randomize='', minclassifiers=1, check=False):
         #     classify.classify(pars, randomize)
         if minclassifiers - len(out) > 1:
             print(('multiclassify ', minclassifiers - len(out)))
-            classify.multiclassify(pars, randomize, minclassifiers - len(out))
+            _old_classify.multiclassify(pars, randomize, minclassifiers - len(out))
         else:
-            classify.classify(pars, randomize)
+            _old_classify.classify(pars, randomize)
 
         return classifiers(pars, randomize, False)
 
