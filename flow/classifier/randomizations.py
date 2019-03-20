@@ -92,9 +92,9 @@ def randomizeevents(pars, preclassifier, reps=100, verbose=True):
     :return:
 
     """
-    from . import classify
+    from . import _old_classify
     # Generate the classifier
-    cm = classify.ClassifierTrain(pars=pars)
+    cm = _old_classify.ClassifierTrain(pars=pars)
     cm.setrandom('')
 
     # Train the classifier and return
@@ -133,7 +133,7 @@ def randomizeevents(pars, preclassifier, reps=100, verbose=True):
     path = opath.join(path, ts)
 
     # Get output replay events for ease of use and save as matlab file
-    out['parameters'] = classify.matlabifypars(cm._pars)
+    out['parameters'] = _old_classify.matlabifypars(cm._pars)
     savemat(path, out)
 
     return out
