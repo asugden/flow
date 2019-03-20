@@ -22,125 +22,43 @@ class AODE(object):
 
         self._cond = {}  # Used to be _gmpjoint, now conditional
         self._marg = {}  # Used to be _gmpsingle, now marginal
-        self._class_probabilities = {}
-        self._frames_integrated = -1
         self._pseudocount = 0.1
-        self._nbonly = False
-        self._integrated_data = None
+        self._classnames = []
 
-        # Calculated values that can be returned
-        self._population_activity = None
-        self._temp_off = 0
+        self.ncells = None
 
-        self._class_probabilities = priors
-        self.d = cses
-        keys = [key for key in cses]
-        self._ncells = np.shape(self.d[keys[0]])[1]
-        self._frames_integrated = nframes
-
-    def classes(self, allow_baseline=False):
+    def train(self, tevents, classifier='aode'):
         """
-        Return a list of classes to iterate over. Allow baseline if it
-        has been selected.
+        Train a classifier by measuring the probabilities of single-cell
+        and pairwise firing over a range of frames relative to the stimuli.
+
+        Parameters
+        ----------
+        tevents : matrix
+            Deconvolved values, ranged from 0 to 1 of the shape
+            nonsets x ncells x nframes
+        classifier : str {'aode', 'naivebayes'}
+            Change the classifier from AODE to naive bayes
         """
 
-        out = [key for key in self.d]
-        return out
+        # Save the classnames in an order because dicts can change.
+        self._classnames = [key for key in tevents]
+        self.ncells = np.shape(tevents[self._classnames[0]])[1]
 
-    def generate_binary(self):
-        """Generate binary.
+        if classifier == 'naivebayes':
+            return self._naivebayes(tevents)
 
-        Measure the probabilities of single cell firing and pairwise
-        firing over a range of frames relative to the stimuli added via
-        onset(). To avoid adding pseudocounts, set a minimum and maximum
-        probability of firing.
-
-        decrease_spiking_probability is a tuple with the first value describing
-        the decrease in spiking (0.5 would mean that a training onset with 20
-        cells active would select only 10 of those cells). The second value is
-        the number of iterations to measure from each, given that they are
-        randomized.
-
-        """
-        print('BINARY, MAN')
-        for condition in self.d:
-            # self.d is in order nonsets, ncells, nframes
+        for condition in self._classnames:
             # Take the max across frames
-            # print '\tAnalyzing condition %s...' % (condition)
-            stims = np.max(self.d[condition], axis=2).T
+            stims = np.max(tevents[condition], axis=2).T
             stiminv = 1.0 - stims
-            # Stims is now in shape ncells, nonsets
-            nonsets = np.shape(stims)[1]
+            # Stims is now in shape nonsets, ncells  NOT ncells, nonsets
+            nonsets = np.shape(stims)[0]  # NOTE: WAS 1 UNTIL 190211
 
             # List of probabilities of doublet and singlet spiking of
             # size (matching cells, total cells, 6)
-            self._cond[condition] = np.zeros((self._ncells, self._ncells, 4))
-            self._marg[condition] = np.zeros((self._ncells, 2))
-
-            # Calculate single/marginal probabilities
-            self._marg[condition][:, 0] = np.sum(stims, axis=1)
-            self._marg[condition][:, 1] = np.sum(stiminv, axis=1)
-
-            # Make copies to use for binary representations
-            cme = np.copy(stims)
-            binonsetsinv = np.bitwise_not(stims)
-
-            # For every matching cell, calculate the conditional probabilities
-            for c in range(self._ncells):
-                # Repeat the value for each cell to make a tiled array of cell c
-                cme[:, ] = stims[c, ]
-                self._cond[condition][c, :, 0] = np.sum(np.bitwise_and(cme, stims), 1)  # TT
-                self._cond[condition][c, :, 1] = np.sum(np.bitwise_and(cme, binonsetsinv), 1)  # TF
-
-                cme = np.bitwise_not(cme)
-                self._cond[condition][c, :, 2] = np.sum(np.bitwise_and(cme, stims), 1)  # FT
-                self._cond[condition][c, :, 3] = np.sum(np.bitwise_and(cme, binonsetsinv), 1)  # FF
-
-                # Set the joint of the same cell equal to 0 so that it's not included
-                self._cond[condition][c, c, :] = 0
-
-            # Add pseudocounts
-            self._cond[condition] += self._pseudocount
-            self._marg[condition] += self._pseudocount*2
-
-            # Divide by the number of onsets
-            self._cond[condition] /= float(np.shape(stims)[1] + 4*self._pseudocount)
-            self._marg[condition] /= float(np.shape(stims)[1] + 4*self._pseudocount)
-
-            # Divide by the marginal
-            for c in range(self._ncells):
-                self._cond[condition][c, :, 0] /= self._marg[condition][c, 0]
-                self._cond[condition][c, :, 1] /= self._marg[condition][c, 0]
-                self._cond[condition][c, :, 2] /= self._marg[condition][c, 1]
-                self._cond[condition][c, :, 3] /= self._marg[condition][c, 1]
-
-    def generate(self):
-        """
-        Measure the probabilities of single cell firing and pairwise
-        firing over a range of frames relative to the stimuli added via
-        onset(). To avoid adding pseudocounts, set a minimum and maximum
-        probability of firing.
-        """
-
-        self._nbonly = False
-
-        # Switch to binary for speed if necessary
-        conditions = [cond for cond in self.d]
-        if self.d[conditions[0]][0].dtype == np.bool: return self.generate_binary()
-
-        for condition in self.d:
-            # self.d is in order nonsets, ncells, nframes
-            # Take the max across frames
-            # print '\tAnalyzing condition %s...' % (condition)
-            stims = np.max(self.d[condition], axis=2).T
-            stiminv = 1.0 - stims
-            # Stims is now in shape ncells, nonsets
-            nonsets = np.shape(stims)[1]
-
-            # List of probabilities of doublet and singlet spiking of
-            # size (matching cells, total cells, 6)
-            self._cond[condition] = np.zeros((self._ncells, self._ncells, 4))
-            self._marg[condition] = np.zeros((self._ncells, 2))
+            self._cond[condition] = np.zeros((self.ncells, self.ncells, 4))
+            self._marg[condition] = np.zeros((self.ncells, 2))
 
             # Calculate single probabilities
             self._marg[condition][:, 0] = np.sum(stims, axis=1)
@@ -149,8 +67,8 @@ class AODE(object):
             # For every matching cell, calculate the probabilities
             for c in range(self._ncells):
                 # Repeat the value for each cell to make a tiled array of cell c
-                crep = np.tile(stims[c, :], self._ncells).reshape((self._ncells, nonsets))
-                crepinv = np.tile(stiminv[c, :], self._ncells).reshape((self._ncells, nonsets))
+                crep = np.tile(stims[c, :], self.ncells).reshape((self.ncells, nonsets))
+                crepinv = np.tile(stiminv[c, :], self.ncells).reshape((self.ncells, nonsets))
 
                 self._cond[condition][c, :, 0] = np.sum(crep*stims, 1)  # TT
                 self._cond[condition][c, :, 1] = np.sum(crep*stiminv, 1)  # TF
@@ -170,97 +88,91 @@ class AODE(object):
             self._marg[condition] /= float(np.shape(stims)[1] + 4*self._pseudocount)
 
             # Divide by the marginal
-            for c in range(self._ncells):
+            for c in range(self.ncells):
                 self._cond[condition][c, :, 0] /= self._marg[condition][c, 0]
                 self._cond[condition][c, :, 1] /= self._marg[condition][c, 0]
                 self._cond[condition][c, :, 2] /= self._marg[condition][c, 1]
                 self._cond[condition][c, :, 3] /= self._marg[condition][c, 1]
 
-
             # 0, P(x_i == T | x_j == T) = P(TT)/P(x_j == T)
             # 1, P(x_i == T | x_j == F)
             # 2, P(x_i == F | x_j == T)
             # 4, P(x_j == T)
             # 5, P(x_j == F)
-            # np.set_printoptions(5, suppress=True)
-            # print binonsets
-            # print self._gmpjoint
-            # print self._gmpsingle
 
-    def generatenb(self):
+        return self
+
+    def compare(self, data, integrate_frames, priors, naive_bayes=False):  #, priors={}, widenpriors=True, outliers=None):
         """
-        Measure the probabilities of single cell firing and pairwise
-        firing over a range of frames relative to the stimuli added via
-        onset(). To avoid adding pseudocounts, set a minimum and maximum
-        probability of firing.
+        Run the comparison using a numpy extension written in C.
+        speed.
+
+        Parameters
+        ----------
+        data : matrix
+            Data of type ncells x ntimes
+        integrate_frames : int
+            The number of frames to take the max over, usually 4
+        priors : dict of vectors
+            The prior probability of each class type. Note:
+            PRIORS MUST SUM TO 1! Assumes that one is using assign_temporal_priors
+        naive_bayes : bool
+            If True, run comparison as Naive Bayes rather than AODE.
+
+        Returns
+        -------
+        dict of vectors
+            The probability of reactivation in each case.
+
         """
 
-        self._nbonly = True
+        # Double-check that the data has the correct number of cells
+        ncells, nframes = np.shape(data)
+        if ncells != self.ncells:
+            raise ValueError('Wrong number of cells in dataset')
 
-        # Switch to binary for speed if necessary
-        conditions = [cond for cond in self.d]
-        if self.d[conditions[0]][0].dtype == np.bool: return self.generate_binary()
+        # Double-check that priors have been set
+        if not set(self._classnames).issubset(set(priors.keys())):
+            raise ValueError('Not all classes have priors set')
 
-        for condition in self.d:
-            # self.d is in order nonsets, ncells, nframes
-            # Take the max across frames
-            # print '\tAnalyzing condition %s...' % (condition)
-            stims = np.max(self.d[condition], axis=2).T
-            stiminv = 1.0 - stims
-            # Stims is now in shape ncells, nonsets
-            nonsets = np.shape(stims)[1]
+        if self._class_probabilities == {}:
+            raise IndexError('Have not yet set priors')
 
-            # List of probabilities of doublet and singlet spiking of
-            # size (matching cells, total cells, 6)
-            # self._cond[condition] = np.zeros((self._ncells, self._ncells, 4))
-            self._marg[condition] = np.zeros((self._ncells, 2))
+        # Set the correct sizes based on the frame integration
+        if integrate_frames > 1:
+            rollframes = nframes - (integrate_frames - 1)
+            frame_range = (int(math.floor(integrate_frames/2.0)),
+                rollframes + int(math.floor(integrate_frames/2.0)))
+            data = rollingmax(data, integrate_frames)
+        else:
+            rollframes = nframes
+            frame_range = (0, nframes)
 
-            # Calculate single probabilities
-            self._marg[condition][:, 0] = np.sum(stims, axis=1)
-            self._marg[condition][:, 1] = np.sum(stiminv, axis=1)
+        if not self._nb:
+            # Convert dicts to arrays for the numpy extension
+            sprobs, jprobs, likelihood, res = self._prob_dict_to_np(rollframes)
+            cprobs = np.array([priors[key][frame_range[0]:frame_range[1]] for key in self._classnames])
 
-            # For every matching cell, calculate the probabilities
-            # for c in range(self._ncells):
-            #     # Repeat the value for each cell to make a tiled array of cell c
-            #     crep = np.tile(stims[c, :], self._ncells).reshape((self._ncells, nonsets))
-            #     crepinv = np.tile(stiminv[c, :], self._ncells).reshape((self._ncells, nonsets))
-            #
-            #     self._cond[condition][c, :, 0] = np.sum(crep*stims, 1)  # TT
-            #     self._cond[condition][c, :, 1] = np.sum(crep*stiminv, 1)  # TF
-            #
-            #     self._cond[condition][c, :, 2] = np.sum(crepinv*stims, 1)  # FT
-            #     self._cond[condition][c, :, 3] = np.sum(crepinv*stiminv, 1)  # FF
-            #
-            #     # Set the joint of the same cell equal to 0 so that it's not included
-            #     self._cond[condition][c, c, :] = 0
+            # Run AODE
+            runclassifier.aode(sprobs, jprobs, cprobs, data, res, likelihood)
+        else:
+            sprobs, likelihood, res = self._prob_dict_to_np(rollframes, True)
+            cprobs = np.array([priors[key][frame_range[0]:frame_range[1]] for key in clses])
 
-            # Add pseudocounts
-            # self._cond[condition] += self._pseudocount
-            self._marg[condition] += self._pseudocount*2
+            # Run Naive Bayes
+            runclassifier.naivebayes(sprobs, cprobs, data, res, likelihood)
 
-            # Divide by the number of onsets
-            # self._cond[condition] /= float(np.shape(stims)[1] + 4*self._pseudocount)
-            self._marg[condition] /= float(np.shape(stims)[1] + 4*self._pseudocount)
+        # Copy output into the appropriate style
+        out = {}
+        likely = {}
+        for i, key in enumerate(self._classnames):
+            out[key] = np.zeros(nframes)
+            out[key][frame_range[0]:frame_range[1]] = res[i]
+            likely[key] = likelihood[i]
 
-            # Divide by the marginal
-            # for c in range(self._ncells):
-            #     self._cond[condition][c, :, 0] /= self._marg[condition][c, 0]
-            #     self._cond[condition][c, :, 1] /= self._marg[condition][c, 0]
-            #     self._cond[condition][c, :, 2] /= self._marg[condition][c, 1]
-            #     self._cond[condition][c, :, 3] /= self._marg[condition][c, 1]
+        return out, data, likely
 
-
-            # 0, P(x_i == T | x_j == T) = P(TT)/P(x_j == T)
-            # 1, P(x_i == T | x_j == F)
-            # 2, P(x_i == F | x_j == T)
-            # 4, P(x_j == T)
-            # 5, P(x_j == F)
-            # np.set_printoptions(5, suppress=True)
-            # print binonsets
-            # print self._gmpjoint
-            # print self._gmpsingle
-
-    def describe(self, spreadsheet=False):
+    def describe(self):
         """
         List the key bits of information about each stimulus as a string
         that is returned.
@@ -286,133 +198,19 @@ class AODE(object):
             )
         return out
 
-    def learned(self, marg=None, cond=None):
-        """
-        Return the marginal and conditional if both entries are none. Otherwise, set marginal and conditional
-        :param marg:
-        :param cond:
-        :return:
-        """
-
-        if marg is not None:
-            self._marg = marg
-        if cond is not None:
-            self._cond = cond
-
-        self._ncells = np.shape(list(self._marg.values())[0])[0]
-
-        if self._nbonly:
-            return self._marg
-        else:
-            return self._marg, self._cond
-
-    def compare(self, data, priors={}, widenpriors=True, outliers=None):
-        """
-        Run the comparison using a numpy extension written in C for
-        speed.
-        """
-
-        # Double-check that the data has the correct number of cells
-        ncells, nframes = np.shape(data)
-        if ncells != self._ncells:
-            print('\tERROR: wrong number of cells in dataset')
-            return False
-
-        # Set the correct sizes based on the frame integration
-        if self._frames_integrated > 1:
-            rollframes = nframes - (self._frames_integrated - 1)
-            ran = (int(math.floor(self._frames_integrated/2.0)),
-                   rollframes + int(math.floor(self._frames_integrated/2.0)))
-            data = rollingmax(data, self._frames_integrated)
-        else:
-            rollframes = nframes
-            ran = (0, nframes)
-
-        self._integrated_data = np.zeros((ncells, nframes))
-        self._integrated_data[:, ran[0]:ran[1]] = data
-
-        # Convert dicts to arrays for the numpy extension
-        clses, sprobs, jprobs, likelihood, res = self._prob_dict_to_np(rollframes)
-        cprobs = np.array([priors[key][ran[0]:ran[1]] for key in clses])
-
-        # Run AODE
-        runclassifier.aode(sprobs, jprobs, cprobs, data, res, likelihood)
-
-        # Copy output into the appropriate style
-        out = {}
-        likely = {}
-        for i, key in enumerate(clses):
-            out[key] = np.zeros(nframes)
-            out[key][ran[0]:ran[1]] = res[i]
-            likely[key] = likelihood[i]
-
-        return out, data, likely
-
-    def naivebayes(self, data, priors={}):
-        """
-        Run the comparison using a numpy extension written in C for
-        speed.
-        """
-
-        # Double-check that the data has the correct number of cells
-        ncells, nframes = np.shape(data)
-        if ncells != self._ncells:
-            print('\tERROR: wrong number of cells in dataset')
-            return False
-
-        # Set the correct sizes based on the frame integration
-        if self._frames_integrated > 1:
-            rollframes = nframes - (self._frames_integrated - 1)
-            ran = (int(math.floor(self._frames_integrated/2.0)),
-                   rollframes + int(math.floor(self._frames_integrated/2.0)))
-            data = rollingmax(data, self._frames_integrated)
-        else:
-            rollframes = nframes
-            ran = (0, nframes)
-
-        self._integrated_data = np.zeros(nframes)
-        self._integrated_data[:, ran[0]:ran[1]] = data
-
-        # Convert dicts to arrays for the numpy extension
-        clses, sprobs, likelihood, res = self._prob_dict_to_np(rollframes, True)
-        cprobs = np.array([priors[key][ran[0]:ran[1]] for key in clses])
-
-        # Run Naive Bayes
-        runclassifier.naivebayes(sprobs, cprobs, data, res, likelihood)
-
-        # Copy output into the appropriate style
-        out = {}
-        likely = {}
-        for i, key in enumerate(clses):
-            out[key] = np.zeros(nframes)
-            out[key][ran[0]:ran[1]] = res[i]
-            likely[key] = likelihood[i]
-
-        return out, likely, priors
-
-    def frames(self):
-        """
-        Return integrated frames
-        :return:
-        """
-
-        return self._integrated_data
-
-    def _prob_dict_to_np(self, nframes, naivebayes=False):
+    def _prob_dict_to_np(self, nframes, naive_bayes=False):
         """
         Convert the dict of probabilities into a single numpy array to
         pass to the C numpy extension.
         """
 
         # Get a list of classes for results
-        clses = self.classes(False)
-        clses_wo_baseline = [key for key in clses]
-        self._add_baseline = False
+        clses = self._classnames
         k = clses[0]
 
         # Allocate and fill each array
         sprobs = np.zeros((len(clses), np.shape(self._marg[k])[0], 2), dtype=np.float64)
-        if not naivebayes:
+        if not naive_bayes:
             jprobs = np.zeros((len(clses), np.shape(self._cond[k])[0],
                                np.shape(self._cond[k])[1], 4), dtype=np.float64)
         likelihood = np.zeros((len(clses), nframes), dtype=np.float64)
@@ -420,32 +218,14 @@ class AODE(object):
 
         for i, key in enumerate(clses_wo_baseline):
             sprobs[i] = self._marg[key]
-            if not naivebayes:
+            if not naive_bayes:
                 jprobs[i] = self._cond[key]
 
-        if not naivebayes:
-            return clses, sprobs, jprobs, likelihood, res
+        if not naive_bayes:
+            return sprobs, jprobs, likelihood, res
         else:
-            return clses, sprobs, likelihood, res
+            return sprobs, likelihood, res
 
-    def _priors_dict_to_np(self, clses, nframes):
-        """
-        Convert the dict of class probabilities into a numpy array,
-        taking care to account for the fact that the baseline condition
-        may not have a prior. Take the prior from half of the "other"
-        class.
-        """
-
-        return np.array([self._class_probabilities[key][:nframes] for key in clses])
-
-    def _normalize_probs(self):
-        """Ensure that the probabilities of all classes sum to 1.0"""
-        psum = 0
-        for key in self._class_probabilities:
-            psum += self._class_probabilities[key]
-
-        for key in self._class_probabilities:
-            self._class_probabilities[key] /= psum
 
 def rollingmax(arr, integrate_frames):
     """
