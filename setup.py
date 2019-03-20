@@ -102,3 +102,10 @@ setup(
     #
     # could also include long_description, download_url, etc.
 )
+
+
+# GLMs require the following R packages:
+# lme4, afex
+# To install, run R, and type:
+# install.package("lme4", dependencies=TRUE)
+# install.package("afex", dependencies=TRUE)
