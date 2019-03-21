@@ -41,6 +41,23 @@ def gett2p(mouse, date, run):
     out = Trace2P(path)
     return out
 
+def getc2p(mouse, date, run, pars, randomize=''):
+    """
+    Return a path to classifier or randomized classifier file.
+    """
+
+    pars['mouse'] = mouse
+    pars['date'] = date
+    pars['comparison-run'] = run
+
+    title = ['classifier']
+    if len(randomize) > 0:
+        title += [randomize]
+    title = '-'.join(title) + '.mat'
+
+    path = output(pars)
+    return opath.join(path, title)
+
 def classifier2p(run, pars, randomize=''):
     path = output(pars)
     fs = os.listdir(path)[::-1]
@@ -85,30 +102,22 @@ def getonsets(mouse, date=None, run=None):
         out = loadmat(path)
         return out
 
-def getglm(mouse, date):
-    path = opath.join(datad, '%s/%s/%s_%s.simpglm' % (mouse, date, mouse, date))
-    if not opath.exists(path):
-        return None
-    else:
-        data = loadmat(path, appendmat=False)
-        cgs = [str(data['cellgroups'].flatten()[i][0]) for i in range(len(data['cellgroups'].flatten()))]
-        devexp = data['deviance_explained']
-        return [cgs, devexp, data]
-
 
 def cosdists():
     return '%s/cosdists.mat' % outd
 
 
-def glmpath(mouse, date):
+def glmpath(mouse, date, glm_type='simpglm'):
     """
-    Get the path to a .simpglm file, set to None if it does not exist
+    Get the path to a .simpglm or other type file,
+    set to None if it does not exist
     :param mouse: mouse name, str
     :param date: date, str
+    :param glm_type: str {'simpglm', 'simpglm2', 'safeglm'}
     :return:
     """
 
-    path = opath.join(datad, '%s/%s/%s_%s.simpglm' % (mouse, date, mouse, date))
+    path = opath.join(datad, '%s/%s/%s_%s.%s' % (mouse, date, mouse, date, glm_type))
     if not opath.exists(path):
         return None
     else:
@@ -216,12 +225,12 @@ def graph(pars):
 
     return path
 
-def graphcrossday():
+def graphcrossday(filename=''):
     # Base/crossday
     path = opath.join(graphd, 'crossday')
     if not opath.exists(path): os.mkdir(path)
 
-    return opath.join(path, '')
+    return opath.join(path, filename)
 
 def graphgroup(pars={}, group='', classifier=True):
     # Base/plots/classifier-keyword/group/

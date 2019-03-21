@@ -7,7 +7,7 @@ from .misc import loadmat
 
 
 class Classify2P(object):
-    def __init__(self, paths, pars, randomization=''):
+    def __init__(self, path, pars):
         """
         Load in a classifier or classifiers
 
@@ -17,33 +17,16 @@ class Classify2P(object):
             A single path or a list of paths to load
         pars : dict
             The parameters used to generate the classifier
-        randomization : str
-            Empty if real, or a randomization type string if randomized (i.e. identify or circshift)
-
         """
+
         self._paths = paths
-        self.randomization = randomization
         self.pars = pars
         self.xresults = None
-
-        if isinstance(paths, list) and len(paths) > 1:
-            raise NotImplementedError('Need to implement path lists')
-        if isinstance(paths, list) and len(paths):
-            paths = paths[0]
-        if not len(paths):
-            paths = ''
 
         try:
             self.d = loadmat(paths)
         except IOError:
-            mouse = pars['mouse'] if 'mouse' in pars else '?MOUSE'
-            date = pars['comparison-date'] if 'comparison-date' in pars \
-                    else '?DATE'
-            run = pars['comparison-run'] if 'comparison-run' in pars \
-                    else '?RUN'
-            raise ValueError(
-                'Unable to locate classifier results: {}-{}-{}'.format(
-                    mouse, date, run))
+            self._classify()
 
     def __repr__(self):
         return "Classify2P(paths={})".format(self._paths)
@@ -128,6 +111,24 @@ class Classify2P(object):
 
         return peaks(res, traces, threshold, max, downfor, maxlen, fmin, saferange)
 
+    def randomization(self, rtype):
+        """
+        Return an object of the correct randomization type.
+
+        Parameters
+        ----------
+        rtype : str {'identity', 'circshift'}
+            Randomization type
+
+        Returns
+        -------
+        object
+            Randomization object
+
+        """
+
+        pass
+
     def _xmask(self):
         """Mask results such that events can only be found in one non-other cs."""
 
@@ -141,6 +142,9 @@ class Classify2P(object):
             self.xresults = deepcopy(self.d['results'])
             for cs in nonother:
                 self.xresults[cs][self.xresults[cs] < maxact] = 0
+
+    def _classify(self):
+        raise NotImplementedError('Need to add classification.')
 
 
 def count(result, threshold, all=False, max=2, downfor=2, offsets=False):
