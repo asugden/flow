@@ -2,7 +2,6 @@ from numpy.testing import \
     run_module_suite, assert_, assert_allclose, assert_equal
 
 import flow
-from replay.lib import classify_reactivations
 
 mdr = {'mouse': 'AS41', 'date': 171130, 'run': 9}
 
@@ -10,6 +9,7 @@ orig, pars, out = None, None, None
 
 
 def setup():
+    """Setup."""
     global orig, pars, out
 
     orig = flow.misc.loadmat('data/AS41_171130_009.mat')
@@ -20,14 +20,22 @@ def setup():
     training_runs = date.runs(run_types=['training'])
     running_runs = date.runs(run_types=['running'])
 
-    out = flow.classifier.train.train_classifier(
+    # out = flow.classifier.train.old_train_classifier(
+    #     run=run, training_runs=training_runs, running_runs=running_runs,
+    #     training_date=date)
+    # out['parameters'] = flow.misc.matlabifypars(out['parameters'])
+
+    model, params, activity = flow.classifier.train.train_classifier(
         run=run, training_runs=training_runs, running_runs=running_runs,
         training_date=date)
 
-    out['parameters'] = classify_reactivations.matlabifypars(out['parameters'])
+    out = flow.classifier.train.classify_reactivations(
+        run=run, model=model, params=params, activity=activity)
+    out['parameters'] = flow.misc.matlabifypars(out['parameters'])
 
 
 def teardown(self):
+    """Teardown."""
     pass
 
 
@@ -41,7 +49,8 @@ class TestClassifier(object):
         def compare_dict(orig_d, test_d):
             for key in orig_d:
                 assert_(
-                    key in test_d, msg="'{}' not in parameters.".format(key))
+                    key in test_d,
+                    msg="'{}' not in test parameters.".format(key))
                 if isinstance(orig_d[key], dict):
                     assert_(
                         isinstance(test_d[key], dict),
