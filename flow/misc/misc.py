@@ -323,3 +323,20 @@ def md5(fname):
         for chunk in iter(lambda: f.read(4096), b""):
             hash_md5.update(chunk)
     return hash_md5.hexdigest()
+
+
+def matlabifypars(pars):
+    """Convert the parameters into a Matlab-readable version."""
+
+    out = {}
+    for p in pars:
+        mlname = p[:31].replace('-', '_')
+        if isinstance(pars[p], dict):
+            mldict = {}
+            for pp in pars[p]:
+                mlname2 = pp[:31].replace('-', '_')
+                mldict[mlname2] = pars[p][pp]
+            out[mlname] = mldict
+        else:
+            out[mlname] = pars[p]
+    return out
