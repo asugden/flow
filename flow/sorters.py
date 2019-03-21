@@ -13,7 +13,7 @@ import numpy as np
 from pandas import IndexSlice as Idx
 
 from .metadata import metadata
-from . import config, glm, paths, xday
+from . import config, glm, paths, xday, classify2p
 
 
 class Mouse(object):
@@ -545,13 +545,15 @@ class Run(object):
         if newpars is None:
             if self._c2p is None:
                 pars = self._default_classifier_pars()
-                self._c2p = paths.classifier2p(self, pars, randomize)
+                c2p_path = paths.getc2p(self.mouse, self.date, self.run, pars)
+                self._c2p = classify2p.Classify2P(c2p_path, pars)
             return self._c2p
         else:
             pars = self._default_classifier_pars()
             pars.update(newpars)
 
-            return paths.classifier2p(self, pars, randomize)
+            c2p_path = paths.getc2p(self.mouse, self.date, self.run, pars)
+            return classify2p.Classify2P(c2p_path, pars)
 
     def _default_classifier_pars(self):
         """Return the default classifier parameters for the this Run."""
