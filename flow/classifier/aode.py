@@ -1,6 +1,7 @@
 from __future__ import division, print_function
 from builtins import object, range
 
+from copy import deepcopy
 import math
 import numpy as np
 
@@ -8,17 +9,15 @@ import runclassifier
 
 
 class AODE(object):
-    """
-    Create a generative model based on binarized spiking data. Use an
-    average one-dependency estimator (AODE) to calculate the P(cs|data).
+    """Create a generative model based on binarized spiking data.
+
+    Use an average one-dependency estimator (AODE) to calculate the P(cs|data).
     Relies on estimating the probability of replay.
+
     """
 
-    def __init__(self, cses, priors, nframes):
-        """Pass in deconvolved data for training.
-        It is essential that cses are >= 0 and <= 1!
-        cses are nonsets, ncells, nframes.
-        """
+    def __init__(self):
+        """Initialize the AODE."""
 
         self._cond = {}  # Used to be _gmpjoint, now conditional
         self._marg = {}  # Used to be _gmpsingle, now marginal
@@ -27,9 +26,25 @@ class AODE(object):
 
         self.ncells = None
 
+    @property
+    def classnames(self):
+        """Return names of classes that the model was trained on."""
+        return deepcopy(self._classnames)
+
+    @property
+    def conditional(self):
+        """Return the conditional probability of each trained class."""
+        return deepcopy(self._cond)
+
+    @property
+    def marginal(self):
+        """Return the marginal probability of each trained class."""
+        return deepcopy(self._marg)
+
     def train(self, tevents, classifier='aode'):
-        """
-        Train a classifier by measuring the probabilities of single-cell
+        """Train a classifier.
+
+        Trains by measuring the probabilities of single-cell
         and pairwise firing over a range of frames relative to the stimuli.
 
         Parameters
@@ -39,8 +54,8 @@ class AODE(object):
             nonsets x ncells x nframes
         classifier : str {'aode', 'naivebayes'}
             Change the classifier from AODE to naive bayes
-        """
 
+        """
         # Save the classnames in an order because dicts can change.
         self._classnames = [key for key in tevents]
         self.ncells = np.shape(tevents[self._classnames[0]])[1]
@@ -52,8 +67,7 @@ class AODE(object):
             # Take the max across frames
             stims = np.max(tevents[condition], axis=2).T
             stiminv = 1.0 - stims
-            # Stims is now in shape nonsets, ncells  NOT ncells, nonsets
-            nonsets = np.shape(stims)[0]  # NOTE: WAS 1 UNTIL 190211
+            nonsets = np.shape(stims)[1]
 
             # List of probabilities of doublet and singlet spiking of
             # size (matching cells, total cells, 6)
@@ -65,7 +79,7 @@ class AODE(object):
             self._marg[condition][:, 1] = np.sum(stiminv, axis=1)
 
             # For every matching cell, calculate the probabilities
-            for c in range(self._ncells):
+            for c in range(self.ncells):
                 # Repeat the value for each cell to make a tiled array of cell c
                 crep = np.tile(stims[c, :], self.ncells).reshape((self.ncells, nonsets))
                 crepinv = np.tile(stiminv[c, :], self.ncells).reshape((self.ncells, nonsets))
@@ -102,10 +116,8 @@ class AODE(object):
 
         return self
 
-    def compare(self, data, integrate_frames, priors, naive_bayes=False):  #, priors={}, widenpriors=True, outliers=None):
-        """
-        Run the comparison using a numpy extension written in C.
-        speed.
+    def compare(self, data, integrate_frames, priors, naive_bayes=False):
+        """Run the comparison using a numpy extension written in C for speed.
 
         Parameters
         ----------
@@ -135,29 +147,28 @@ class AODE(object):
         if not set(self._classnames).issubset(set(priors.keys())):
             raise ValueError('Not all classes have priors set')
 
-        if self._class_probabilities == {}:
-            raise IndexError('Have not yet set priors')
-
         # Set the correct sizes based on the frame integration
         if integrate_frames > 1:
             rollframes = nframes - (integrate_frames - 1)
             frame_range = (int(math.floor(integrate_frames/2.0)),
-                rollframes + int(math.floor(integrate_frames/2.0)))
+                           rollframes + int(math.floor(integrate_frames/2.0)))
             data = rollingmax(data, integrate_frames)
         else:
             rollframes = nframes
             frame_range = (0, nframes)
 
-        if not self._nb:
+        if not naive_bayes:
             # Convert dicts to arrays for the numpy extension
             sprobs, jprobs, likelihood, res = self._prob_dict_to_np(rollframes)
-            cprobs = np.array([priors[key][frame_range[0]:frame_range[1]] for key in self._classnames])
+            cprobs = np.array([priors[key][frame_range[0]:frame_range[1]]
+                               for key in self._classnames])
 
             # Run AODE
             runclassifier.aode(sprobs, jprobs, cprobs, data, res, likelihood)
         else:
             sprobs, likelihood, res = self._prob_dict_to_np(rollframes, True)
-            cprobs = np.array([priors[key][frame_range[0]:frame_range[1]] for key in clses])
+            cprobs = np.array([priors[key][frame_range[0]:frame_range[1]]
+                               for key in self._classnames])
 
             # Run Naive Bayes
             runclassifier.naivebayes(sprobs, cprobs, data, res, likelihood)
@@ -173,10 +184,7 @@ class AODE(object):
         return out, data, likely
 
     def describe(self):
-        """
-        List the key bits of information about each stimulus as a string
-        that is returned.
-        """
+        """List the key bits of information about each stimulus."""
 
         out = '%13s    %5s    %6s   %5s    %5s    %5s    %5s    %5s    %5s    %5s  %5s  %6s\n'%(
             'Stimulus', 'Mean', 'Median', 'SMax', 'JMax', 'SSum', 'JSumTT', 'JSumTF', 'JSumFT', 'JSumFF', 'Cells',
@@ -199,9 +207,9 @@ class AODE(object):
         return out
 
     def _prob_dict_to_np(self, nframes, naive_bayes=False):
-        """
-        Convert the dict of probabilities into a single numpy array to
-        pass to the C numpy extension.
+        """Convert the dict of probabilities into a single numpy array.
+
+        Used to pass the probabilities to the C numpy extension.
         """
 
         # Get a list of classes for results
@@ -216,7 +224,7 @@ class AODE(object):
         likelihood = np.zeros((len(clses), nframes), dtype=np.float64)
         res = np.zeros((len(clses), nframes), dtype=np.float64)
 
-        for i, key in enumerate(clses_wo_baseline):
+        for i, key in enumerate(clses):
             sprobs[i] = self._marg[key]
             if not naive_bayes:
                 jprobs[i] = self._cond[key]
@@ -228,8 +236,10 @@ class AODE(object):
 
 
 def rollingmax(arr, integrate_frames):
-    """
-    Get the rolling maximum across the final axis for 1d or 2d array arr, which will be converted to double
+    """Get the rolling maximum across the final axis for a 1d or 2d array.
+
+    Array will be converted to double.
+
     :param arr: 1d or 2d array of doubles
     :param integrate_frames: number of frames to integrate across the last axis, int
     :return: arr with the final axis of length input - (integrate_frames - 1)
@@ -244,13 +254,15 @@ def rollingmax(arr, integrate_frames):
         out = np.zeros((np.shape(arr)[0], np.shape(arr)[1] - (integrate_frames - 1)))
     else:
         raise ValueError('Function only handles 1d and 2d arrays')
-    print((arr.dtype, out.dtype))
     runclassifier.rollmax(arr, out, integrate_frames)
     return out
 
+
 def rollingmean(arr, integrate_frames):
-    """
-    Get the rolling maximum across the final axis for 1d or 2d array arr, which will be converted to double
+    """Get the rolling mean across the final axis for 1d or 2d array.
+
+    Array will be converted to double.
+
     :param arr: 1d or 2d array of doubles
     :param integrate_frames: number of frames to integrate across the last axis, int
     :return: arr with the final axis of length input - (integrate_frames - 1)
@@ -269,14 +281,17 @@ def rollingmean(arr, integrate_frames):
     runclassifier.rollmean(arr, out, integrate_frames)
     return out
 
-def temporal_prior(traces, actmn, actvar, fwhm, expand=1):
-    """
-    Generate temporal-dependent priors using basis sets and mexican-hat functions
+
+def temporal_prior(traces, actmn, actvar, fwhm):
+    """Generate temporal-dependent priors.
+
+    Uses basis sets and mexican-hat functions.
+
     :param traces: matrix of traces, ncells by nframes
     :param actmn: mean activity
     :param actvar: variation above which we will consider it a guaranteed event
     :param fwhm: the full-width at half-maximum to use for the temporal prior
-    :param expand: use a moving max across expand frames
+
     :return: prior vector
     """
 
@@ -313,16 +328,14 @@ def temporal_prior(traces, actmn, actvar, fwhm, expand=1):
     # And return the wfits to the narrowest basis function
     weights = np.clip(np.nanmin(fits, axis=0), 0, 1)
 
-    # Use a running max if expand > 1
-    if expand > 1:
-        weights = rollingmax(weights, expand).flatten()
-
     return weights
 
+
 def assign_temporal_priors(priors, tprior, keyword='other'):
-    """
-    Apply the temporal prior to a prior dictionary, applying the temporal prior to any member of the dict without
-    keyword
+    """Apply the temporal prior to a prior dictionary.
+
+    Applies the temporal prior to any member of the dict without keyword.
+
     :param priors: temporally-independent priors which will be combined with, anything with 'other' in it will get
     the inverse of the temporal prior, while the remaining groups will get multiplied with the temporal prior
     :param tprior: the temporal prior, ouput from temporal_prior()
@@ -352,16 +365,17 @@ def assign_temporal_priors(priors, tprior, keyword='other'):
     for i, key in enumerate(oclses): out[key] = opriors[i, :]
     return out
 
-def classify(data, priors, integrate_frames):
-    """
-    Return a classifier class ready to be trained.
+
+def classify():
+    """Return a classifier class ready to be trained.
+
     :param data: Deconvolved or binarized calcium data
     :param priors: dict of stimulus types and prior probabilities
     :param integrate_frames: number of frames to integrate for comparison data
     :return: classifier class
     """
 
-    out = AODE(data, priors, integrate_frames)
+    out = AODE()
     return out
 
 
