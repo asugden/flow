@@ -4,10 +4,11 @@ from copy import deepcopy
 import numpy as np
 
 from .misc import loadmat
+from classifier import train
 
 
 class Classify2P(object):
-    def __init__(self, path, pars):
+    def __init__(self, path, run, pars):
         """
         Load in a classifier or classifiers
 
@@ -19,17 +20,52 @@ class Classify2P(object):
             The parameters used to generate the classifier
         """
 
-        self._paths = paths
         self.pars = pars
-        self.xresults = None
+        self.run = run
+        self._xresults = None
+        self._trained_model = None
+        self._trained_params = None
+        self._trained_activity = None
 
         try:
-            self.d = loadmat(paths)
+            self.d = loadmat(path)
         except IOError:
-            self._classify()
+            self._classify(path)
 
     def __repr__(self):
         return "Classify2P(paths={})".format(self._paths)
+
+    def classify(self, data, priors=None, temporal_prior=None, integrate_frames=1):
+        """
+        Return a trained classifier either for running the traditional classifier
+        or for randomization.
+
+        data : matrix
+            Matrix of data to compare, ncells x ntimes
+        priors : dict
+            The prior probabilities for each class. Defaults to pars.
+        temporal_prior : vector
+            A vector of weights per unit time. Defaults to the standard
+            temporal prior if set in pars.
+        integrate_frames : int
+            The number of frames to integrate.
+
+        Returns
+        -------
+        dict
+            The standard output format of train.py
+
+        """
+
+        # Train only once
+        if self._trained is None:
+            self._trained_model, self._trained_params, self.trained_activity = \
+                train.train_classifier(self.run, **self.pars)
+
+        results = train.classify_reactivations(
+            run, self._trained_model, self._trained_params, self._trained_activity)
+
+        return results
 
     def results(self, cs='', xmask=True):
         """
@@ -56,9 +92,9 @@ class Classify2P(object):
             self._xmask()
 
             if cs == '':
-                return self.xresults
+                return self._xresults
             else:
-                return self.xresults[cs]
+                return self._xresults[cs]
         else:
             if cs == '':
                 return self.d['results']
@@ -105,7 +141,7 @@ class Classify2P(object):
         if xmask:
             self._xmask()
 
-        res = np.copy(self.d['results'][cs]) if not xmask else np.copy(self.xresults[cs])
+        res = np.copy(self.d['results'][cs]) if not xmask else np.copy(self._xresults[cs])
         if mask is not None:
             res[np.invert(mask)] = 0
 
@@ -132,16 +168,16 @@ class Classify2P(object):
     def _xmask(self):
         """Mask results such that events can only be found in one non-other cs."""
 
-        if self.xresults is None:
+        if self._xresults is None:
             nonother = [key for key in self.d['results'] if 'other' not in key]
             maxmat = np.zeros((len(nonother), len(self.d['results'][nonother[0]])))
             for i, cs in enumerate(nonother):
                 maxmat[i, :] = self.d['results'][cs]
             maxact = np.nanmax(maxmat, axis=0)
 
-            self.xresults = deepcopy(self.d['results'])
+            self._xresults = deepcopy(self.d['results'])
             for cs in nonother:
-                self.xresults[cs][self.xresults[cs] < maxact] = 0
+                self._xresults[cs][self._xresults[cs] < maxact] = 0
 
     def _classify(self):
         raise NotImplementedError('Need to add classification.')

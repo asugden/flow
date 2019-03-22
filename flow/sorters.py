@@ -527,7 +527,7 @@ class Run(object):
 
         return self._t2p
 
-    def classify2p(self, newpars=None, randomize=''):
+    def classify2p(self, run, newpars=None, randomize=''):
         """
         Return classifier.
 
@@ -546,14 +546,14 @@ class Run(object):
             if self._c2p is None:
                 pars = self._default_classifier_pars()
                 c2p_path = paths.getc2p(self.mouse, self.date, self.run, pars)
-                self._c2p = classify2p.Classify2P(c2p_path, pars)
+                self._c2p = classify2p.Classify2P(c2p_path, self.run, pars)
             return self._c2p
         else:
             pars = self._default_classifier_pars()
             pars.update(newpars)
 
             c2p_path = paths.getc2p(self.mouse, self.date, self.run, pars)
-            return classify2p.Classify2P(c2p_path, pars)
+            return classify2p.Classify2P(c2p_path, self.run, pars)
 
     def _default_classifier_pars(self):
         """Return the default classifier parameters for the this Run."""
