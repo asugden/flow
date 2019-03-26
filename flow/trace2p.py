@@ -189,10 +189,20 @@ class Trace2P(object):
         if cs == 'lick':
             return self.lickbout()
 
-        if lickcutoff < 0:
-            return self._onsets(cs, errortrials)
-        else:
+        # If 'cs' ends with a '*' return all variations of that cs
+        if not cs.endswith('*'):
             ons = self._onsets(cs, errortrials)
+        else:
+            cs = cs.rstrip('*')
+            ons = []
+            for stim in self.codes:
+                if cs in stim:
+                    ons.extend(self._onsets(stim, errortrials))
+            ons = sorted(ons)
+
+        if lickcutoff < 0:
+            return ons
+        else:
             licks = self.licking()
             fr = (int(round(lickwindow[0] * self.framerate)),
                   int(round(lickwindow[1] * self.framerate)))
@@ -204,7 +214,7 @@ class Trace2P(object):
 
     def csoffsets(self, cs='', errortrials=-1):
         """
-        Return the stimulus offset times for a particular stimulus, separated by trial type
+        Return the stimulus offset times for a particular stimulus, separated by trial type.
 
         :param cs: stimulus name, str. If blank, return all trials
         :param errortrials: whether to include all trials (-1), correct trials (0), or error trials (1)
@@ -285,7 +295,7 @@ class Trace2P(object):
         """
 
         out = np.zeros(self.nframes) > 1
-        onsets = self._onsets(cs, errortrials)
+        onsets = self.csonsets(cs, errortrials)
         if len(onsets) == 0:
             return out
 
