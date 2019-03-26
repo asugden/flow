@@ -20,17 +20,11 @@ def setup():
     training_runs = date.runs(run_types=['training'])
     running_runs = date.runs(run_types=['running'])
 
-    # out = flow.classifier.train.old_train_classifier(
-    #     run=run, training_runs=training_runs, running_runs=running_runs,
-    #     training_date=date)
-    # out['parameters'] = flow.misc.matlabifypars(out['parameters'])
-
-    model, params, activity = flow.classifier.train.train_classifier(
+    model, params, nan_cells = flow.classifier.train.train_classifier(
         run=run, training_runs=training_runs, running_runs=running_runs,
         training_date=date)
-
     out = flow.classifier.train.classify_reactivations(
-        run=run, model=model, params=params, activity=activity)
+        run=run, model=model, params=params, nan_cells=nan_cells)
     out['parameters'] = flow.misc.matlabifypars(out['parameters'])
 
 
