@@ -243,13 +243,13 @@ def _activity(
     if trace_type != 'deconvolved':
         raise ValueError('Temporal classifier only implemented for deconvolved data.')
 
-    if run.run_type is 'spontaneous' and 'sated' in run.tags:
+    if run.run_type == 'spontaneous' and 'sated' in run.tags:
         runs = run.parent.runs(run_types=['spontaneous'], tags=['sated'])
         spontaneous = True
-    elif run.run_type is 'spontaneous' and 'hungry' in run.tags:
+    elif run.run_type == 'spontaneous' and 'hungry' in run.tags:
         runs = run.parent.runs(run_types=['spontaneous'], tags=['hungry'])
         spontaneous = True
-    elif run.run_type is 'training':
+    elif run.run_type == 'training':
         runs = run.parent.runs(run_types=['training'])
         spontaneous = False
     else:
