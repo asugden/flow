@@ -10,8 +10,8 @@ from .. import config
 
 
 def train_classifier(
-        run, training_runs=None, running_runs=None, remove_outliers=True,
-        training_date=None, **pars):
+        run, training_runs=None, running_runs=None, training_date=None,
+        **pars):
     """
     Function to prepare all data to train the classifier.
 
@@ -26,13 +26,20 @@ def train_classifier(
         If specified, use these runs to train running period for the
         classifier. If not passed, defaults to all runs from the date of
         run_type == 'running'.
-    remove_outliers : bool
-        Remove outlier cells from the temporal prior.
     training_date : Date, optional
         Optionally train on an alternate date.
     **pars
         All other classifier parameters are collect as keyword arguments. These
         will override the default arguments in ..config.default().
+
+    Returns
+    -------
+    model : aode.AODE
+        Trained model.
+    params : dict
+        Parameters.
+    nan_cells
+        Cell mask of cells with NaNs in training data.
 
     """
     # Allow for training on a different date than the date that we want to
@@ -94,22 +101,6 @@ def train_classifier(
         traces[cs] *= params['analog-training-multiplier']
         traces[cs] = np.clip(traces[cs], 0, 1)
 
-    # Calculate baseline and variance for each cell, and identify outliers
-    activity = {}
-    activity['baseline'], activity['variance'], activity['outliers'] = \
-        _activity(
-            run,
-            baseline_activity=params['temporal-prior-baseline-activity'],
-            baseline_sigma=params['temporal-prior-baseline-sigma'],
-            trace_type=params['trace-type'])
-
-    # We want to at least mask out cells with NaN's, maybe also outliers.
-    if not remove_outliers:
-        activity['outliers'] = _nan_cells(traces)
-    else:
-        activity['outliers'] = np.bitwise_or(
-            activity['outliers'], _nan_cells(traces))
-
     model = aode.AODE()
     model.train(traces, params['classifier'])
 
@@ -122,11 +113,11 @@ def train_classifier(
                    'training-runs':
                        sorted(r.run for r in training_runs)})
 
-    return model, params, activity
+    return model, params, _nan_cells(traces)
 
 
 def classify_reactivations(
-        run, model, params, activity=None, skip_temporal_prior=False,
+        run, model, params, nan_cells=None, skip_temporal_prior=False,
         merge_cses=None):
     """Given a run and trained model, classify reactivations.
 
@@ -138,9 +129,9 @@ def classify_reactivations(
         A fully-trained model.
     params : dict
         Parameters for classifier.
-    activity : optional, dict w/ keys {'baseline', 'variance', 'outliers'}
-        Baseline, variance, and outliers of data. If not passed in, will be
-        calculated.
+    nan_cells : np.ndarray of bool
+        Cell mask of cells to exclude from temporal prior. Activity outliers
+        are also automatically removed.
     skip_temporal_prior : bool
         If True, do NOT use a temporal prior.
     merge_cses : optional, list
@@ -153,31 +144,30 @@ def classify_reactivations(
         Results dict.
 
     """
-    if activity is None:
-        activity = {}
-        activity['baseline'], activity['variance'], activity['outliers'] = \
-            _activity(
-                run,
-                baseline_activity=params['temporal-prior-baseline-activity'],
-                baseline_sigma=params['temporal-prior-baseline-sigma'],
-                trace_type=params['trace-type'])
     if merge_cses is None:
         merge_cses = []
 
     full_traces = run.trace2p().trace(params['trace-type'])
+    if nan_cells is None:
+        nan_cells = np.any(np.invert(np.isfinite(full_traces)), axis=1)
 
     priors = {cs: params['probability'][cs] for cs in model.classnames}
 
     if not skip_temporal_prior:
+        baseline, variance, outliers = _activity(
+            run,
+            baseline_activity=params['temporal-prior-baseline-activity'],
+            baseline_sigma=params['temporal-prior-baseline-sigma'],
+            trace_type=params['trace-type'])
+        # Make sure cells with any NaN's and outliers are removed from the
+        # temporal prior
+        outliers = np.bitwise_or(outliers, nan_cells)
+
         tpriorvec = aode.temporal_prior(
-            full_traces[np.invert(activity['outliers']), :],
-            actmn=activity['baseline'],
-            actvar=activity['variance'],
-            fwhm=params['temporal-prior-fwhm-frames'])
+            full_traces[np.invert(outliers), :], actmn=baseline,
+            actvar=variance, fwhm=params['temporal-prior-fwhm-frames'])
         used_priors = aode.assign_temporal_priors(
-            priors,
-            tpriorvec,
-            'other')
+            priors, tpriorvec, 'other')
     else:
         raise NotImplementedError(
             'Need to check priors to make sure that they sum to 1.')
@@ -201,142 +191,6 @@ def classify_reactivations(
            'likelihood': likelihoods,
            'marginal': model.marginal,
            'priors': used_priors}
-
-    return out
-
-
-def old_train_classifier(
-        run, training_runs=None, running_runs=None, remove_outliers=True,
-        training_date=None, **pars):
-    """
-    Function to prepare all data to train the classifier.
-
-    Parameters
-    ----------
-    run : Run
-        Run that the classifier will be applied to.
-    training_runs : RunSorter, optional
-        If specified, use these runs to train the classifier. If not passed,
-        defaults to all runs from the date of run_type == 'training'.
-    running_runs : RunSorter, optional
-        If specified, use these runs to train running period for the
-        classifier. If not passed, defaults to all runs from the date of
-        run_type == 'running'.
-    remove_outliers : bool
-        Remove outlier cells from the temporal prior.
-    training_date : Date, optional
-        Optionally train on an alternate date.
-    **pars
-        All other classifier parameters are collect as keyword arguments. These
-        will override the default arguments in ..config.default().
-
-    """
-    from replay.lib import classify_reactivations
-    # Allow for training on a different date than the date that we want to
-    # classify.
-    if training_date is None:
-        training_date = run.parent
-    else:
-        # This hasn't really been tested. First person to use it, feel free to
-        # change the input to whatever is useful (Date object, relative day
-        # shift, absolute date int, etc.).
-        if training_date != run.parent:
-            raise NotImplementedError
-
-    # Infer training and running runs if they are not specified
-    if training_runs is None:
-        training_runs = training_date.runs(
-            run_types=['training'], tags=['hungry'])
-    else:
-        assert all(run.parent==training_date for run in training_runs)
-    if running_runs is None:
-        running_runs = training_date.runs(
-            run_types=['running'], tags=['hungry'])
-    else:
-        assert all(run.parent==training_date for run in running_runs)
-
-    # Get default parameters and update with any new ones passed in.
-    params = config.default()
-    params.update(pars)
-
-    # Convert parameters specified in seconds into frames.
-    params = _convert_time_to_frames(
-        params, training_date.framerate)
-
-    # Collect all classifier states
-    all_cses = {key: key for key in params['probability']
-                if 'disengaged' not in key}
-    all_cses.update(params['training-equivalent'])
-
-    # Pull all training data
-    traces = _get_traces(
-        training_runs, running_runs, all_cses,
-        trace_type=params['trace-type'],
-        length_fr=params['stimulus-frames'],
-        pad_fr=params['excluded-time-around-onsets-frames'],
-        offset_fr=params['stimulus-offset-frames'],
-        running_threshold_cms=params['other-running-speed-threshold-cms'],
-        lick_cutoff=params['lick-cutoff'],
-        lick_window=params['lick-window'],
-        correct_trials=params['train-only-on-positives'],
-        running_fraction=params['other-running-fraction'],
-        max_n_onsets=params['maximum-cs-onsets'])
-
-    # Remove any binarization
-    for cs in traces:
-        traces[cs] *= params['analog-training-multiplier']
-        traces[cs] = np.clip(traces[cs], 0, 1)
-
-    # Calculate baseline and variance for each cell, and identify outliers
-    activity = {}
-    activity['baseline'], activity['variance'], activity['outliers'] = \
-        _activity(
-            run,
-            baseline_activity=params['temporal-prior-baseline-activity'],
-            baseline_sigma=params['temporal-prior-baseline-sigma'],
-            trace_type=params['trace-type'])
-
-    # We want to at least mask out cells with NaN's, maybe also outliers.
-    if not remove_outliers:
-        activity['outliers'] = _nan_cells(traces)
-    else:
-        activity['outliers'] = np.bitwise_or(
-            activity['outliers'], _nan_cells(traces))
-
-    rc = classify_reactivations.ReactivationClassifier(
-        params, activity['outliers'])
-    rc.train(traces, params['classifier'])
-
-    full_traces = run.trace2p().trace(params['trace-type'])
-
-    priors = {cs: params['probability'][cs] for cs in traces}
-    rc.compare(
-        full_traces,
-        priors,
-        integrate_frames=params['classification-frames'],
-        analog_scalefactor=params['analog-comparison-multiplier'],
-        fwhm=params['temporal-prior-fwhm-frames'],
-        actmn=activity['baseline'],
-        actvar=activity['variance'],
-        tprior_outliers=activity['outliers'],
-        skip_temporal_prior=False,
-        reassigning_data=False,
-        merge_cses=[])
-
-    params.update({'comparison-date': run.date,
-                   'comparison-run': run.run,
-                   'mouse': unicode(run.mouse),
-                   'training-date': training_date.date,
-                   'training-other-running-runs':
-                       sorted(r.run for r in running_runs),
-                   'training-runs':
-                       sorted(r.run for r in training_runs)})
-
-    out = {'parameters': params,
-           'results': rc._model_results,
-           'likelihood': rc._model_likelihood,
-           'marginal': rc.model._marg,
-           'priors': rc._used_priors}
 
     return out
 
