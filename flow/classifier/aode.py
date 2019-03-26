@@ -325,10 +325,14 @@ def temporal_prior(traces, actmn, actvar, fwhm):
             range(-defrange, defrange + 1), loc=0, scale=sigma(basis[b]))
         fits[b-1, :] = np.convolve(popact, b0 - bn, 'same')
 
-    # And return the wfits to the narrowest basis function
+    # And return the fits to the narrowest basis function
     weights = np.clip(np.nanmin(fits, axis=0), 0, 1)
 
     return weights
+
+
+def mask_stimuli(tprior, stim_mask):
+    pass
 
 
 def assign_temporal_priors(priors, tprior, keyword='other'):

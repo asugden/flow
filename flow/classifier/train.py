@@ -51,12 +51,16 @@ def train_classifier(
         training_runs = training_date.runs(
             run_types=['training'], tags=['hungry'])
     else:
-        assert all(run.parent==training_date for run in training_runs)
+        assert all(run.parent == training_date for run in training_runs)
+    if run in training_runs:
+        training_runs.remove(run)
     if running_runs is None:
         running_runs = training_date.runs(
             run_types=['running'], tags=['hungry'])
     else:
-        assert all(run.parent==training_date for run in running_runs)
+        assert all(run.parent == training_date for run in running_runs)
+    if run in running_runs:
+        running_runs.remove(run)
 
     # Get default parameters and update with any new ones passed in.
     params = config.default()
