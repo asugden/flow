@@ -30,7 +30,8 @@ def train_classifier(
         Optionally train on an alternate date.
     **pars
         All other classifier parameters are collect as keyword arguments. These
-        will override the default arguments in ..config.default().
+        will override the default arguments in ..config.default(). Parameter
+        names with '-' should be entered with a '_' and will be converted.
 
     Returns
     -------
@@ -71,7 +72,9 @@ def train_classifier(
 
     # Get default parameters and update with any new ones passed in.
     params = config.default()
-    params.update(pars)
+    for key, val in pars.iteritems():
+        # Convert to match old parameters
+        params[key.replace('_', '-')] = val
 
     # Convert parameters specified in seconds into frames.
     params = _convert_time_to_frames(
@@ -117,8 +120,7 @@ def train_classifier(
 
 
 def classify_reactivations(
-        run, model, params, nan_cells=None, skip_temporal_prior=False,
-        merge_cses=None):
+        run, model, params, nan_cells=None, merge_cses=None):
     """Given a run and trained model, classify reactivations.
 
     Parameters
@@ -132,8 +134,6 @@ def classify_reactivations(
     nan_cells : np.ndarray of bool
         Cell mask of cells to exclude from temporal prior. Activity outliers
         are also automatically removed.
-    skip_temporal_prior : bool
-        If True, do NOT use a temporal prior.
     merge_cses : optional, list
         List of class names. Merges the results of later values into the first
         one.
@@ -153,7 +153,24 @@ def classify_reactivations(
 
     priors = {cs: params['probability'][cs] for cs in model.classnames}
 
-    if not skip_temporal_prior:
+    if params.get('remove-stim', False):
+        t2p = run.trace2p()
+        POST_PAD_S = 0.1
+        POST_PAVLOVIAN_PAD_S = 0.2
+        all_stim_mask = t2p.trialmask(
+            cs='', errortrials=-1, fulltrial=False, padpre=0,
+            padpost=POST_PAD_S)
+        pav_mask = t2p.trialmask(
+            cs='pavlovian*', errortrials=-1, fulltrial=False,
+            padpre=0, padpost=POST_PAVLOVIAN_PAD_S)
+        blank_mask = t2p.trialmask(
+            cs='blank*', errortrials=-1, fulltrial=False,
+            padpre=0, padpost=POST_PAVLOVIAN_PAD_S)
+        stim_mask = (all_stim_mask | pav_mask) & ~blank_mask
+    else:
+        stim_mask = None
+
+    if params['temporal-dependent-priors']:
         baseline, variance, outliers = _activity(
             run,
             baseline_activity=params['temporal-prior-baseline-activity'],
@@ -165,13 +182,18 @@ def classify_reactivations(
 
         tpriorvec = aode.temporal_prior(
             full_traces[np.invert(outliers), :], actmn=baseline,
-            actvar=variance, fwhm=params['temporal-prior-fwhm-frames'])
+            actvar=variance, fwhm=params['temporal-prior-fwhm-frames'],
+            stim_mask=stim_mask)
         used_priors = aode.assign_temporal_priors(
             priors, tpriorvec, 'other')
     else:
-        raise NotImplementedError(
-            'Need to check priors to make sure that they sum to 1.')
-        used_priors = priors
+        # NOTE: this hasn't really been tested
+        # Default to equal probability
+        tpriorvec = np.ones(full_traces.shape[1])
+        if stim_mask is not None:
+            tpriorvec[stim_mask] = 0
+        used_priors = aode.assign_temporal_priors(
+            priors, tpriorvec, 'other')
 
     full_traces = np.clip(
         full_traces*params['analog-comparison-multiplier'], 0.0, 1.0)
@@ -221,15 +243,18 @@ def _activity(
     if trace_type != 'deconvolved':
         raise ValueError('Temporal classifier only implemented for deconvolved data.')
 
-    if 'sated' in run.tags:
+    if run.run_type is 'spontaneous' and 'sated' in run.tags:
         runs = run.parent.runs(run_types=['spontaneous'], tags=['sated'])
         spontaneous = True
-    elif 'hungry' in run.tags:
+    elif run.run_type is 'spontaneous' and 'hungry' in run.tags:
         runs = run.parent.runs(run_types=['spontaneous'], tags=['hungry'])
         spontaneous = True
-    else:
+    elif run.run_type is 'training':
         runs = run.parent.runs(run_types=['training'])
         spontaneous = False
+    else:
+        raise ValueError(
+            'Unknown run_type and tags, not sure how to calculate activity.')
 
     baseline, variance, outliers = None, None, None
     if spontaneous:
@@ -269,14 +294,14 @@ def _activity(
             pact = np.nanmean(t2p.trace('deconvolved'), axis=0)
             skipframes = int(t2p.framerate*4)
 
-            for cs in ['plus', 'neutral', 'minus', 'pavlovian']:
+            for cs in ['plus*', 'neutral*', 'minus*', 'pavlovian*']:
                 onsets = t2p.csonsets(cs)
                 for ons in onsets:
                     pact[ons:ons+skipframes] = np.nan
             popact = np.concatenate([popact, pact[np.isfinite(pact)]])
 
         if len(popact):
-            baseline = np.median(popact)
+            # baseline = np.median(popact)
 
             # Exclude extremes
             percent = 2.0
@@ -284,7 +309,8 @@ def _activity(
             trim = int(percent*popact.size/100.)
             popact = popact[trim:-trim]
 
-            variance = np.str(popact)
+            baseline = np.median(popact)  # Moved to after extreme exclusion on 032619
+            variance = np.std(popact)
             outliers = np.zeros(ncells, dtype=bool)
 
     if baseline is None:
