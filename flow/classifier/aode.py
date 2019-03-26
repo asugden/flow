@@ -282,7 +282,7 @@ def rollingmean(arr, integrate_frames):
     return out
 
 
-def temporal_prior(traces, actmn, actvar, fwhm):
+def temporal_prior(traces, actmn, actvar, fwhm, stim_mask=None):
     """Generate temporal-dependent priors.
 
     Uses basis sets and mexican-hat functions.
@@ -307,6 +307,12 @@ def temporal_prior(traces, actmn, actvar, fwhm):
     # Generate the basis functions and correct population activity for baseline and variation
     basis = np.power(fwhm, np.arange(4) + 1)
     popact = (np.nanmean(traces, axis=0) - actmn)/actvar
+    if stim_mask is not None:
+        # Linearly interpolate through stims
+        mask_indices = stim_mask.nonzero()[0]
+        nonmask_indices = np.invert(stim_mask).nonzero()[0]
+        popact[mask_indices] = np.interp(
+            mask_indices, nonmask_indices, popact[nonmask_indices])
     fits = np.zeros((len(basis) - 1, len(popact)))
 
     # Get the first basis normal function
@@ -328,11 +334,10 @@ def temporal_prior(traces, actmn, actvar, fwhm):
     # And return the fits to the narrowest basis function
     weights = np.clip(np.nanmin(fits, axis=0), 0, 1)
 
+    if stim_mask is not None:
+        weights[stim_mask] = 0.
+
     return weights
-
-
-def mask_stimuli(tprior, stim_mask):
-    pass
 
 
 def assign_temporal_priors(priors, tprior, keyword='other'):
