@@ -182,6 +182,9 @@ class Classify2P(object):
     def _classify(self):
         raise NotImplementedError('Need to add classification.')
 
+    def _save(self):
+        raise NotImplementedError('Need to add saving.')
+
 
 def count(result, threshold, all=False, max=2, downfor=2, offsets=False):
     """Count the number of replay events of non-"other" stimuli.
