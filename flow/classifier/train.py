@@ -212,7 +212,8 @@ def classify_reactivations(
            'results': results,
            'likelihood': likelihoods,
            'marginal': model.marginal,
-           'priors': used_priors}
+           'priors': used_priors,
+           'cell_mask': np.invert(nan_cells)}
 
     return out
 
@@ -241,7 +242,8 @@ def _activity(
 
     """
     if trace_type != 'deconvolved':
-        raise ValueError('Temporal classifier only implemented for deconvolved data.')
+        raise ValueError(
+            'Temporal classifier only implemented for deconvolved data.')
 
     if run.run_type == 'spontaneous' and 'sated' in run.tags:
         runs = run.parent.runs(run_types=['spontaneous'], tags=['sated'])

@@ -124,8 +124,8 @@ class TestClassifier(object):
                 out['likelihood'][key], orig['likelihood'][key],
                 rtol=0, atol=1e-10, err_msg=key)
 
-    # def test_cellmask(self):
-    #     assert_equal(out['cell_mask'], orig['cell_mask'])
+    def test_cellmask(self):
+        assert_equal(out['cell_mask'], orig['cell_mask'])
 
 if __name__ == '__main__':
     run_module_suite()
