@@ -186,23 +186,26 @@ class AODE(object):
     def describe(self):
         """List the key bits of information about each stimulus."""
 
-        out = '%13s    %5s    %6s   %5s    %5s    %5s    %5s    %5s    %5s    %5s  %5s  %6s\n'%(
-            'Stimulus', 'Mean', 'Median', 'SMax', 'JMax', 'SSum', 'JSumTT', 'JSumTF', 'JSumFT', 'JSumFF', 'Cells',
-            'Onsets')
-        for cs in self.d:
-            out += '%13s    %.3f    %.3f    %.3f    %.3f    %5.2f    %6.0f    %6.0f    %6.0f    %6.0f    %3i    %4i\n'%(
+        # out = '%13s    %5s    %6s   %5s    %5s    %5s    %5s    %5s    %5s    %5s  %5s  %6s\n'%(
+        #     'Stimulus', 'Mean', 'Median', 'SMax', 'JMax', 'SSum', 'JSumTT', 'JSumTF', 'JSumFT', 'JSumFF', 'Cells',
+        #     'Onsets')
+        out = '%13s    %5s    %6s   %5s    %5s    %5s    %5s    %5s    %5s    %5s  %5s\n'%(
+            'Stimulus', 'Mean', 'Median', 'SMax', 'JMax', 'SSum', 'JSumTT', 'JSumTF', 'JSumFT', 'JSumFF', 'Cells')
+        for cs in self.classnames:
+            # out += '%13s    %.3f    %.3f    %.3f    %.3f    %5.2f    %6.0f    %6.0f    %6.0f    %6.0f    %3i    %4i\n'%(
+            out += '%13s    %.3f    %.3f    %.3f    %.3f    %5.2f    %6.0f    %6.0f    %6.0f    %6.0f    %3i\n'%(
                 cs,
                 np.mean(self._marg[cs][:, 0]),
                 np.median(self._marg[cs][:, 0]),
                 np.max(self._marg[cs][:, 0]),
-                np.max(self._cond[cs][:, :, 0]) if not self._nbonly else 0,
+                np.max(self._cond[cs][:, :, 0]),
                 np.sum(self._marg[cs][:, 0]),
-                np.sum(self._cond[cs][:, :, 0]) if not self._nbonly else 0,
-                np.sum(self._cond[cs][:, :, 2]) if not self._nbonly else 0,
-                np.sum(self._cond[cs][:, :, 1]) if not self._nbonly else 0,
-                np.sum(self._cond[cs][:, :, 3]) if not self._nbonly else 0,
+                np.sum(self._cond[cs][:, :, 0]),
+                np.sum(self._cond[cs][:, :, 2]),
+                np.sum(self._cond[cs][:, :, 1]),
+                np.sum(self._cond[cs][:, :, 3]),
                 len(self._marg[cs][:, 0]),
-                np.shape(self.d[cs])[0],
+                # np.shape(self.d[cs])[0],
             )
         return out
 
