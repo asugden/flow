@@ -50,6 +50,9 @@ class TestClassifier(object):
                         isinstance(test_d[key], dict),
                         msg="'{}' should be a dict.".format(key))
                     compare_dict(orig_d[key], test_d[key])
+                # Let the classifier updated date change
+                if key == 'classifier_updated_date':
+                    continue
                 # hack to deal with Matlab compressing away singleton
                 # dimensions.
                 if isinstance(test_d[key], list) and len(test_d[key]) == 1:
