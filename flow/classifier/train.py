@@ -11,7 +11,7 @@ from .. import config
 
 def train_classifier(
         run, training_runs=None, running_runs=None, training_date=None,
-        **pars):
+        verbose=True, **pars):
     """
     Function to prepare all data to train the classifier.
 
@@ -28,6 +28,8 @@ def train_classifier(
         run_type == 'running'.
     training_date : Date, optional
         Optionally train on an alternate date.
+    verbose : bool
+        If True, print out info about the trained model.
     **pars
         All other classifier parameters are collect as keyword arguments. These
         will override the default arguments in ..config.default(). Parameter
@@ -60,15 +62,15 @@ def train_classifier(
             run_types=['training'], tags=['hungry'])
     else:
         assert all(run.parent == training_date for run in training_runs)
-    if run in training_runs:
-        training_runs.remove(run)
+    # if run in training_runs:
+    #     training_runs.remove(run)
     if running_runs is None:
         running_runs = training_date.runs(
             run_types=['running'], tags=['hungry'])
     else:
         assert all(run.parent == training_date for run in running_runs)
-    if run in running_runs:
-        running_runs.remove(run)
+    # if run in running_runs:
+    #     running_runs.remove(run)
 
     # Get default parameters and update with any new ones passed in.
     params = config.default()
@@ -106,6 +108,8 @@ def train_classifier(
 
     model = aode.AODE()
     model.train(traces, params['classifier'])
+    if verbose:
+        print(model.describe())
 
     params.update({'comparison-date': run.date,
                    'comparison-run': run.run,
@@ -155,17 +159,18 @@ def classify_reactivations(
 
     if params.get('remove-stim', False):
         t2p = run.trace2p()
-        POST_PAD_S = 0.1
+        pad_s = params['classification-ms'] / 1000. / 2.
+        # POST_PAD_S = 0.1
         POST_PAVLOVIAN_PAD_S = 0.2
         all_stim_mask = t2p.trialmask(
-            cs='', errortrials=-1, fulltrial=False, padpre=0,
-            padpost=POST_PAD_S)
+            cs='', errortrials=-1, fulltrial=False, padpre=pad_s,
+            padpost=pad_s)
         pav_mask = t2p.trialmask(
             cs='pavlovian*', errortrials=-1, fulltrial=False,
-            padpre=0, padpost=POST_PAVLOVIAN_PAD_S)
+            padpre=pad_s, padpost=pad_s + POST_PAVLOVIAN_PAD_S)
         blank_mask = t2p.trialmask(
             cs='blank*', errortrials=-1, fulltrial=False,
-            padpre=0, padpost=POST_PAVLOVIAN_PAD_S)
+            padpre=pad_s, padpost=pad_s + POST_PAVLOVIAN_PAD_S)
         stim_mask = (all_stim_mask | pav_mask) & ~blank_mask
     else:
         stim_mask = None
