@@ -527,7 +527,7 @@ class Run(object):
 
         return self._t2p
 
-    def classify2p(self, run, newpars=None, randomize=''):
+    def classify2p(self, newpars=None, randomize=''):
         """
         Return classifier.
 
@@ -546,31 +546,36 @@ class Run(object):
             if self._c2p is None:
                 pars = self._default_classifier_pars()
                 c2p_path = paths.getc2p(self.mouse, self.date, self.run, pars)
-                self._c2p = classify2p.Classify2P(c2p_path, self.run, pars)
+                self._c2p = classify2p.Classify2P(c2p_path, self, pars)
             return self._c2p
         else:
             pars = self._default_classifier_pars()
             pars.update(newpars)
 
             c2p_path = paths.getc2p(self.mouse, self.date, self.run, pars)
-            return classify2p.Classify2P(c2p_path, self.run, pars)
+            return classify2p.Classify2P(c2p_path, self, pars)
 
     def _default_classifier_pars(self):
         """Return the default classifier parameters for the this Run."""
         if self._default_pars is None:
             pars = config.default()
-            runs = metadata.meta(
-                mice=self.mouse, dates=self.date)
-            running_runs = runs.loc[runs.run_type == 'running']
-            training_runs = runs.loc[runs.run_type == 'training']
+            running_runs = self.parent.runs(run_types='running')
+            training_runs = self.parent.runs(run_types='training')
+
+            if self.run_type == 'training':
+                # training_runs.remove(self)
+                pars.update({'analog-comparison-multiplier': 2.0,
+                             'remove-stim': True})
+            elif self.run_type == 'running':
+                running_runs.remove(self)
+
             pars.update({'mouse': self.mouse,
                          'comparison-date': str(self.date),
                          'comparison-run': self.run,
                          'training-date': str(self.date),
-                         'training-other-running-runs': sorted(
-                             running_runs.index.get_level_values('run')),
-                         'training-runs': sorted(
-                             training_runs.index.get_level_values('run'))
+                         'training-other-running-runs':
+                             [run.run for run in running_runs],
+                         'training-runs': [run.run for run in training_runs]
                          })
             self._default_pars = pars
         return copy(self._default_pars)

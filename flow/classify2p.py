@@ -2,13 +2,16 @@ from builtins import range
 from builtins import object
 from copy import deepcopy
 import numpy as np
+import os.path as opath
+from scipy.io import savemat
+import yaml
 
-from .misc import loadmat
-from classifier import train
+from .misc import legiblepars, loadmat, matlabifypars, mkdir_p
+from .classifier import train
 
 
 class Classify2P(object):
-    def __init__(self, path, run, pars):
+    def __init__(self, path, run, pars=None):
         """
         Load in a classifier or classifiers
 
@@ -20,8 +23,11 @@ class Classify2P(object):
             The parameters used to generate the classifier
         """
 
+        if pars is None:
+            pars = {}
         self.pars = pars
         self.run = run
+        self._path = path
         self._xresults = None
         self._trained_model = None
         self._trained_params = None
@@ -30,12 +36,13 @@ class Classify2P(object):
         try:
             self.d = loadmat(path)
         except IOError:
-            self._classify(path)
+            self._classify()
+            self._save()
 
     def __repr__(self):
-        return "Classify2P(paths={})".format(self._paths)
+        return "Classify2P(path={})".format(self._path)
 
-    def classify(self, data, priors=None, temporal_prior=None, integrate_frames=1):
+    def classify(self, data=None, priors=None, temporal_prior=None, integrate_frames=1):
         """
         Return a trained classifier either for running the traditional classifier
         or for randomization.
@@ -58,12 +65,13 @@ class Classify2P(object):
         """
 
         # Train only once
-        if self._trained is None:
-            self._trained_model, self._trained_params, self.trained_activity = \
-                train.train_classifier(self.run, **self.pars)
+        if self._trained_model is None:
+            self._trained_model, self._trained_params, self._trained_nan_cells = \
+                train.train_classifier(run=self.run, **self.pars)
 
         results = train.classify_reactivations(
-            run, self._trained_model, self._trained_params, self._trained_activity)
+            run=self.run, model=self._trained_model,
+            params=self._trained_params, nan_cells=self._trained_nan_cells)
 
         return results
 
@@ -180,10 +188,26 @@ class Classify2P(object):
                 self._xresults[cs][self._xresults[cs] < maxact] = 0
 
     def _classify(self):
-        raise NotImplementedError('Need to add classification.')
+        self._trained_model, self._trained_params, self._trained_nan_cells = \
+            train.train_classifier(run=self.run, **self.pars)
+
+        results = train.classify_reactivations(
+            run=self.run, model=self._trained_model,
+            params=self._trained_params, nan_cells=self._trained_nan_cells)
+
+        self.d = results
 
     def _save(self):
-        raise NotImplementedError('Need to add saving.')
+        mkdir_p(opath.dirname(self._path))
+        pars_path = opath.join(opath.dirname(self._path), 'pars.txt')
+        legiblepars.write(pars_path, self.d['parameters'])
+        pars_path = opath.join(opath.dirname(self._path), 'pars.yml')
+        with open(pars_path, 'wb') as f:
+            yaml.dump(self.d['parameters'], f)
+        out = deepcopy(self.d)
+        out['parameters'] = matlabifypars(out['parameters'])
+        print('Saving classifier: {}'.format(self._path))
+        savemat(self._path, out)
 
 
 def count(result, threshold, all=False, max=2, downfor=2, offsets=False):

@@ -47,7 +47,7 @@ def getc2p(mouse, date, run, pars, randomize=''):
     """
 
     pars['mouse'] = mouse
-    pars['date'] = date
+    pars['comparison-date'] = str(date)
     pars['comparison-run'] = run
 
     title = ['classifier']
@@ -55,7 +55,7 @@ def getc2p(mouse, date, run, pars, randomize=''):
         title += [randomize]
     title = '-'.join(title) + '.mat'
 
-    path = output(pars)
+    path = output(pars, use_new=True)
     return opath.join(path, title)
 
 def classifier2p(run, pars, randomize=''):
@@ -279,8 +279,8 @@ def classifierword(pars):
 
     return wordhash.word(pars)
 
-def output(pars):
-    word = wordhash.word(pars)
+def output(pars, use_new=False):
+    word = wordhash.word(pars, use_new=use_new)
     # print 'Classifier %s' % (word)
     mouse = pars['mouse']
     date = pars['training-date']
@@ -288,13 +288,13 @@ def output(pars):
 
     # Base/mouse
     path = opath.join(outd, mouse)
-    if not opath.exists(path): os.mkdir(path)
+    # if not opath.exists(path): os.mkdir(path)
     # Base/mouse/date
     path = opath.join(path, date)
-    if not opath.exists(path): os.mkdir(path)
+    # if not opath.exists(path): os.mkdir(path)
     # Base/mouse/date/run-parameterWord
     path = opath.join(path, '%03i-%s' % (crun, word))
-    if not opath.exists(path): os.mkdir(path)
+    # if not opath.exists(path): os.mkdir(path)
 
     return path
 
