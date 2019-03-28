@@ -163,7 +163,6 @@ def default():
 
 
 def _load_config():
-    global _settings, _colors
     config_path = _find_config()
     with open(config_path, 'r') as f:
         loaded_config = json.load(f)
