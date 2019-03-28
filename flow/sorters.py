@@ -563,11 +563,8 @@ class Run(object):
             training_runs = self.parent.runs(run_types='training')
 
             if self.run_type == 'training':
-                # training_runs.remove(self)
                 pars.update({'analog-comparison-multiplier': 2.0,
                              'remove-stim': True})
-            elif self.run_type == 'running':
-                running_runs.remove(self)
 
             pars.update({'mouse': self.mouse,
                          'comparison-date': str(self.date),

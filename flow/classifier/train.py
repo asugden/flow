@@ -62,15 +62,11 @@ def train_classifier(
             run_types=['training'], tags=['hungry'])
     else:
         assert all(run.parent == training_date for run in training_runs)
-    # if run in training_runs:
-    #     training_runs.remove(run)
     if running_runs is None:
         running_runs = training_date.runs(
             run_types=['running'], tags=['hungry'])
     else:
         assert all(run.parent == training_date for run in running_runs)
-    # if run in running_runs:
-    #     running_runs.remove(run)
 
     # Get default parameters and update with any new ones passed in.
     params = config.default()
@@ -89,7 +85,7 @@ def train_classifier(
 
     # Pull all training data
     traces = _get_traces(
-        training_runs, running_runs, all_cses,
+        run, training_runs, running_runs, all_cses,
         trace_type=params['trace-type'],
         length_fr=params['stimulus-frames'],
         pad_fr=params['excluded-time-around-onsets-frames'],
@@ -99,7 +95,8 @@ def train_classifier(
         lick_window=params['lick-window'],
         correct_trials=params['train-only-on-positives'],
         running_fraction=params['other-running-fraction'],
-        max_n_onsets=params['maximum-cs-onsets'])
+        max_n_onsets=params['maximum-cs-onsets'],
+        remove_stim=params['remove-stim'])
 
     # Remove any binarization
     for cs in traces:
@@ -157,7 +154,7 @@ def classify_reactivations(
 
     priors = {cs: params['probability'][cs] for cs in model.classnames}
 
-    if params.get('remove-stim', False):
+    if params['remove-stim']:
         t2p = run.trace2p()
         pad_s = params['classification-ms'] / 1000. / 2.
         # POST_PAD_S = 0.1
@@ -330,15 +327,17 @@ def _activity(
 
 
 def _get_traces(
-        runs, running_runs, all_cses, trace_type='deconvolved', length_fr=15,
+        run, runs, running_runs, all_cses, trace_type='deconvolved', length_fr=15,
         pad_fr=31, offset_fr=1, running_threshold_cms=4., correct_trials=False,
         lick_cutoff=-1, lick_window=(-1, 0), running_fraction=0.3,
-        max_n_onsets=-1):
+        max_n_onsets=-1, remove_stim=True):
     """
     Return all trace data by stimulus chopped into same sized intervals.
 
     Parameters
     ----------
+    run : Run
+        The target run that we are training for.
     runs : RunSorter
         Runs to use for training of stimulus presentations.
     running_runs : RunSorter
@@ -365,6 +364,9 @@ def _get_traces(
     max_n_onsets : int, optional
         If >0, limit the number of allowed onsets to this number, to match
         the amount of training data across states.
+    remove_stim : boolean
+        If True, stimulus frames will be removed before classification, so we
+        can use them for training.
 
     Returns
     -------
@@ -372,57 +374,64 @@ def _get_traces(
         Keys are cs name, value is nonsets x ncells x nframes
 
     """
-    # Prepare running baseline data.
-    # NOTE: running thresholding is done differently here than later during
-    # stimulus runs.
-    out = {'other-running': _get_run_onsets(
-        runs=running_runs,
-        length_fr=length_fr,
-        pad_fr=pad_fr,
-        offset_fr=offset_fr,
-        running_threshold_cms=running_threshold_cms)}
+    if run not in running_runs:
+        # Prepare running baseline data.
+        # NOTE: running thresholding is done differently here than later during
+        # stimulus runs.
+        out = {'other-running': _get_run_onsets(
+            runs=running_runs,
+            length_fr=length_fr,
+            pad_fr=pad_fr,
+            offset_fr=offset_fr,
+            running_threshold_cms=running_threshold_cms)}
 
-    for run in runs:
-        t2p = run.trace2p()
+    for training_run in runs:
+        t2p = training_run.trace2p()
 
         # Get the trace from which to extract time points
         trs = t2p.trace(trace_type)
 
-        # Search through all stimulus onsets, correctly coding them
-        for ncs in t2p.cses():  # t.cses(self._pars['add-ensure-quinine']):
-            if ncs in all_cses:
-                # Remap cs name if needed
-                # NOTE: blank trials are just labeled 'other' and not checked
-                # for running.
-                cs = all_cses[ncs]
-                # Initialize output
-                if cs not in out:
-                    out[cs] = []
+        # If the target run is also a training run, make sure that we aren't
+        # training on the same data that will later be used for comparison
+        if remove_stim or training_run != run:
+            # Search through all stimulus onsets, correctly coding them
+            for ncs in t2p.cses():  # t.cses(self._pars['add-ensure-quinine']):
+                if ncs in all_cses:
+                    # Remap cs name if needed
+                    # NOTE: blank trials are just labeled 'other' and not checked
+                    # for running.
+                    cs = all_cses[ncs]
+                    # Initialize output
+                    if cs not in out:
+                        out[cs] = []
 
-                ons = t2p.csonsets(
-                    ncs, 0 if correct_trials else -1, lick_cutoff, lick_window)
+                    ons = t2p.csonsets(
+                        ncs, 0 if correct_trials else -1, lick_cutoff, lick_window)
 
-                for on in ons:
-                    start = on + offset_fr
-                    toappend = trs[:, start:start + length_fr]
-                    # Make sure interval didn't run off the end.
-                    if toappend.shape[1] == length_fr:
-                        out[cs].append(toappend)
+                    for on in ons:
+                        start = on + offset_fr
+                        toappend = trs[:, start:start + length_fr]
+                        # Make sure interval didn't run off the end.
+                        if toappend.shape[1] == length_fr:
+                            out[cs].append(toappend)
 
-        # Add all onsets of "other" frames
-        others = t2p.nocs(length_fr, pad_fr, -1)
+        # If the target run is in the training runs, don't use the times
+        # that will later be used for comparison.
+        if training_run != run:
+            # Add all onsets of "other" frames
+            others = t2p.nocs(length_fr, pad_fr, -1)
 
-        if len(t2p.speed()) > 0:
-            running = t2p.speed() > running_threshold_cms
-            for ot in others:
-                start = ot + offset_fr
-                if nanmean(running[start:start + length_fr]) > \
-                        running_fraction:
-                    out['other-running'].append(
-                        trs[:, start:start + length_fr])
-                else:
-                    out['other'].append(
-                        trs[:, start:start + length_fr])
+            if len(t2p.speed()) > 0:
+                running = t2p.speed() > running_threshold_cms
+                for ot in others:
+                    start = ot + offset_fr
+                    if nanmean(running[start:start + length_fr]) > \
+                            running_fraction:
+                        out['other-running'].append(
+                            trs[:, start:start + length_fr])
+                    else:
+                        out['other'].append(
+                            trs[:, start:start + length_fr])
 
     # Selectively remove onsets if necessary
     if max_n_onsets > 0:
