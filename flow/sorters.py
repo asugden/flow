@@ -172,8 +172,9 @@ class Date(object):
 
         self._parent = Mouse(mouse=self.mouse)
         self._tags, self._photometry = None, None
-        self._glm, self._runs = None, None
+        self._runs = None
         self._framerate = None
+        self._glm = {}
 
     @property
     def mouse(self):
@@ -346,14 +347,14 @@ class Date(object):
         GLM
 
         """
-        if self._glm is None:
-            self._glm = glm.glm(
+        if glm_type not in self._glm:
+            self._glm[glm_type] = glm.glm(
                 self.mouse, self.date, self.framerate, glm_type=glm_type)
 
             if self._cells is not None:
-                self._glm.subset(self._cells)
+                self._glm[glm_type].subset(self._cells)
 
-        return self._glm
+        return self._glm[glm_type]
 
     def clearcache(self):
         """Clear all cached data for this Date and any child Run objects."""
