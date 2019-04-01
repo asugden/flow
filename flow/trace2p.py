@@ -328,7 +328,8 @@ class Trace2P(object):
 
     def cstraces(
             self, cs, start_s=-1, end_s=None, trace_type='deconvolved',
-            cutoff_before_lick_ms=-1, errortrials=-1, baseline=None, baseline_to_stimulus=True):
+            cutoff_before_lick_ms=-1, errortrials=-1, baseline=None,
+            baseline_to_stimulus=True):
         """Return the onsets for a particular cs with flexibility.
 
         Parameters
@@ -400,7 +401,8 @@ class Trace2P(object):
 
         # Subtract the baseline, if desired
         if baseline is not None and baseline[0] < baseline[1]:
-            if cs in ['ensure', 'quinine', 'reward', 'punishment'] and baseline_to_stimulus:
+            if cs in ['ensure', 'quinine', 'reward', 'punishment'] and \
+                    baseline_to_stimulus:
                 start_blf = int(round(baseline[0]*self.framerate))
                 end_blf = int(round(baseline[1]*self.framerate))
 
@@ -412,12 +414,13 @@ class Trace2P(object):
                     if end > self.nframes:
                         end = self.nframes
 
-                    out[:, :, i] -= np.nanmean(self.trace(trace_type)[:, start:end])
+                    out[:, :, i] -= np.nanmean(
+                        self.trace(trace_type)[:, start:end])
             else:
-                bltrs = np.nanmean(self.cstraces(cs, start_s=baseline[0], end_s=baseline[1],
-                                                 trace_type=trace_type, cutoff_before_lick_ms=-1,
-                                                 errortrials=errortrials, baseline=None),
-                                   axis=1)
+                bltrs = np.nanmean(self.cstraces(
+                    cs, start_s=baseline[0], end_s=baseline[1],
+                    trace_type=trace_type, cutoff_before_lick_ms=-1,
+                    errortrials=errortrials, baseline=None), axis=1)
                 for f in range(np.shape(out)[1]):
                     out[:, f, :] -= bltrs
 
@@ -1213,8 +1216,7 @@ class Trace2P(object):
         return lateralness, posteriorness
 
     def _onsets(self, cs='', errortrials=-1):
-        """
-        Return the onset frames of stimulus cs
+        """Return the onset frames of stimulus cs.
 
         :param cs: stimulus name, including reward, punishment, quinine, or blank for all trials
         :param errortrials: -1 is all trials, 0 is correct trials, 1 is error trials

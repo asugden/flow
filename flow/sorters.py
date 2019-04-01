@@ -338,7 +338,7 @@ class Date(object):
 
         return DateRunSorter(run_objs, name=name)
 
-    def glm(self):
+    def glm(self, glm_type='simpglm'):
         """Return GLM object.
 
         Returns
@@ -347,7 +347,8 @@ class Date(object):
 
         """
         if self._glm is None:
-            self._glm = glm.glm(self.mouse, self.date, self.framerate)
+            self._glm = glm.glm(
+                self.mouse, self.date, self.framerate, glm_type=glm_type)
 
             if self._cells is not None:
                 self._glm.subset(self._cells)
