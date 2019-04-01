@@ -88,16 +88,17 @@ class GLM(object):
             self.hz = 15.49
         else:
             self.hz = hz
+        self.glm_type = glm_type
+
         self.exists = False
         self.freq = None
-
         self._original_coeffs = None
         self._original_devexp = None
 
-        path = paths.glmpath(mouse, date, glm_type)
+        self.path = paths.glmpath(mouse, date, glm_type)
 
-        if path is not None:
-            self.d = misc.loadmat(path)
+        if self.path is not None:
+            self.d = misc.loadmat(self.path)
 
             if 'behaviornames' in self.d:
                 self.exists = True
@@ -110,7 +111,8 @@ class GLM(object):
                 self.devexp = self.d['deviance_explained']
 
     def __repr__(self):
-        return "GLM(mouse={}, date={})".format(self.mouse, self.date)
+        return "GLM(mouse={}, date={}, glm_type={})".format(
+            self.mouse, self.date, self.glm_type)
 
     def groups(self, short=False):
         """
