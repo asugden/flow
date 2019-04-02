@@ -157,17 +157,21 @@ def classify_reactivations(
     if params['remove-stim']:
         t2p = run.trace2p()
         pad_s = params['classification-ms'] / 1000. / 2.
-        # POST_PAD_S = 0.1
-        POST_PAVLOVIAN_PAD_S = 0.2
+        post_pad_s = 0.0 + pad_s
+        post_pav_pad_s = 0.5 + pad_s
+        # Round-up all times to a full frame
+        pad_s = np.ceil(pad_s*t2p.framerate)/t2p.framerate
+        post_pad_s = np.ceil(post_pad_s*t2p.framerate)/t2p.framerate
+        post_pav_pad_s = np.ceil(post_pav_pad_s*t2p.framerate)/t2p.framerate
         all_stim_mask = t2p.trialmask(
             cs='', errortrials=-1, fulltrial=False, padpre=pad_s,
-            padpost=pad_s)
+            padpost=post_pad_s)
         pav_mask = t2p.trialmask(
             cs='pavlovian*', errortrials=-1, fulltrial=False,
-            padpre=pad_s, padpost=pad_s + POST_PAVLOVIAN_PAD_S)
+            padpre=pad_s, padpost=post_pav_pad_s)
         blank_mask = t2p.trialmask(
             cs='blank*', errortrials=-1, fulltrial=False,
-            padpre=pad_s, padpost=pad_s + POST_PAVLOVIAN_PAD_S)
+            padpre=pad_s, padpost=post_pav_pad_s)
         stim_mask = (all_stim_mask | pav_mask) & ~blank_mask
     else:
         stim_mask = None
