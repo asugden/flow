@@ -1,2 +1,2 @@
 from .misc import *
-from . import legiblepars, plotting, wordhash
+from . import legiblepars, math, plotting, wordhash

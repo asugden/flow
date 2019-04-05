@@ -8,7 +8,12 @@ import re
 from rpy2.robjects import pandas2ri
 from rpy2.robjects.packages import importr
 from scipy.stats import pearsonr
+import seaborn as sns
 import statsmodels.api as sm
+try:
+    from bottleneck import nanmean
+except ImportError:
+    from numpy import nanmean
 
 
 def subformula(formula, data):
@@ -554,3 +559,39 @@ class RunningStats(object):
         :return: vector, self.subset
         """
         return self.subset
+
+
+def bootstrap_ci(
+        data, ci=68, func=nanmean, axis=0, n_boot=10000, units=None):
+    """Calculate a bootstrap confidence interval.
+
+    Calculate the standard error of the mean (SEM) for a sample with ci=68 and
+    func=mean/nanmean.
+
+    Parameters
+    ----------
+    data : 1-d array
+    ci : float on [0, 100]
+        The desired confidence interval. The returned lower and upper bounds
+        will contain ci% of the bootstrap statistics values.
+    func : fn
+        Desired statistic function.
+    axis : int, optional
+        Axis along which to resample data. If 'None', flatten array.
+    n_bootstraps : int
+    units : nd.array of same shape as data, optional
+        Groupings of data. See seaborn.algorithms.bootstrap for details.
+
+    Returns
+    -------
+    np.ndarray
+        Lower and upper bounds of desired statistic.
+
+    """
+
+    boots = sns.algorithms.bootstrap(
+        data, axis=axis, func=func, n_boot=n_boot, unit=units)
+
+    confidence_intervals = sns.utils.ci(boots, which=ci, axis=axis)
+
+    return confidence_intervals
