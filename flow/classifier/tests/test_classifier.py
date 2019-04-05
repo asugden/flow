@@ -4,13 +4,14 @@ from numpy.testing import \
 import flow
 
 mdr = {'mouse': 'AS41', 'date': 171130, 'run': 9}
+run = None
 
 orig, pars, out = None, None, None
 
 
 def setup():
     """Setup."""
-    global orig, pars, out
+    global orig, pars, out, run
 
     orig = flow.misc.loadmat('data/AS41_171130_009.mat')
 
@@ -34,7 +35,12 @@ def teardown(self):
 
 
 class TestClassifier(object):
-    """Test classifier output to make sure it matches old data."""
+    """Test classifier output to make sure it matches old data.
+
+    Added in only looking after lastonset() to a few of the tests since
+    we've tweaked how stimuli are masked by default.
+
+    """
 
     def test_parameters(self):
         # This test allows for new parameters to be added, but all of the
@@ -63,27 +69,33 @@ class TestClassifier(object):
         compare_dict(orig['parameters'], out['parameters'])
 
     def test_priors(self):
+        last_onset = run.trace2p().lastonset()
         for key in orig['priors']:
-            assert_equal(out['priors'][key], orig['priors'][key], err_msg=key)
+            assert_equal(out['priors'][key][last_onset:],
+                         orig['priors'][key][last_onset:], err_msg=key)
 
     def test_result_keys(self):
         assert_equal(
             sorted(out['results'].keys()), sorted(orig['results'].keys()))
 
     def test_results_pnm(self):
+        last_onset = run.trace2p().lastonset()
         for key in orig['results']:
             if key not in ['plus', 'neutral', 'minus']:
                 continue
             assert_allclose(
-                out['results'][key], orig['results'][key], rtol=0, atol=1e-4,
+                out['results'][key][last_onset:],
+                orig['results'][key][last_onset:], rtol=0, atol=1e-4,
                 err_msg=key)
 
     def test_results_other(self):
+        last_onset = run.trace2p().lastonset()
         for key in orig['results']:
             if key in ['plus', 'neutral', 'minus']:
                 continue
             assert_allclose(
-                out['results'][key], orig['results'][key], rtol=0, atol=1e-4,
+                out['results'][key][last_onset:],
+                orig['results'][key][last_onset:], rtol=0, atol=1e-4,
                 err_msg=key)
 
     def test_marginal_keys(self):

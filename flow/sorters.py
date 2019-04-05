@@ -565,8 +565,11 @@ class Run(object):
             training_runs = self.parent.runs(run_types='training')
 
             if self.run_type == 'training':
-                pars.update({'analog-comparison-multiplier': 2.0,
-                             'remove-stim': True})
+                # Could add specific parameters like this, but for now they
+                # are the same.
+                # pars.update({'analog-comparison-multiplier': 2.0,
+                #              'remove-stim': True})
+                pass
 
             pars.update({'mouse': self.mouse,
                          'comparison-date': str(self.date),

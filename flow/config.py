@@ -47,6 +47,7 @@ _settings = {
     'temporal-prior-baseline-activity': 0.0,  # Derived from looking at spontaneous period activity levels, subtracted
     'temporal-prior-baseline-sigma': 3.0,  # Maximum amount of variance explained by noise, divided by
     'temporal-prior-threshold': -1,  # Set a threshold on the temporal prior so that frames are either analyzed or not
+    'remove-stim': True,  # Remove the stimulus frames before temporal prior and classification
 
     # ACCOUNT FOR LICKING
     # Cut off training trials with numbers of licks during the
@@ -59,7 +60,7 @@ _settings = {
     'maximum-cs-onsets': -1,  # Maximum number of CS onsets to train on
     'train-only-on-positives': False,  # On correct rejections and true positives (cs+ lick, csn, cs- no lick)
 
-    'classifier-updated-date': '180516',  # Advance one day to 180517 for naive bayes
+    'classifier-updated-date': '190405',
 
     # ==================================================================
     # LEAVE UNCHANGED AFTER TRAINING
