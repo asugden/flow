@@ -60,6 +60,9 @@ _settings = {
     'maximum-cs-onsets': -1,  # Maximum number of CS onsets to train on
     'train-only-on-positives': False,  # On correct rejections and true positives (cs+ lick, csn, cs- no lick)
 
+    # RANDOMIZATION
+    'equalize-cell-activity': False,  # If true, equalize the activity of each cell across all runs
+
     'classifier-updated-date': '190405',
 
     # ==================================================================
