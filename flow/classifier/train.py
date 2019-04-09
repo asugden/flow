@@ -70,7 +70,7 @@ def train_classifier(
 
     # Get default parameters and update with any new ones passed in.
     params = config.default()
-    for key, val in pars.iteritems():
+    for key, val in pars.items():
         # Convert to match old parameters
         params[key.replace('_', '-')] = val
 
@@ -110,7 +110,7 @@ def train_classifier(
 
     params.update({'comparison-date': run.date,
                    'comparison-run': run.run,
-                   'mouse': unicode(run.mouse),
+                   'mouse': run.mouse,
                    'training-date': training_date.date,
                    'training-other-running-runs':
                        sorted(r.run for r in running_runs),
