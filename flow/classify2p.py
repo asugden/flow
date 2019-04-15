@@ -3,10 +3,9 @@ from builtins import object
 from copy import deepcopy
 import numpy as np
 import os.path as opath
-from scipy.io import savemat
 import yaml
 
-from .misc import legiblepars, loadmat, matlabifypars, mkdir_p
+from .misc import legiblepars, loadmat, savemat, matlabifypars, mkdir_p
 from .classifier import train
 
 
@@ -202,7 +201,7 @@ class Classify2P(object):
         legiblepars.write(pars_path, self.d['parameters'])
         pars_path = opath.join(opath.dirname(self._path), 'pars.yml')
         with open(pars_path, 'wb') as f:
-            yaml.dump(self.d['parameters'], f)
+            yaml.dump(self.d['parameters'], f, encoding='utf-8')
         out = deepcopy(self.d)
         out['parameters'] = matlabifypars(out['parameters'])
         print('Saving classifier: {}'.format(self._path))

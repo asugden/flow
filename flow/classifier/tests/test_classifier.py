@@ -1,5 +1,7 @@
 from numpy.testing import \
     run_module_suite, assert_, assert_allclose, assert_equal
+from past.builtins import basestring
+from tempfile import TemporaryFile
 
 import flow
 
@@ -43,36 +45,21 @@ class TestClassifier(object):
     """
 
     def test_parameters(self):
-        # This test allows for new parameters to be added, but all of the
-        # original keys must be present. If this test fails, all the rest
-        # probably should as well.
-        def compare_dict(orig_d, test_d):
-            for key in orig_d:
-                assert_(
-                    key in test_d,
-                    msg="'{}' not in test parameters.".format(key))
-                if isinstance(orig_d[key], dict):
-                    assert_(
-                        isinstance(test_d[key], dict),
-                        msg="'{}' should be a dict.".format(key))
-                    compare_dict(orig_d[key], test_d[key])
-                # Let the classifier updated date change
-                if key == 'classifier_updated_date':
-                    continue
-                # hack to deal with Matlab compressing away singleton
-                # dimensions.
-                if isinstance(test_d[key], list) and len(test_d[key]) == 1:
-                    assert_equal(test_d[key], [orig_d[key]], err_msg=key)
-                else:
-                    assert_equal(test_d[key], orig_d[key], err_msg=key)
+        _compare_dict(orig['parameters'], out['parameters'])
 
-        compare_dict(orig['parameters'], out['parameters'])
+    def test_saved_parameters(self):
+        with TemporaryFile() as f:
+            flow.misc.savemat(f, out['parameters'])
+            params = flow.misc.loadmat(f)
+        _compare_dict(orig['parameters'], params)
 
     def test_priors(self):
         last_onset = run.trace2p().lastonset()
         for key in orig['priors']:
-            assert_equal(out['priors'][key][last_onset:],
-                         orig['priors'][key][last_onset:], err_msg=key)
+            assert_allclose(
+                out['priors'][key][last_onset:],
+                orig['priors'][key][last_onset:], rtol=0, atol=1e-10,
+                err_msg=key)
 
     def test_result_keys(self):
         assert_equal(
@@ -85,7 +72,7 @@ class TestClassifier(object):
                 continue
             assert_allclose(
                 out['results'][key][last_onset:],
-                orig['results'][key][last_onset:], rtol=0, atol=1e-4,
+                orig['results'][key][last_onset:], rtol=0, atol=1e-10,
                 err_msg=key)
 
     def test_results_other(self):
@@ -95,7 +82,7 @@ class TestClassifier(object):
                 continue
             assert_allclose(
                 out['results'][key][last_onset:],
-                orig['results'][key][last_onset:], rtol=0, atol=1e-4,
+                orig['results'][key][last_onset:], rtol=0, atol=1e-10,
                 err_msg=key)
 
     def test_marginal_keys(self):
@@ -141,6 +128,33 @@ class TestClassifier(object):
 
     def test_cellmask(self):
         assert_equal(out['cell_mask'], orig['cell_mask'])
+
+
+def _compare_dict(orig_d, test_d):
+    # This test allows for new parameters to be added, but all of the
+    # original keys must be present. If this test fails, all the rest
+    # probably should as well.
+    for key in orig_d:
+        assert_(
+            key in test_d,
+            msg="'{}' not in test parameters.".format(key))
+        if isinstance(orig_d[key], dict):
+            assert_(
+                isinstance(test_d[key], dict),
+                msg="'{}' should be a dict.".format(key))
+            _compare_dict(orig_d[key], test_d[key])
+        # Let the classifier updated date change
+        if key == 'classifier_updated_date':
+            continue
+        # hack to deal with Matlab compressing away singleton
+        # dimensions.
+        if isinstance(test_d[key], list) and len(test_d[key]) == 1:
+            assert_equal(test_d[key], [orig_d[key]], err_msg=key)
+        elif isinstance(orig_d[key], basestring):
+            assert_equal(
+                str(test_d[key]), str(orig_d[key]), err_msg=key)
+        else:
+            assert_equal(test_d[key], orig_d[key], err_msg=key)
 
 if __name__ == '__main__':
     run_module_suite()

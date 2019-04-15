@@ -233,6 +233,14 @@ def loadmat(filename):
     return check_keys(data)
 
 
+def savemat(filename, data):
+    """Save a dictionary to a mat file."""
+    # Eventually this should cleanup the input dict, specifically making sure
+    # that the py2/3 newstr is converted to an actual strings since
+    # spio.savemat doesn't know how to handle them.
+    spio.savemat(filename, data)
+
+
 def parse_date(datestr):
     """Parse our standard format date string into a datetime object.
 

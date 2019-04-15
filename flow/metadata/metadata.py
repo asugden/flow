@@ -346,6 +346,74 @@ def add_run(
     parser._metadata = None
 
 
+def delete_runs(mdrs, errors='error', remove_empty=True):
+    """Delete runs from the metadata.
+
+    Parameters
+    ----------
+    mdrs : sequence
+        Sequence of [mouse, date, run] sequences; mouse should be a string and
+        date and run should be ints.
+    errors : {'error', 'ignore'}
+        Determines how missing runs are handled, either throw an error or
+        ignore and skip the run.
+    remove_empty : bool
+        If True, deletes the parent Date and Mouse if they become empty.
+
+    """
+    metadata = parser.meta_dict()
+    for mouse, date, run in mdrs:
+        existing_mouse = [m for m in metadata['mice'] if m['name'] == mouse]
+        assert(len(existing_mouse) < 2)
+        if len(existing_mouse) == 0:
+            if errors == 'ignore':
+                print('Missing mouse, skipping: {}_{}_{}'.format(
+                    mouse, date, run))
+                continue
+            else:
+                raise ValueError(
+                    'Mouse not present in metadata: {}_{}_{}'.format(
+                        mouse, date, run))
+        mouse_dict = existing_mouse[0]
+
+        existing_date = [d for d in mouse_dict['dates'] if d['date'] == date]
+        assert(len(existing_date) < 2)
+        if len(existing_date) == 0:
+            if errors == 'ignore':
+                print('Missing date, skipping: {}_{}_{}'.format(
+                    mouse, date, run))
+                continue
+            else:
+                raise ValueError(
+                    'Date not present in metadata: {}_{}_{}'.format(
+                        mouse, date, run))
+        date_dict = existing_date[0]
+
+        existing_run = [r for r in date_dict['runs'] if r['run'] == run]
+        assert(len(existing_run) < 2)
+        if len(existing_run) == 0:
+            if errors == 'ignore':
+                print('Missing run, skipping: {}_{}_{}'.format(
+                    mouse, date, run))
+                continue
+            else:
+                raise ValueError(
+                    'Run not present in metadata: {}_{}_{}'.format(
+                        mouse, date, run))
+        date_dict['runs'].remove(existing_run[0])
+
+        if remove_empty and len(date_dict['runs']) == 0:
+            mouse_dict['dates'].remove(date_dict)
+
+        if remove_empty and len(mouse_dict['dates']) == 0:
+            metadata['mice'].remove(mouse_dict)
+
+    parser.save(metadata)
+    parser.meta_dict()
+    # Clear DataFrame cache
+    parser._metadata = None
+
+
 def reversal(mouse):
     """Return date of the reversal for the mouse or None if not reversed."""
     if mouse not in reversals:
