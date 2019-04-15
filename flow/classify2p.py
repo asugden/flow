@@ -19,6 +19,8 @@ class Classify2P(object):
         ----------
         paths : str or list
             A single path or a list of paths to load
+        run : int
+            The run number to open
         pars : dict
             The parameters used to generate the classifier
         """
@@ -37,12 +39,11 @@ class Classify2P(object):
             self.d = loadmat(path)
         except IOError:
             self._classify()
-            self._save()
 
     def __repr__(self):
         return "Classify2P(path={})".format(self._path)
 
-    def classify(self, data=None, priors=None, temporal_prior=None, integrate_frames=1):
+    def classify(self, data=None, priors=None, temporal_prior=None, integrate_frames=None):
         """
         Return a trained classifier either for running the traditional classifier
         or for randomization.
@@ -71,7 +72,10 @@ class Classify2P(object):
 
         results = train.classify_reactivations(
             run=self.run, model=self._trained_model,
-            params=self._trained_params, nan_cells=self._trained_nan_cells)
+            params=self._trained_params, nan_cells=self._trained_nan_cells,
+            replace_data=data, replace_priors=priors,
+            replace_temporal_prior=temporal_prior,
+            replace_integrate_frames=integrate_frames)
 
         return results
 
@@ -188,14 +192,9 @@ class Classify2P(object):
                 self._xresults[cs][self._xresults[cs] < maxact] = 0
 
     def _classify(self):
-        self._trained_model, self._trained_params, self._trained_nan_cells = \
-            train.train_classifier(run=self.run, **self.pars)
-
-        results = train.classify_reactivations(
-            run=self.run, model=self._trained_model,
-            params=self._trained_params, nan_cells=self._trained_nan_cells)
-
-        self.d = results
+        """Run the classifier and save the results."""
+        self.d = self.classify()
+        self._save()
 
     def _save(self):
         mkdir_p(opath.dirname(self._path))

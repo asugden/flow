@@ -59,6 +59,7 @@ def getc2p(mouse, date, run, pars, randomize=''):
     return opath.join(path, title)
 
 def classifier2p(run, pars, randomize=''):
+    # NOTE: Remove when replay disappears.
     path = output(pars)
     fs = os.listdir(path)[::-1]
     paths = []

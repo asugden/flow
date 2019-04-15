@@ -121,7 +121,9 @@ def train_classifier(
 
 
 def classify_reactivations(
-        run, model, params, nan_cells=None, merge_cses=None):
+        run, model, params, nan_cells=None, merge_cses=None,
+        replace_data=None, replace_priors=None, replace_temporal_prior=None,
+        replace_integrate_frames=None):
     """Given a run and trained model, classify reactivations.
 
     Parameters
@@ -138,6 +140,15 @@ def classify_reactivations(
     merge_cses : optional, list
         List of class names. Merges the results of later values into the first
         one.
+    replace_data : matrix (ncells, ntimes)
+        Replacement data if not None
+    replace_priors : dict of floats
+        The prior probabilities for each category to replace that in parameters
+    replace_temporal_prior : vector
+        A replacement temporal prior to generate the frame priors
+    replace_integrate_frames : int
+        Can change the frame integration number without changing the parameters.
+        This is useful if the data are already passed through a rolling max filter.
 
     Returns
     -------
@@ -148,13 +159,19 @@ def classify_reactivations(
     if merge_cses is None:
         merge_cses = []
 
-    full_traces = run.trace2p().trace(params['trace-type'])
+    if replace_data is not None:
+        full_traces = replace_data
+    else:
+        full_traces = run.trace2p().trace(params['trace-type'])
     if nan_cells is None:
         nan_cells = np.any(np.invert(np.isfinite(full_traces)), axis=1)
 
-    priors = {cs: params['probability'][cs] for cs in model.classnames}
+    if replace_priors is not None:
+        priors = replace_priors
+    else:
+        priors = {cs: params['probability'][cs] for cs in model.classnames}
 
-    if params['remove-stim']:
+    if params['remove-stim'] and replace_data is None:
         t2p = run.trace2p()
         pad_s = params['classification-ms'] / 1000. / 2.
         post_pad_s = 0.0 + pad_s
@@ -176,7 +193,7 @@ def classify_reactivations(
     else:
         stim_mask = None
 
-    if params['temporal-dependent-priors']:
+    if params['temporal-dependent-priors'] and replace_temporal_prior is None:
         baseline, variance, outliers = _activity(
             run,
             baseline_activity=params['temporal-prior-baseline-activity'],
@@ -192,6 +209,9 @@ def classify_reactivations(
             stim_mask=stim_mask)
         used_priors = aode.assign_temporal_priors(
             priors, tpriorvec, 'other')
+    elif params['temporal-dependent-priors']:
+        used_priors = aode.assign_temporal_priors(
+            priors, replace_temporal_prior, 'other')
     else:
         # NOTE: this hasn't really been tested
         # Default to equal probability
@@ -204,8 +224,11 @@ def classify_reactivations(
     full_traces = np.clip(
         full_traces*params['analog-comparison-multiplier'], 0.0, 1.0)
 
+    integrate_frames = params['classification-frames'] \
+        if replace_integrate_frames is None \
+        else replace_integrate_frames
     results, data, likelihoods = model.compare(
-        full_traces, params['classification-frames'], used_priors)
+        full_traces, integrate_frames, used_priors)
 
     # Optionally merge together multiple trained classes into one
     if len(merge_cses) > 0:
