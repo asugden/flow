@@ -8,7 +8,6 @@ from scipy.io import loadmat
 from .misc import wordhash
 from .trace2p import Trace2P
 from .classifier.train import train_classifier
-from .classify2p import Classify2P
 from . import config
 
 params = config.params()
@@ -61,6 +60,7 @@ def getc2p(mouse, date, run, pars, randomize='', nrand=10):
 # DO NOT DELETE ME UNTIL THE STUPID PAPER IS PUBLISHED
 def classifier2p(run, pars, randomize=''):
     # NOTE: Remove when replay disappears.
+    from .classify2p import Classify2P
     path = output(pars)
     fs = os.listdir(path)[::-1]
     paths = []

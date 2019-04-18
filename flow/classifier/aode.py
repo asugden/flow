@@ -41,7 +41,7 @@ class AODE(object):
         """Return the marginal probability of each trained class."""
         return deepcopy(self._marg)
 
-    def train(self, tevents, classifier='aode'):
+    def train(self, tevents):
         """Train a classifier.
 
         Trains by measuring the probabilities of single-cell
@@ -59,9 +59,6 @@ class AODE(object):
         # Save the classnames in an order because dicts can change.
         self._classnames = [key for key in tevents]
         self.ncells = np.shape(tevents[self._classnames[0]])[1]
-
-        if classifier == 'naivebayes':
-            return self._naivebayes(tevents)
 
         for condition in self._classnames:
             # Take the max across frames

@@ -528,7 +528,7 @@ class Run(object):
 
         return self._t2p
 
-    def classify2p(self, newpars=None, randomize=''):
+    def classify2p(self, newpars=None):
         """
         Return classifier.
 
@@ -536,7 +536,6 @@ class Run(object):
         ----------
         newpars : dict
             Replace default parameters with values from this dict.
-        randomize
 
         Returns
         -------
