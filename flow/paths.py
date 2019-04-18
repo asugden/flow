@@ -41,7 +41,7 @@ def gett2p(mouse, date, run):
     out = Trace2P(path)
     return out
 
-def getc2p(mouse, date, run, pars, randomize=''):
+def getc2p(mouse, date, run, pars, randomize='', nrand=10):
     """
     Return a path to classifier or randomized classifier file.
     """
@@ -52,12 +52,13 @@ def getc2p(mouse, date, run, pars, randomize=''):
 
     title = ['classifier']
     if len(randomize) > 0:
-        title += [randomize]
+        title += [randomize, str(nrand)]
     title = '-'.join(title) + '.mat'
 
     path = output(pars, use_new=True)
     return opath.join(path, title)
 
+# DO NOT DELETE ME UNTIL THE STUPID PAPER IS PUBLISHED
 def classifier2p(run, pars, randomize=''):
     # NOTE: Remove when replay disappears.
     path = output(pars)
