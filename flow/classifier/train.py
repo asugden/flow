@@ -1,4 +1,5 @@
 """Train the reactivation classifier."""
+from copy import deepcopy
 try:
     from bottleneck import nanmean
 except ImportError:
@@ -104,7 +105,7 @@ def train_classifier(
         traces[cs] = np.clip(traces[cs], 0, 1)
 
     model = aode.AODE()
-    model.train(traces, params['classifier'])
+    model.train(traces)
     if verbose:
         print(model.describe())
 
@@ -121,7 +122,7 @@ def train_classifier(
 
 
 def classify_reactivations(
-        run, model, params, nan_cells=None, merge_cses=None,
+        run, model, pars, nan_cells=None, merge_cses=None,
         replace_data=None, replace_priors=None, replace_temporal_prior=None,
         replace_integrate_frames=None):
     """Given a run and trained model, classify reactivations.
@@ -132,7 +133,7 @@ def classify_reactivations(
         Run that the classifier will be applied to.
     model : aode.AODE
         A fully-trained model.
-    params : dict
+    pars : dict
         Parameters for classifier.
     nan_cells : np.ndarray of bool
         Cell mask of cells to exclude from temporal prior. Activity outliers
@@ -162,18 +163,97 @@ def classify_reactivations(
     if replace_data is not None:
         full_traces = replace_data
     else:
-        full_traces = run.trace2p().trace(params['trace-type'])
+        full_traces = run.trace2p().trace(pars['trace-type'])
     if nan_cells is None:
         nan_cells = np.any(np.invert(np.isfinite(full_traces)), axis=1)
 
     if replace_priors is not None:
         priors = replace_priors
     else:
-        priors = {cs: params['probability'][cs] for cs in model.classnames}
+        priors = {cs: pars['probability'][cs] for cs in model.classnames}
 
-    if params['remove-stim'] and replace_data is None:
+    tpriorvec = temporal_prior(
+        run, pars, nan_cells,
+        replace_data, replace_temporal_prior)
+    used_priors = aode.assign_temporal_priors(
+        priors, tpriorvec, 'other')
+
+    full_traces = np.clip(
+        full_traces*pars['analog-comparison-multiplier'], 0.0, 1.0)
+
+    integrate_frames = pars['classification-frames'] \
+        if replace_integrate_frames is None \
+        else replace_integrate_frames
+    results, data, likelihoods = model.compare(
+        full_traces, integrate_frames, used_priors,
+        naive_bayes=True if pars['classifier'] == 'naive-bayes' else False)
+
+    # Optionally merge together multiple trained classes into one
+    if len(merge_cses) > 0:
+        merge1 = merge_cses[0]
+        for merge2 in merge_cses[1:]:
+            results[merge1] += results[merge2]
+            results.pop(merge2)
+
+    out = {'parameters': pars,
+           'results': results,
+           'likelihood': likelihoods,
+           'marginal': model.marginal,
+           'priors': used_priors,
+           'cell_mask': np.invert(nan_cells)}
+
+    return out
+
+
+def temporal_prior(
+        run, pars, nan_cells=None,
+        replace_data=None, replace_temporal_prior=None):
+    """Given a run and trained model, classify reactivations.
+
+    Parameters
+    ----------
+    run : Run
+        Run that the classifier will be applied to.
+    model : aode.AODE
+        A fully-trained model.
+    pars : dict
+        Parameters for classifier.
+    nan_cells : np.ndarray of bool
+        Cell mask of cells to exclude from temporal prior. Activity outliers
+        are also automatically removed.
+    merge_cses : optional, list
+        List of class names. Merges the results of later values into the first
+        one.
+    replace_data : matrix (ncells, ntimes)
+        Replacement data if not None
+    replace_priors : dict of floats
+        The prior probabilities for each category to replace that in parameters
+    replace_temporal_prior : vector
+        A replacement temporal prior to generate the frame priors
+    replace_integrate_frames : int
+        Can change the frame integration number without changing the parameters.
+        This is useful if the data are already passed through a rolling max filter.
+
+    Returns
+    -------
+    dict
+        Results dict.
+
+    """
+
+    if replace_temporal_prior is not None:
+        return replace_temporal_prior
+
+    if replace_data is not None:
+        full_traces = replace_data
+    else:
+        full_traces = run.trace2p().trace(pars['trace-type'])
+    if nan_cells is None:
+        nan_cells = np.any(np.invert(np.isfinite(full_traces)), axis=1)
+
+    if pars['remove-stim'] and replace_data is None:
         t2p = run.trace2p()
-        pad_s = params['classification-ms'] / 1000. / 2.
+        pad_s = pars['classification-ms']/1000./2.
         post_pad_s = 0.0 + pad_s
         post_pav_pad_s = 0.5 + pad_s
         # Round-up all times to a full frame
@@ -193,58 +273,30 @@ def classify_reactivations(
     else:
         stim_mask = None
 
-    if params['temporal-dependent-priors'] and replace_temporal_prior is None:
+    if pars['temporal-dependent-priors']:
+        if 'temporal-prior-fwhm-frames' not in pars:
+            t2p = run.trace2p()
+            pars = _convert_time_to_frames(deepcopy(pars), t2p.framerate)
+
         baseline, variance, outliers = _activity(
             run,
-            baseline_activity=params['temporal-prior-baseline-activity'],
-            baseline_sigma=params['temporal-prior-baseline-sigma'],
-            trace_type=params['trace-type'])
+            baseline_activity=pars['temporal-prior-baseline-activity'],
+            baseline_sigma=pars['temporal-prior-baseline-sigma'],
+            trace_type=pars['trace-type'])
         # Make sure cells with any NaN's and outliers are removed from the
         # temporal prior
         outliers = np.bitwise_or(outliers, nan_cells)
 
         tpriorvec = aode.temporal_prior(
             full_traces[np.invert(outliers), :], actmn=baseline,
-            actvar=variance, fwhm=params['temporal-prior-fwhm-frames'],
+            actvar=variance, fwhm=pars['temporal-prior-fwhm-frames'],
             stim_mask=stim_mask)
-        used_priors = aode.assign_temporal_priors(
-            priors, tpriorvec, 'other')
-    elif params['temporal-dependent-priors']:
-        used_priors = aode.assign_temporal_priors(
-            priors, replace_temporal_prior, 'other')
     else:
         # NOTE: this hasn't really been tested
         # Default to equal probability
         tpriorvec = np.ones(full_traces.shape[1])
-        if stim_mask is not None:
-            tpriorvec[stim_mask] = 0
-        used_priors = aode.assign_temporal_priors(
-            priors, tpriorvec, 'other')
 
-    full_traces = np.clip(
-        full_traces*params['analog-comparison-multiplier'], 0.0, 1.0)
-
-    integrate_frames = params['classification-frames'] \
-        if replace_integrate_frames is None \
-        else replace_integrate_frames
-    results, data, likelihoods = model.compare(
-        full_traces, integrate_frames, used_priors)
-
-    # Optionally merge together multiple trained classes into one
-    if len(merge_cses) > 0:
-        merge1 = merge_cses[0]
-        for merge2 in merge_cses[1:]:
-            results[merge1] += results[merge2]
-            results.pop(merge2)
-
-    out = {'parameters': params,
-           'results': results,
-           'likelihood': likelihoods,
-           'marginal': model.marginal,
-           'priors': used_priors,
-           'cell_mask': np.invert(nan_cells)}
-
-    return out
+    return tpriorvec
 
 
 def _activity(
