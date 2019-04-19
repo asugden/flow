@@ -84,6 +84,20 @@ def train_classifier(
                 if 'disengaged' not in key}
     all_cses.update(params['training-equivalent'])
 
+    # Deal with equalizing the activity of all cells
+    activity_scale = None
+    if params['equalize-cell-activity']:
+        activity_scale, run_frames = [], []
+        for group in [training_runs, running_runs, run.parent.runs('spontaneous', tags='sated')]:
+            for run in group:
+                t2p = run.trace2p()
+                trs = t2p.trace('deconvolved')
+                activity_scale.append(nanmean(trs, axis=1))
+                run_frames.append(np.shape(trs)[1])
+
+        activity_scale = np.average(activity_scale, axis=0, weights=run_frames)
+        activity_scale /= np.median(activity_scale)
+
     # Pull all training data
     traces = _get_traces(
         run, training_runs, running_runs, all_cses,
@@ -97,7 +111,8 @@ def train_classifier(
         correct_trials=params['train-only-on-positives'],
         running_fraction=params['other-running-fraction'],
         max_n_onsets=params['maximum-cs-onsets'],
-        remove_stim=params['remove-stim'])
+        remove_stim=params['remove-stim'],
+        activity_scale=activity_scale)
 
     # Remove any binarization
     for cs in traces:
@@ -118,11 +133,11 @@ def train_classifier(
                    'training-runs':
                        sorted(r.run for r in training_runs)})
 
-    return model, params, _nan_cells(traces)
+    return model, params, _nan_cells(traces), activity_scale
 
 
 def classify_reactivations(
-        run, model, pars, nan_cells=None, merge_cses=None,
+        run, model, pars, nan_cells=None, activity_scale=None, merge_cses=None,
         replace_data=None, replace_priors=None, replace_temporal_prior=None,
         replace_integrate_frames=None):
     """Given a run and trained model, classify reactivations.
@@ -177,6 +192,10 @@ def classify_reactivations(
         replace_data, replace_temporal_prior)
     used_priors = aode.assign_temporal_priors(
         priors, tpriorvec, 'other')
+
+    # Scale the activity
+    if activity_scale is not None:
+        full_traces = (full_traces.T*activity_scale).T
 
     full_traces = np.clip(
         full_traces*pars['analog-comparison-multiplier'], 0.0, 1.0)
@@ -409,7 +428,7 @@ def _get_traces(
         run, runs, running_runs, all_cses, trace_type='deconvolved', length_fr=15,
         pad_fr=31, offset_fr=1, running_threshold_cms=4., correct_trials=False,
         lick_cutoff=-1, lick_window=(-1, 0), running_fraction=0.3,
-        max_n_onsets=-1, remove_stim=True):
+        max_n_onsets=-1, remove_stim=True, activity_scale=None):
     """
     Return all trace data by stimulus chopped into same sized intervals.
 
@@ -469,6 +488,9 @@ def _get_traces(
 
         # Get the trace from which to extract time points
         trs = t2p.trace(trace_type)
+
+        if activity_scale is not None:
+            trs = (trs.T*activity_scale).T
 
         # If the target run is also a training run, make sure that we aren't
         # training on the same data that will later be used for comparison

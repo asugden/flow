@@ -36,6 +36,8 @@ class Classify2P(BaseClassifier):
         self._trained_model = None
         self._trained_params = None
         self._trained_activity = None
+        self._trained_nan_cells = None
+        self._trained_activity_scale = None
 
         self.d = None
         self._load_or_classify(path)
@@ -67,12 +69,14 @@ class Classify2P(BaseClassifier):
 
         # Train only once
         if self._trained_model is None:
-            self._trained_model, self._trained_params, self._trained_nan_cells = \
+            self._trained_model, self._trained_params, \
+                self._trained_nan_cells, self._trained_activity_scale = \
                 train.train_classifier(run=self.run, **self.pars)
 
         results = train.classify_reactivations(
             run=self.run, model=self._trained_model,
             pars=self._trained_params, nan_cells=self._trained_nan_cells,
+            activity_scale=self._trained_activity_scale,
             replace_data=data, replace_priors=priors,
             replace_temporal_prior=temporal_prior,
             replace_integrate_frames=integrate_frames)
