@@ -203,6 +203,7 @@ def classify_reactivations(
     integrate_frames = pars['classification-frames'] \
         if replace_integrate_frames is None \
         else replace_integrate_frames
+    assert(pars['classifier'] in ['naive-bayes', 'aode'])
     results, data, likelihoods = model.compare(
         full_traces, integrate_frames, used_priors,
         naive_bayes=True if pars['classifier'] == 'naive-bayes' else False)

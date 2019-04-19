@@ -4,7 +4,7 @@ import yaml
 from builtins import object
 from copy import deepcopy
 
-from ..misc import legiblepars, loadmat, savemat, matlabifypars, mkdir_p
+from ..misc import savemat, matlabifypars, mkdir_p
 
 
 class BaseClassifier(object):
@@ -121,10 +121,6 @@ class BaseClassifier(object):
 
         # Create the directory structure and parameter files
         mkdir_p(opath.dirname(path))
-
-        pars_path = opath.join(opath.dirname(path), 'pars.txt')
-        if not opath.exists(pars_path):
-            legiblepars.write(pars_path, self.d['parameters'])
 
         yaml_path = opath.join(opath.dirname(path), 'pars.yml')
         if not opath.exists(yaml_path):
