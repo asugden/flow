@@ -25,7 +25,7 @@ _settings = {
     'training-other-running-runs': [1, 5],
 
     # CLASSIFIER
-    'classifier': 'aode-analog',  # 'naive-bayes' or 'aode-analog'
+    'classifier': 'aode',  # 'naive-bayes' or 'aode'
     'stimulus-training-offset-ms': 50,
     'stimulus-training-ms': 950,  # Usually 1950
     'classification-ms': 260,  # usually 380, should be set to 190 based on recent data
