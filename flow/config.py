@@ -120,6 +120,26 @@ def params(reload_=False):
     return copy.deepcopy(_params)
 
 
+def session_parameter(key, val):
+    """
+    Overwrite a parameter only for the current session.
+
+    Parameters
+    ----------
+    key : str
+        Name of a parameter
+    val : variable
+        New value of the parameter
+
+    """
+
+    global _params
+    if _params is None:
+        _params = _load_config()
+
+    _params[key] = val
+
+
 def reconfigure():
     """Re-set user-configurable parameters."""
     config_path = _find_config()
