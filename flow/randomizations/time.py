@@ -67,8 +67,8 @@ class RandomizeTime(BaseClassifier):
         mask = t2p.inactivity()
 
         real = self.parent.events(cs, threshold, trs, mask=mask, xmask=xmask,
-                                  max=max, downfor=downfor, maxlen=maxlen, fmin=fmin,
-                                  saferange=saferange)
+                                  max=max, downfor=downfor, maxlen=maxlen,
+                                  fmin=fmin, saferange=saferange)
 
         rand = self.events(cs, threshold, self._traces(self.d['shifts']),
                            mask=None, xmask=xmask, max=max, downfor=downfor,
@@ -78,12 +78,12 @@ class RandomizeTime(BaseClassifier):
 
     def _classify(self, path, nrand):
         """
-        Run a randomzied analysis
+        Run a randomized analysis
         """
 
         t2p = self.parent.run.trace2p()
 
-        if np.sum(t2p.inactivity()) == 0:
+        if np.sum(t2p.inactivity()) <= 201:
             self._no_inactivity_found = True
             return
 
@@ -122,6 +122,7 @@ class RandomizeTime(BaseClassifier):
                 if len(self._rand_traces) == 0:
                     self._rand_traces = trs
                 else:
-                    self._rand_traces = np.concatenate([self._rand_traces, trs], 1)
+                    self._rand_traces = np.concatenate(
+                        [self._rand_traces, trs], 1)
 
         return self._rand_traces
