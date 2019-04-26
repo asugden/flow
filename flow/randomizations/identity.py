@@ -27,6 +27,10 @@ class RandomizeIdentity(BaseClassifier):
 
         try:
             self.d = loadmat(path)
+            if isinstance(self.d['event_thresholds'], float):
+                self.d['event_thresholds'] = [self.d['event_thresholds']]
+                self.d['event_stimuli'] = [self.d['event_stimuli']]
+                self.d['event_frames'] = [self.d['event_frames']]
         except IOError:
             self._classify(path, nrandomizations)
 
