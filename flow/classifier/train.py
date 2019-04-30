@@ -114,6 +114,12 @@ def train_classifier(
         remove_stim=params['remove-stim'],
         activity_scale=activity_scale)
 
+    # Make sure there is enough data to train
+    for cs in traces:
+        if not len(traces[cs]):
+            raise ValueError('Not enough training data: {}_{} - {}'.format(
+                run.mouse, run.date, cs))
+
     # Remove any binarization
     for cs in traces:
         traces[cs] *= params['analog-training-multiplier']

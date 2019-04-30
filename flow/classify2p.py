@@ -11,21 +11,23 @@ from .randomizations.base_classifier import BaseClassifier
 from . import randomizations
 
 
+class NoClassifierError(Exception):
+    pass
+
 class Classify2P(BaseClassifier):
     def __init__(self, path, run, pars=None):
-        """
-        Load in a classifier or classifiers
+        """Load in a classifier or classifiers
 
         Parameters
         ----------
-        paths : str or list
-            A single path or a list of paths to load
-        run : int
-            The run number to open
+        path : str
+            Path to the classifier to load or save if needed.
+        run : Run
+            The run object that the classifier refers to.
         pars : dict
-            The parameters used to generate the classifier
-        """
+            The parameters used to generate the classifier.
 
+        """
         BaseClassifier.__init__(self)
 
         if pars is None:
@@ -120,8 +122,26 @@ class Classify2P(BaseClassifier):
     def _load_or_classify(self, path):
         try:
             self.d = loadmat(path)
+            found = True
         except IOError:
-            self._classify(path)
+            found = False
+
+        if not found:
+            try:
+                self._classify(path)
+            except ValueError as err:
+                # Skip dates that just can't be trained
+                if 'Not enough training data' in str(err):
+                    raise NoClassifierError(
+                        'Not enough training data: {}'.format(self.run))
+                elif 'stimulus_length should only be 0 if there are no cses' in str(err):
+                    raise NoClassifierError(
+                        "Bad simpcell, can't calculate stimulus_length: {}".format(
+                            self.run))
+                elif 'traces missing' in str(err):
+                    raise NoClassifierError(err)
+                else:
+                    raise
 
     def _classify(self, path):
         """Run the classifier and save the results."""

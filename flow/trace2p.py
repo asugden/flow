@@ -115,16 +115,18 @@ class Trace2P(object):
         if self._stimulus_length is None:
             trialdiffs = []
             for cs in self.cses():
-                if cs != 'pavlovian':
-                    ons = self.csonsets(cs)[:self.ntrials]
-                    offs = self.csoffsets(cs)[:self.ntrials]
-                    if len(offs):
-                        ons = ons[:len(offs)]
-                        trialdiffs.extend(offs - ons)
+                ons = self.csonsets(cs)[:self.ntrials]
+                offs = self.csoffsets(cs)[:self.ntrials]
+                if len(offs):
+                    ons = ons[:len(offs)]
+                    trialdiffs.extend(offs - ons)
 
             if len(trialdiffs):
                 self._stimulus_length = \
                     int(round(np.nanmedian(trialdiffs)/self.framerate))
+                if self._stimulus_length <= 0:
+                    raise ValueError(
+                        'stimulus_length should only be 0 if there are no cses.')
             else:
                 self._stimulus_length = 0
 
@@ -718,7 +720,13 @@ class Trace2P(object):
             else:
                 return ((self.d['dff'].T - mu)/sigma).T
 
-        return self.d[tracetype]
+        try:
+            result = self.d[tracetype]
+        except KeyError:
+            raise ValueError("'{}' traces missing: {}".format(
+                tracetype, self._path))
+
+        return result
 
     def add_trace(self, trace_type, data):
         """
@@ -957,6 +965,7 @@ class Trace2P(object):
         Get a series of time points of length length with a buffer of
         safety_frames away from any stimulus that comprise all times
         during which stimuli are not being shown.
+
         """
 
         # Get a list of all stimulus onsets
@@ -974,7 +983,6 @@ class Trace2P(object):
         if self.stimulus_length == 0:
             # If there are no stimuli, still pad out the start of the session
             # to avoid initial ringing.
-            assert(len(cses) == 0)
             stim_len_s = 2
         else:
             stim_len_s = self.stimulus_length
