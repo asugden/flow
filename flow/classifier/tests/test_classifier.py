@@ -16,6 +16,9 @@ def setup():
     global orig, pars, out, run
 
     orig = flow.misc.loadmat('data/AS41_171130_009.mat')
+    # Hack to avoid re-saving the original data
+    # The classifier word changed to 'aode' from 'aode-analog'
+    orig['parameters']['classifier'] = 'aode'
 
     pars = flow.config.default()
     run = flow.Run(mouse=mdr['mouse'], date=mdr['date'], run=mdr['run'])
@@ -23,11 +26,11 @@ def setup():
     training_runs = date.runs(run_types=['training'])
     running_runs = date.runs(run_types=['running'])
 
-    model, params, nan_cells = flow.classifier.train.train_classifier(
+    model, params, nan_cells, _ = flow.classifier.train.train_classifier(
         run=run, training_runs=training_runs, running_runs=running_runs,
         training_date=date, verbose=False)
     out = flow.classifier.train.classify_reactivations(
-        run=run, model=model, params=params, nan_cells=nan_cells)
+        run=run, model=model, pars=params, nan_cells=nan_cells)
     out['parameters'] = flow.misc.matlabifypars(out['parameters'])
 
 
