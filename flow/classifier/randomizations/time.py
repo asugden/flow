@@ -1,9 +1,8 @@
 import numpy as np
-import os.path as opath
 
-from .. import paths
-from .base_classifier import BaseClassifier
-from ..misc import loadmat
+from ..base_classifier import BaseClassifier
+from ... import paths
+from ...misc import loadmat
 
 
 class RandomizeTime(BaseClassifier):

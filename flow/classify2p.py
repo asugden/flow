@@ -1,22 +1,16 @@
-from builtins import range
-from builtins import object
-from copy import deepcopy
-import numpy as np
-import os.path as opath
-import yaml
-
-from .misc import legiblepars, loadmat, savemat, matlabifypars, mkdir_p
+from .misc import loadmat
+from .classifier import randomizations
 from .classifier import train
-from .randomizations.base_classifier import BaseClassifier
-from . import randomizations
+from .classifier.base_classifier import BaseClassifier
 
 
 class NoClassifierError(Exception):
     pass
 
+
 class Classify2P(BaseClassifier):
     def __init__(self, path, run, pars=None):
-        """Load in a classifier or classifiers
+        """Load in a classifier or classifiers.
 
         Parameters
         ----------
@@ -49,21 +43,27 @@ class Classify2P(BaseClassifier):
 
     @property
     def frame_range(self):
-        """The frames that should be compared due to maxing,
-        left side included, right side excluded."""
+        """The frames that should be compared due to maxing.
 
+        Left side included, right side excluded.
+
+        """
         t2p = self.run.trace2p()
-        integrate_frames = int(round(self.pars['classification-ms']
-                                     /1000.0*t2p.framerate))
+        integrate_frames = int(round(
+            self.pars['classification-ms']/1000.0*t2p.framerate))
         fmin = -int(integrate_frames//2.0)
         fmax = fmin + integrate_frames
 
         return fmin, fmax
 
-    def classify(self, data=None, priors=None, temporal_prior=None, integrate_frames=None):
+    def classify(
+            self, data=None, priors=None, temporal_prior=None,
+            integrate_frames=None):
         """
-        Return a trained classifier either for running the traditional classifier
-        or for randomization.
+        Return a trained classifier.
+
+        Used either for running the traditional classifier or for
+        randomization.
 
         data : matrix
             Matrix of data to compare, ncells x ntimes

@@ -1,12 +1,11 @@
 import math
 import numpy as np
-import os.path as opath
 
-from .. import paths
-from .base_classifier import BaseClassifier
-from ..misc import loadmat
-from ..classifier.aode import rollingmax
-from ..classifier import train
+from .. import train
+from ..aode import rollingmax
+from ..base_classifier import BaseClassifier
+from ... import paths
+from ...misc import loadmat
 
 
 class RandomizeIdentity(BaseClassifier):
@@ -34,8 +33,9 @@ class RandomizeIdentity(BaseClassifier):
         except IOError:
             self._classify(path, nrandomizations)
 
-    def real_false_positives(self, cs, threshold=0.1, matching_cs=False, max=2,
-                             downfor=2, maxlen=-1, fmin=-1, saferange=(-5, 5)):
+    def real_false_positives(
+            self, cs, threshold=0.1, matching_cs=False, max=2, downfor=2,
+            maxlen=-1, fmin=-1, saferange=(-5, 5)):
         """
         Return a tuple of the number of real and false positives
         for a given stimulus type.
@@ -92,9 +92,7 @@ class RandomizeIdentity(BaseClassifier):
         return real, rand
 
     def _classify(self, path, nrand, minthreshold=0.05):
-        """
-        Run a randomzied analysis
-        """
+        """Run a randomized analysis."""
 
         t2p = self.parent.run.trace2p()
         cses = [key for key in self.parent.d['results'] if 'other' not in key]
@@ -129,7 +127,8 @@ class RandomizeIdentity(BaseClassifier):
 
         trs, temporal = self._traces(evs, orders, tpriorvec)
 
-        self.d = self.parent.classify(data=trs, temporal_prior=temporal, integrate_frames=1)
+        self.d = self.parent.classify(
+            data=trs, temporal_prior=temporal, integrate_frames=1)
         self.d['event_frames'] = evs
         self.d['event_thresholds'] = thresholds
         self.d['event_stimuli'] = stimuli
@@ -149,8 +148,8 @@ class RandomizeIdentity(BaseClassifier):
         if self._rand_traces is None:
             t2p = self.parent.run.trace2p()
             trs = np.copy(t2p.trace('deconvolved'))
-            integrate_frames = int(round(self.pars['classification-ms']
-                                         /1000.0*t2p.framerate))
+            integrate_frames = int(round(self.pars['classification-ms']/
+                                         1000.0*t2p.framerate))
             trs = rollingmax(trs, integrate_frames)
             rollframes = t2p.nframes - (integrate_frames - 1)
             frame_range = (int(math.floor(integrate_frames/2.0)),
