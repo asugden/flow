@@ -1083,7 +1083,7 @@ class Trace2P(object):
 
         licks = self.d['licking'].flatten()
         licks = licks[licks < self.nframes]
-        return licks
+        return licks.astype('uint16')
 
     def reward(self):
         """Return the frames in which reward was presented.
