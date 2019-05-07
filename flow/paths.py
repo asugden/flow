@@ -5,7 +5,7 @@ import os.path as opath
 import numpy as np
 from scipy.io import loadmat
 
-from .misc import wordhash
+from .misc import mkdir_p, wordhash
 from .trace2p import Trace2P
 from .classifier.train import train_classifier
 from . import config
@@ -250,6 +250,18 @@ def graphgroup(pars={}, group='', classifier=True):
         if not opath.exists(path): os.mkdir(path)
 
     return opath.join(path, '')
+
+def graphgroup2(mouse, group, date=None, pars=None):
+    # Base/group/mouse/date/classifier-word
+    path = opath.join(graphd, group, mouse)
+    if date is not None:
+        path = opath.join(path, str(date))
+    if pars is not None:
+        word = wordhash.word(pars)
+        path = opath.join(path, word)
+
+    mkdir_p(path)
+    return path
 
 def graphmdr(pars):
     word = wordhash.word(pars)
