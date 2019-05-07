@@ -9,14 +9,18 @@ from ...misc import loadmat
 
 
 class RandomizeIdentity(BaseClassifier):
-    def __init__(self, parent, nrandomizations=100):
+    def __init__(self, parent, nrandomizations=100, inactivity_mask=True):
         BaseClassifier.__init__(self)
 
         self.parent = parent
         self.pars = parent.pars
 
+        randomization_str = 'identity'
+        if not inactivity_mask:
+            randomization_str += '_no_inact_mask'
+
         path = paths.getc2p(parent.run.mouse, parent.run.date, parent.run.run,
-                            self.pars, 'identity', nrandomizations)
+                            self.pars, randomization_str, nrandomizations)
 
         self.d = None
         self._rand_traces = None
@@ -31,14 +35,13 @@ class RandomizeIdentity(BaseClassifier):
                 self.d['event_stimuli'] = [self.d['event_stimuli']]
                 self.d['event_frames'] = [self.d['event_frames']]
         except IOError:
-            self._classify(path, nrandomizations)
+            self._classify(path, nrandomizations, inactivity_mask)
 
     def real_false_positives(
             self, cs, threshold=0.1, matching_cs=False, max=2, downfor=2,
-            maxlen=-1, fmin=-1, saferange=(-5, 5)):
+            maxlen=-1, fmin=-1, saferange=(-5, 5), inactivity_mask=True):
         """
-        Return a tuple of the number of real and false positives
-        for a given stimulus type.
+        Return the number of real and false positives for a given stimulus.
 
         Parameters
         ----------
@@ -58,15 +61,17 @@ class RandomizeIdentity(BaseClassifier):
             Minimum frame number allowed (for masking beginning of recordings)
         saferange : tuple of ints
             A frame range over which events can be identified
+        inactivity_mask : bool
+            If True, mask out active times.
 
         Returns
         -------
-        ndarray
-            A list of frame numbers on which the peak population activity was detected
+        real : int
+            Number of real events detected.
+        rand : float
+            Mean number of random events per randomization.
 
         """
-
-        # Mask will be based on t2p.inactvity()
         if self._no_events_found:
             return 0, 0
 
@@ -91,16 +96,21 @@ class RandomizeIdentity(BaseClassifier):
 
         return real, rand
 
-    def _classify(self, path, nrand, minthreshold=0.05):
+    def _classify(self, path, nrand, inactivity_mask):
         """Run a randomized analysis."""
 
         t2p = self.parent.run.trace2p()
         cses = [key for key in self.parent.d['results'] if 'other' not in key]
 
+        if inactivity_mask:
+            mask = t2p.inactivity()
+        else:
+            mask = None
+
         evs, thresholds, stimuli = [], [], []
         for cs in cses:
             for t in np.arange(0.05, 1.01, 0.05)[::-1]:
-                tevents = self.parent.events(cs, t, mask=t2p.inactivity())
+                tevents = self.parent.events(cs, t, mask=mask)
                 tevents = np.setdiff1d(tevents, evs).astype(np.int32)
                 tthresh = np.ones(len(tevents))*t
                 evs = np.concatenate([evs, tevents])

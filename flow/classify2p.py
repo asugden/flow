@@ -98,7 +98,7 @@ class Classify2P(BaseClassifier):
 
         return results
 
-    def randomization(self, rtype):
+    def randomization(self, rtype, **kwargs):
         """
         Return an object of the correct randomization type.
 
@@ -106,6 +106,9 @@ class Classify2P(BaseClassifier):
         ----------
         rtype : str {'identity', 'time'}
             Randomization type
+        **kwargs
+            Additional keyword arguments are passed to the individual
+            randomization classes.
 
         Returns
         -------
@@ -115,9 +118,9 @@ class Classify2P(BaseClassifier):
         """
 
         if rtype == 'identity':
-            return randomizations.identity.RandomizeIdentity(self)
+            return randomizations.identity.RandomizeIdentity(self, **kwargs)
         else:
-            return randomizations.time.RandomizeTime(self)
+            return randomizations.time.RandomizeTime(self, **kwargs)
 
     def _load_or_classify(self, path):
         try:
