@@ -97,8 +97,8 @@ class RandomizeTime(BaseClassifier):
         shifts = np.zeros((t2p.ncells, nrand), dtype=bool)
         for r in range(nrand):
             for c in range(t2p.ncells):
-                # randint is inclusive for both beginning and end
-                shifts[c, r] = np.random.randint(0, t2p.nframes - 1)
+                # randint is left inclusive and right exclusive
+                shifts[c, r] = np.random.randint(0, t2p.nframes)
         out = self._traces(shifts, inactivity_mask)
         self.d = self.parent.classify(data=out)
         self.d['shifts'] = shifts

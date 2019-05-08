@@ -195,8 +195,11 @@ def count(result, threshold, all=False, max=2, downfor=2, offsets=False):
         return np.array(out)
 
 
-def peaks(result, trs, threshold, max=2, downfor=2, maxlen=-1, fmin=-1, saferange=(-5, 5)):
-    """Return the times of peak activity of replay events found by counts
+def peaks(
+        result, trs, threshold, max=2, downfor=2, maxlen=-1, fmin=-1,
+        saferange=(-5, 5)):
+    """
+    Return the times of peak activity of replay events found by counts.
 
     :param result: classifier vector for a single cs, e.g. classifier['results']['plus']
     :param trs: a Trace2P instance from which to determine population activity or a matrix of ncells, nframes
@@ -211,7 +214,9 @@ def peaks(result, trs, threshold, max=2, downfor=2, maxlen=-1, fmin=-1, saferang
     """
     # Check if trs is a trace2p instance or whether it is a matrix
     t2p = trs
-    if not hasattr(trs, "__len__"): trs = t2p.trace('deconvolved')
+    if not hasattr(trs, "__len__"):
+        trs = t2p.trace('deconvolved')
+    assert(len(result) == trs.shape[1])
 
     # Get all onsets and offsets
     out = []
@@ -223,8 +228,9 @@ def peaks(result, trs, threshold, max=2, downfor=2, maxlen=-1, fmin=-1, saferang
             act = np.nanmean(trs[:, evs[i]:evoffs[i]], axis=0)
             peakpos = evs[i] + np.argmax(act)
 
-            if (peakpos > fmin
-                    and abs(saferange[0]) < peakpos < np.shape(trs)[1] - abs(saferange[1])):
+            if (peakpos > fmin and
+                    abs(saferange[0]) < peakpos <
+                    np.shape(trs)[1] - abs(saferange[1])):
                 out.append(peakpos)
 
     return out
