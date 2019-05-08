@@ -79,7 +79,7 @@ class RandomizeTime(BaseClassifier):
                                   max=max, downfor=downfor, maxlen=maxlen,
                                   fmin=fmin, saferange=saferange)
 
-        rand = self.events(cs, threshold, self._traces(self.d['shifts']),
+        rand = self.events(cs, threshold, self._traces(self.d['shifts'], inactivity_mask),
                            mask=None, xmask=xmask, max=max, downfor=downfor,
                            maxlen=maxlen, fmin=fmin, saferange=saferange)
 
