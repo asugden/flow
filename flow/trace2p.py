@@ -808,47 +808,122 @@ class Trace2P(object):
 
         return np.arange(len(lickbout))[lickbout > 0]
 
-    def inactivity(self, nostim=True, runsec=10, motsec=3, licksec=10, run_min=4, mot_stdev=4):
+    def inactivity(
+            self, nostim='last', runsec=10, motsec=3, licksec=10, run_min=4,
+            mot_stdev=4, pre_pad_s=0, post_pad_s=0, pav_post_pad_s=None):
         """
-        Return time periods of inactivity as defined by brain motion and running.
+        Return time periods of inactivity.
 
-        :param nostim: eliminate all times of stimuli if True
+        Optionally uses brain motion, running, licking, and stimuli to
+        determine quiet times.
+
+        :param nostim: If 'last' mask all before last stim, if 'each' mask each individually.
         :param runsec: number of seconds to expand times of running
         :param motsec: number of seconds to expand times of brain motion
         :param licksec: number of seconds to expand times around licking
         :param run_min: minimum centimeters per second defining running
         :param mot_stdev: standard deviation for active brain motion periods
+        :param pre_pad_s: Time before stimulus onset to pad
+        :param post_pad_s: Time after stimulus offset to pad
+        :param pav_post_pad_s: Optional. If not None, pad this time after pavlovian trials.
         :return: boolean vector where true represents inactivity
         """
 
-        stm = np.zeros(self.nframes) > 1
-
-        if nostim:
+        stm = np.zeros(self.nframes, dtype=bool)
+        if nostim == 'last':
+            # Mask all times prior to and including the last stimulus
+            stm[:self.lastonset()] = True
+        elif nostim == 'each':
+            # Mask each individual stimulus
+            stm = self.stim_mask(
+                pre_pad_s=pre_pad_s, post_pad_s=post_pad_s,
+                pav_post_pad_s=pav_post_pad_s)
+        elif isinstance(type, bool) and nostim:
+            # Move away from nostim==True, instead specify method of masking
+            # stims
+            warnings.warn(
+                'nostim now takes a string value', DeprecationWarning)
             stm[:self.lastonset()] = True
 
-        runf = np.zeros(self.nframes)
-        run = self.speed()[:self.nframes] > run_min
-        if isinstance(run, bool):
-            print('WARNING: Running not recorded')
-            run = runf
-        elif len(run) < len(runf):
-            print('WARNING: Run lengths do not match')
-            runf[-1*len(run):] = run
-            run = runf
-        run = np.convolve(run, np.ones(int(round(runsec*self.framerate)), dtype=np.float32), mode='same') > 0
+        run = np.zeros(self.nframes, dtype=bool)
+        if runsec > 0:
+            runf = np.zeros(self.nframes)
+            run = self.speed()[:self.nframes] > run_min
+            if isinstance(run, bool):
+                print('WARNING: Running not recorded')
+                run = runf
+            elif len(run) < len(runf):
+                print('WARNING: Run lengths do not match')
+                runf[-1*len(run):] = run
+                run = runf
+            run = np.convolve(
+                run,
+                np.ones(int(round(runsec*self.framerate)), dtype=np.float32),
+                mode='same')
+            run = run > 0
 
-        mot = self.motion(True)[:self.nframes]
-        mot = mot - np.nanmean(mot)
-        mot = np.abs(mot) > mot_stdev*np.nanstd(mot)
-        mot = np.convolve(mot, np.ones(int(round(motsec*self.framerate)), dtype=np.float32), mode='same') > 0
+        mot = np.zeros(self.nframes, dtype=bool)
+        if motsec > 0:
+            mot = self.motion(True)[:self.nframes]
+            mot = mot - np.nanmean(mot)
+            mot = np.abs(mot) > mot_stdev*np.nanstd(mot)
+            mot = np.convolve(
+                mot,
+                np.ones(int(round(motsec*self.framerate)), dtype=np.float32),
+                mode='same')
+            mot = mot > 0
 
-        lck = np.zeros(self.nframes)
-        if len(self.licking()) > 0:
-            lck[self.licking()] = 1
-            lck = np.convolve(lck, np.ones(int(round(licksec*self.framerate)), dtype=np.float32), mode='same')
-        lck = lck > 0
+        lck = np.zeros(self.nframes, dtype=bool)
+        if licksec > 0:
+            if len(self.licking()) > 0:
+                lck[self.licking()] = 1
+                lck = np.convolve(
+                    lck,
+                    np.ones(int(round(licksec*self.framerate)),
+                            dtype=np.float32),
+                    mode='same')
+            lck = lck > 0
 
-        return np.invert(np.bitwise_or(run, np.bitwise_or(mot, np.bitwise_or(lck, stm))))
+        # return np.invert(np.bitwise_or(run, np.bitwise_or(mot, np.bitwise_or(lck, stm))))
+        return ~(run | mot | lck | stm)
+
+    def stim_mask(self, pre_pad_s=0, post_pad_s=0, pav_post_pad_s=None):
+        """
+        Return a boolean mask of all times when a stimulus is on the screen.
+
+        Parameters
+        ----------
+        pad_pre_s, pad_post_s : float
+            Time in seconds to pad before and after each stimulus presentation.
+        pav_post_pad_s : optional, float
+            If not None, can pad a different amount after pavlovian trials.
+
+        Returns
+        -------
+        mask : boolean
+            True, where the stimulus is present.
+
+        """
+        if pav_post_pad_s is None:
+            pav_post_pad_s = post_pad_s
+        # Round-up all times to a full frame
+        pre_pad_s = np.ceil(pre_pad_s*self.framerate)/self.framerate
+        post_pad_s = np.ceil(post_pad_s*self.framerate)/self.framerate
+        pav_post_pad_s = np.ceil(pav_post_pad_s*self.framerate)/self.framerate
+
+        all_stim_mask = self.trialmask(
+            cs='', errortrials=-1, fulltrial=False, padpre=pre_pad_s,
+            padpost=post_pad_s)
+        pav_mask = self.trialmask(
+            cs='pavlovian*', errortrials=-1, fulltrial=False,
+            padpre=pre_pad_s, padpost=pav_post_pad_s)
+        blank_mask = self.trialmask(
+            cs='blank*', errortrials=-1, fulltrial=False,
+            padpre=pre_pad_s, padpost=pav_post_pad_s)
+
+        stim_mask = (all_stim_mask | pav_mask) & ~blank_mask
+
+        return stim_mask
 
     def hasvar(self, var):
         """
