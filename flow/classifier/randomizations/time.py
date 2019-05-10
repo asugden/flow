@@ -145,7 +145,7 @@ class RandomizeTime(BaseClassifier):
 
             self._rand_traces = []
             for r in range(np.shape(shifts)[1]):
-                trs = np.copy(t2p.trace('deconvolved'))
+                trs = np.copy(t2p.trace(self.pars['trace-type']))
                 mask = self.inactivity()
                 trs = trs[:, mask]
 

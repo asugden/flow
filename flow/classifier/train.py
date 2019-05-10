@@ -407,7 +407,7 @@ def _activity(
             trim = int(percent*popact.size/100.)
             popact = popact[trim:-trim]
 
-            baseline = np.median(popact)  # Moved to after extreme exclusion on 032619
+            baseline = np.median(popact)  # Moved to after extreme exclusion on 190326
             variance = np.std(popact)
             outliers = np.zeros(ncells, dtype=bool)
 
@@ -495,15 +495,16 @@ def _get_traces(
             for ncs in t2p.cses():  # t.cses(self._pars['add-ensure-quinine']):
                 if ncs in all_cses:
                     # Remap cs name if needed
-                    # NOTE: blank trials are just labeled 'other' and not checked
-                    # for running.
+                    # NOTE: blank trials are just labeled 'other' and not
+                    # checked for running.
                     cs = all_cses[ncs]
                     # Initialize output
                     if cs not in out:
                         out[cs] = []
 
                     ons = t2p.csonsets(
-                        ncs, 0 if correct_trials else -1, lick_cutoff, lick_window)
+                        ncs, 0 if correct_trials else -1, lick_cutoff,
+                        lick_window)
 
                     for on in ons:
                         start = on + offset_fr
