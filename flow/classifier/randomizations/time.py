@@ -120,7 +120,7 @@ class RandomizeTime(BaseClassifier):
             self._no_inactivity_found = True
             return
 
-        shifts = np.zeros((t2p.ncells, self.nrand), dtype=bool)
+        shifts = np.zeros((t2p.ncells, self.nrand), dtype=np.uint16)
         for r in range(self.nrand):
             for c in range(t2p.ncells):
                 # randint is left inclusive and right exclusive
