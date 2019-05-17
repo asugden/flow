@@ -848,19 +848,27 @@ class Trace2P(object):
         run = np.zeros(self.nframes, dtype=bool)
         if runsec > 0:
             runf = np.zeros(self.nframes)
-            run = self.speed()[:self.nframes] > run_min
-            if isinstance(run, bool):
+            speed = self.speed()
+            if not len(speed):
                 print('WARNING: Running not recorded')
-                run = runf
-            elif len(run) < len(runf):
-                print('WARNING: Run lengths do not match')
-                runf[-1*len(run):] = run
-                run = runf
-            run = np.convolve(
-                run,
-                np.ones(int(round(runsec*self.framerate)), dtype=np.float32),
-                mode='same')
-            run = run > 0
+                run = np.ones(self.nframes, dtype=bool)
+            else:
+                run = speed[:self.nframes] > run_min
+                if isinstance(run, bool):
+                    # 05/19 : Changed to error by Jeff.
+                    # I Think this should never be reached and can be deleted.
+                    raise ValueError('WARNING: Running not recorded')
+                    # print('WARNING: Running not recorded')
+                    # run = runf
+                elif len(run) < len(runf):
+                    print('WARNING: Run lengths do not match')
+                    runf[-1*len(run):] = run
+                    run = runf
+                run = np.convolve(
+                    run,
+                    np.ones(int(round(runsec*self.framerate)), dtype=np.float32),
+                    mode='same')
+                run = run > 0
 
         mot = np.zeros(self.nframes, dtype=bool)
         if motsec > 0:
@@ -1091,7 +1099,6 @@ class Trace2P(object):
         wheel_circumference = wheel_diameter*math.pi
         step_size = wheel_circumference/(wheel_tabs*2)
 
-        # Added
         if 'running' not in self.d or len(self.d['running'].flatten()) == 0:
             return []
 
@@ -1149,6 +1156,20 @@ class Trace2P(object):
         out = [o for o in out.flatten() if o < self.nframes]
 
         return np.array(out) == 1
+
+    def choice(self):
+        """
+        Return Go or No-Go for each trial.
+
+        Returns
+        -------
+        choice : bool
+            True is a Go (lick), False is No-Go (no lick).
+
+        """
+        go_codes = [0, 3, 5, 7, 8]  # hit, NC-FA, QC-FA, blank-FA, Pav-anticip
+        trial_errors = self.d['trialerror'].flatten()[:self.ntrials]
+        return np.array([te in go_codes for te in trial_errors])
 
     def licking(self):
         """Return the frames in which there was a lick onset."""
