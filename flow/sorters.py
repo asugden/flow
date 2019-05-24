@@ -8,10 +8,12 @@ from builtins import object
 from copy import copy
 from datetime import datetime
 from future.moves.collections import UserList
+import json
 import numpy as np
 from pandas import IndexSlice as Idx
 
 from .metadata import metadata
+from .misc import timestamp
 from . import config, glm, paths, xday, classify2p
 
 
@@ -446,6 +448,10 @@ class Run(object):
     @property
     def cells(self):
         return copy(self._cells)
+
+    def todict(self):
+        """Return Run object as a dictionary representation."""
+        return {'mouse': self.mouse, 'date': self.date, 'run': self.run}
 
     def set_subset(self, val=None):
         """
@@ -940,6 +946,32 @@ class RunSorter(UserList):
             return 'None'
         else:
             return self._name
+
+    def todicts(self):
+        run_dicts = [run.todict() for run in self]
+        return run_dicts
+
+    def tojson(self, path):
+        save_dict = {
+            'name': self.name,
+            'timestamp': timestamp(),
+            'runs': self.todicts()}
+        with open(path, 'w') as f:
+            json.dump(save_dict, f, sort_keys=True, indent=2)
+
+    @classmethod
+    def fromdicts(cls, run_dicts, name=None):
+        run_objs = [Run(**d) for d in run_dicts]
+        return cls(run_objs, name=name)
+
+    @classmethod
+    def fromjson(cls, path, name=None):
+        """Initialize a RunSorter from a saved JSON representation.
+        """
+        json_dict = json.load(path)
+        if name is None:
+            name = json_dict['name']
+        return cls.fromdicts(json_dict['runs'], name=name)
 
     @classmethod
     def frommeta(
