@@ -170,7 +170,8 @@ class Trace2P(object):
             # Invert dictionary, so you can also index it by value
             codes_inverted = {val: key for key, val in self.codes.items()}
 
-            return [codes_inverted[c] for c in condition_ids]
+            return [codes_inverted[c] if c in codes_inverted else '#UNK#'
+                    for c in condition_ids]
         else:
             return self.d['condition'][:self.ntrials].astype(np.int16), self.codes
 
