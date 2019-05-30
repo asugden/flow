@@ -23,7 +23,7 @@ def subformula(formula, data):
     return data.loc[:, keys].copy()
 
 
-def _mixed_keys(y, x, random_effects, categorical, continuous_random_effects):
+def _mixed_keys(y, x, random_effects, categorical, continuous_random_effects, offset):
     """
     Return the key names for x, y, and random_effects
     Parameters
@@ -40,14 +40,14 @@ def _mixed_keys(y, x, random_effects, categorical, continuous_random_effects):
     """
 
     out = [y] + [v for v in x] + [v for v in categorical]
-    res = [v for v in random_effects] + [v for v in continuous_random_effects]
+    res = [v for v in random_effects] + [v for v in continuous_random_effects] + [v for v in offset]
     out += [vv for v in res for vv in v.split(':') if len(vv) > 0]
     return out
 
 
 def mixed_effects_model(df, y, x=(), random_effects=(), categorical=(),
                         continuous_random_effects=(), family='gaussian',
-                        dropzeros=False, nonlinear=False, R=False):
+                        dropzeros=False, nonlinear=False, offset=(), R=False):
     """
     Create and run a mixed-effects general(ized) linear model.
 
@@ -83,9 +83,14 @@ def mixed_effects_model(df, y, x=(), random_effects=(), categorical=(),
         categorical = (categorical, )
     if isinstance(random_effects, basestring):
         random_effects = (random_effects, )
+    if isinstance(offset, basestring):
+        offset = (offset, )
+
+    use_R = True if (len(random_effects) > 0
+                     or len(continuous_random_effects) > 0) else False
 
     # Curate the data to a minimal size
-    df_keys = _mixed_keys(y, x, random_effects, categorical, continuous_random_effects)
+    df_keys = _mixed_keys(y, x, random_effects, categorical, continuous_random_effects, offset)
     for key in df_keys:
         if key not in df.keys():
             raise ValueError('Dataframe does not have column %s' % key)
@@ -93,6 +98,9 @@ def mixed_effects_model(df, y, x=(), random_effects=(), categorical=(),
     if dropzeros:
         sub.replace(0, np.nan, inplace=True)
     sub.dropna(inplace=True)
+
+    for key in offset:
+        sub[key] = np.log(sub[key])
 
     # Convert columns of strings to integer factors
     for reff in random_effects:
@@ -110,11 +118,12 @@ def mixed_effects_model(df, y, x=(), random_effects=(), categorical=(),
     # Make formula
     form_pieces = ([v for v in x] + [v for v in categorical]
                    + ['(1|%s)'%s for s in random_effects if len(s) > 0]
-                   + ['(%s)'%s for s in continuous_random_effects if len(s) > 0])
+                   + ['(%s)'%s for s in continuous_random_effects if len(s) > 0]
+                   + ['offset(%s)'%s for s in offset if len(offset) > 0 and use_R])
     formula = '%s ~ %s' % (y, ' + '.join(form_pieces))
     print(formula)
 
-    if len(random_effects) == 0 and len(continuous_random_effects) == 0:
+    if not use_R:
         y, X = patsy.dmatrices(formula, sub, return_type='dataframe')
 
         if family.lower() == 'gamma':
@@ -127,11 +136,25 @@ def mixed_effects_model(df, y, x=(), random_effects=(), categorical=(),
             linkfn = sm.families.links.log
             family = sm.families.Poisson(link=linkfn)
 
-        # import pdb;pdb.set_trace()
-
-        model = sm.GLM(y, X, family=family)
+        model = sm.GLM(y, X, family=family, offset=None if len(offset) == 0 else sub[offset[0]])
         glm_results = model.fit()
         print(glm_results.summary2())
+    elif len(random_effects) == 0 and len(continuous_random_effects) == 0:
+        rdf = pandas2ri.py2ri(sub)
+        pandas2ri.activate()
+        base = importr('base')
+        # stats = importr('stats')
+        lme4 = importr('lme4')
+
+        if family == 'gamma':
+            family = 'Gamma'
+
+        if nonlinear or family.lower() != 'gaussian':
+            model = lme4.glm(formula=formula, data=rdf, method='PB', family=family)
+        else:
+            model = lme4.glm(formula=formula, data=rdf)
+
+        print(base.summary(model))
     else:
         rdf = pandas2ri.py2ri(sub)
         pandas2ri.activate()
