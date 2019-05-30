@@ -58,6 +58,30 @@ class Classify2P(BaseClassifier):
 
         return fmin, fmax
 
+    def train(self):
+        """
+        Train a model and return it.
+
+        Returns
+        -------
+        Trained classifier model
+
+        """
+
+        if self._trained_model is None:
+            self._trained_model, self._trained_params, \
+                self._trained_nan_cells, self._trained_activity_scale = \
+                train.train_classifier(run=self.run, **self.pars)
+
+        out = {
+            'parameters': self.pars,
+            'marginal': model.marginal,
+            'conditional': model.conditional,
+            'cell_mask': np.invert(self._trained_nan_cells),
+        }
+
+        return out
+
     def classify(self, data=None, priors=None, temporal_prior=None, integrate_frames=None):
         """
         Return a trained classifier either for running the traditional classifier
