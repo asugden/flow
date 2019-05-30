@@ -3,7 +3,7 @@ from __future__ import division, print_function
 import numpy as np
 import seaborn as sns
 from builtins import range
-from scipy.stats import pearsonr
+from scipy.stats import pearsonr, spearmanr
 
 try:
     from bottleneck import nanmean
