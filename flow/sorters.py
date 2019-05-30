@@ -666,7 +666,44 @@ class MouseSorter(UserList):
 
         mouse_objs = (Mouse(mouse=mouse) for mouse in meta_mice)
 
-        return cls(mouse_objs, name=name)
+        return cls(date_objs, name=cls._create_name(mice, tags, name))
+
+    @staticmethod
+    def _create_name(mice, tags, name):
+        """
+        Create a name for saving unique to the inputs.
+
+        Parameters
+        ----------
+        mice
+        tags
+        name
+
+        Returns
+        -------
+        str
+
+        """
+
+        if name is not None:
+            return name
+
+        out = ''
+        if tags is not None:
+            if not isinstance(tags, list):
+                tags = [tags]
+            out += ','.join(tags)
+
+        if mice is not None:
+            if not isinstance(mice, list):
+                mice = [mice]
+
+            if len(out) > 0:
+                out += '-'
+
+            out += ','.join(mice)
+
+        return out
 
 
 class DateSorter(UserList):
@@ -765,7 +802,54 @@ class DateSorter(UserList):
         date_objs = (Date(mouse=mouse, date=date)
                      for mouse, date in mouse_date_pairs)
 
-        return cls(date_objs, name=name)
+        return cls(date_objs, name=cls._create_name(mice, dates, tags, name))
+
+    @staticmethod
+    def _create_name(mice, dates, tags, name):
+        """
+        Create a name for saving unique to the inputs.
+
+        Parameters
+        ----------
+        mice
+        dates
+        tags
+        name
+
+        Returns
+        -------
+        str
+
+        """
+
+        if name is not None:
+            return name
+
+        out = ''
+        if tags is not None:
+            if not isinstance(tags, list):
+                tags = [tags]
+            out += ','.join(tags)
+
+        if mice is not None:
+            if not isinstance(mice, list):
+                mice = [mice]
+
+            if len(out) > 0:
+                out += '-'
+
+            out += ','.join(mice)
+
+        if dates is not None:
+            if not isinstance(dates, list):
+                dates = [dates]
+
+            if len(out) > 0:
+                out += '-'
+
+            out += ','.join([str(v) for v in dates])
+
+        return out
 
 
 class DatePairSorter(UserList):
@@ -887,7 +971,54 @@ class DatePairSorter(UserList):
                       Date(mouse=mouse, date=d2, cells=id2))
                      for mouse, d1, d2, id1, id2 in pairs)
 
-        return cls(date_objs, name=name)
+        return cls(date_objs, name=cls._create_name(mice, dates, tags, name))
+
+    @staticmethod
+    def _create_name(mice, dates, tags, name):
+        """
+        Create a name for saving unique to the inputs.
+
+        Parameters
+        ----------
+        mice
+        dates
+        tags
+        name
+
+        Returns
+        -------
+        str
+
+        """
+
+        if name is not None:
+            return name
+
+        out = ''
+        if tags is not None:
+            if not isinstance(tags, list):
+                tags = [tags]
+            out += ','.join(tags)
+
+        if mice is not None:
+            if not isinstance(mice, list):
+                mice = [mice]
+
+            if len(out) > 0:
+                out += '-'
+
+            out += ','.join(mice)
+
+        if dates is not None:
+            if not isinstance(dates, list):
+                dates = [dates]
+
+            if len(out) > 0:
+                out += '-'
+
+            out += ','.join([str(v) for v in dates])
+
+        return out
 
 
 class RunSorter(UserList):
@@ -985,7 +1116,64 @@ class RunSorter(UserList):
 
         run_objs = (Run(mouse=mouse, date=date, run=run)
                     for mouse, date, run in mouse_date_run_pairs)
-        return cls(run_objs, name=name)
+
+        return cls(run_objs, name=cls._create_name(mice, dates, runs, tags, name))
+
+    @staticmethod
+    def _create_name(mice, dates, runs, tags, name):
+        """
+        Create a name for saving unique to the inputs.
+
+        Parameters
+        ----------
+        mice
+        dates
+        tags
+        name
+
+        Returns
+        -------
+        str
+
+        """
+
+        if name is not None:
+            return name
+
+        out = ''
+        if tags is not None:
+            if not isinstance(tags, list):
+                tags = [tags]
+            out += ','.join(tags)
+
+        if mice is not None:
+            if not isinstance(mice, list):
+                mice = [mice]
+
+            if len(out) > 0:
+                out += '-'
+
+            out += ','.join(mice)
+
+        if dates is not None:
+            if not isinstance(dates, list):
+                dates = [dates]
+
+            if len(out) > 0:
+                out += '-'
+
+            out += ','.join([str(v) for v in dates])
+
+        if runs is not None:
+            if not isinstance(runs, list):
+                runs = [runs]
+
+            if len(out) > 0:
+                out += '-'
+
+            out += ','.join([str(v) for v in runs])
+
+        return out
 
     def dates(self, name=None):
         """
