@@ -1,31 +1,27 @@
-from builtins import range
-from builtins import object
-from copy import deepcopy
-import numpy as np
-import os.path as opath
-import yaml
-
-from .misc import legiblepars, loadmat, savemat, matlabifypars, mkdir_p
+from .misc import loadmat
+from .classifier import randomizations
 from .classifier import train
-from .randomizations.base_classifier import BaseClassifier
-from . import randomizations
+from .classifier.base_classifier import BaseClassifier
+
+
+class NoClassifierError(Exception):
+    pass
 
 
 class Classify2P(BaseClassifier):
     def __init__(self, path, run, pars=None):
-        """
-        Load in a classifier or classifiers
+        """Load in a classifier or classifiers.
 
         Parameters
         ----------
-        paths : str or list
-            A single path or a list of paths to load
-        run : int
-            The run number to open
+        path : str
+            Path to the classifier to load or save if needed.
+        run : Run
+            The run object that the classifier refers to.
         pars : dict
-            The parameters used to generate the classifier
-        """
+            The parameters used to generate the classifier.
 
+        """
         BaseClassifier.__init__(self)
 
         if pars is None:
@@ -47,12 +43,14 @@ class Classify2P(BaseClassifier):
 
     @property
     def frame_range(self):
-        """The frames that should be compared due to maxing,
-        left side included, right side excluded."""
+        """The frames that should be compared due to maxing.
 
+        Left side included, right side excluded.
+
+        """
         t2p = self.run.trace2p()
-        integrate_frames = int(round(self.pars['classification-ms']
-                                     /1000.0*t2p.framerate))
+        integrate_frames = int(round(
+            self.pars['classification-ms']/1000.0*t2p.framerate))
         fmin = -int(integrate_frames//2.0)
         fmax = fmin + integrate_frames
 
@@ -82,10 +80,14 @@ class Classify2P(BaseClassifier):
 
         return out
 
-    def classify(self, data=None, priors=None, temporal_prior=None, integrate_frames=None):
+    def classify(
+            self, data=None, priors=None, temporal_prior=None,
+            integrate_frames=None):
         """
-        Return a trained classifier either for running the traditional classifier
-        or for randomization.
+        Return a trained classifier.
+
+        Used either for running the traditional classifier or for
+        randomization.
 
         data : matrix
             Matrix of data to compare, ncells x ntimes
@@ -120,7 +122,7 @@ class Classify2P(BaseClassifier):
 
         return results
 
-    def randomization(self, rtype):
+    def randomization(self, rtype, **kwargs):
         """
         Return an object of the correct randomization type.
 
@@ -128,6 +130,9 @@ class Classify2P(BaseClassifier):
         ----------
         rtype : str {'identity', 'time'}
             Randomization type
+        **kwargs
+            Additional keyword arguments are passed to the individual
+            randomization classes.
 
         Returns
         -------
@@ -137,15 +142,33 @@ class Classify2P(BaseClassifier):
         """
 
         if rtype == 'identity':
-            return randomizations.identity.RandomizeIdentity(self)
+            return randomizations.identity.RandomizeIdentity(self, **kwargs)
         else:
-            return randomizations.time.RandomizeTime(self)
+            return randomizations.time.RandomizeTime(self, **kwargs)
 
     def _load_or_classify(self, path):
         try:
             self.d = loadmat(path)
+            found = True
         except IOError:
-            self._classify(path)
+            found = False
+
+        if not found:
+            try:
+                self._classify(path)
+            except ValueError as err:
+                # Skip dates that just can't be trained
+                if 'Not enough training data' in str(err):
+                    raise NoClassifierError(
+                        'Not enough training data: {}'.format(self.run))
+                elif 'stimulus_length should only be 0 if there are no cses' in str(err):
+                    raise NoClassifierError(
+                        "Bad simpcell, can't calculate stimulus_length: {}".format(
+                            self.run))
+                elif 'traces missing' in str(err):
+                    raise NoClassifierError(err)
+                else:
+                    raise
 
     def _classify(self, path):
         """Run the classifier and save the results."""

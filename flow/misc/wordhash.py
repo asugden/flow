@@ -71,16 +71,19 @@ def word(obj, use_new=False):
     # TODO: Remove extraction of run-specific parameters
     obj = extract_run_specific_pars(obj)
 
-    obj = sortlist(obj)
-
-    # dig = hashlib.md5(pickle.dumps(obj))
-    if use_new or PY3:
-        dig = new_hash(obj)
-    else:
-        dig = old_hash(obj)
-    val = int(dig.hexdigest(), 16)%len(wordlist)
-    # print wordlist[val]
+    dig = hash(obj, use_new=use_new)
+    val = int(dig, 16) % len(wordlist)
     return wordlist[val]
+
+
+def hash(obj, use_new=True):
+    """Hash any Python object."""
+    obj = sortlist(obj)
+    if use_new or PY3:
+        out = new_hash(obj)
+    else:
+        out = old_hash(obj)
+    return out.hexdigest()
 
 
 def old_hash(obj):

@@ -23,10 +23,14 @@ def timestamp():
         datetime.datetime.now(), '%Y-%m-%d-%Hh%Mm%Ss')
 
 
-def datestamp():
+def datestamp(compact=False):
     """Return the current date as a timestamp string."""
-    return datetime.datetime.strftime(
-        datetime.datetime.now(), '%Y-%m-%d')
+    if compact:
+        return datetime.datetime.strftime(
+            datetime.datetime.now(), '%y%m%d')
+    else:
+        return datetime.datetime.strftime(
+            datetime.datetime.now(), '%Y-%m-%d')
 
 
 def mkdir_p(path):

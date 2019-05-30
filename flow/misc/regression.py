@@ -77,11 +77,11 @@ def mixed_effects_model(df, y, x=(), random_effects=(), categorical=(),
     """
 
     # Sanitize inputs
-    if isinstance(x, basestring):
+    if isinstance(x, str):
         x = (x, )
-    if isinstance(categorical, basestring):
+    if isinstance(categorical, str):
         categorical = (categorical, )
-    if isinstance(random_effects, basestring):
+    if isinstance(random_effects, str):
         random_effects = (random_effects, )
     if isinstance(offset, basestring):
         offset = (offset, )
