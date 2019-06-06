@@ -84,6 +84,17 @@ def classifier2p(run, pars, randomize=''):
 
     return out
 
+# DO NOT DELETE ME UNTIL THE STUPID PAPER IS PUBLISHED
+def getglm(mouse, date):
+    path = opath.join(datad, '%s/%s/%s_%s.simpglm' % (mouse, date, mouse, date))
+    if not opath.exists(path):
+        return None
+    else:
+        data = loadmat(path, appendmat=False)
+        cgs = [str(data['cellgroups'].flatten()[i][0]) for i in range(len(data['cellgroups'].flatten()))]
+        devexp = data['deviance_explained']
+        return [cgs, devexp, data]
+
 def getonsets(mouse, date=None, run=None):
     """
     Return the extra onsets file
