@@ -1007,7 +1007,8 @@ class Trace2P(object):
         :return: boolean
         """
 
-        if 'photometry' in self.d and len(self.d['photometry'].flatten()) > 0:
+        if (('photometry' in self.d and len(self.d['photometry'].flatten()) > 0) or
+                ('photometry_dff' in self.d and len(self.d['photometry_dff'].flatten()) > 0)):
             return True
 
     def hasripple(self):
@@ -1254,8 +1255,10 @@ class Trace2P(object):
         :return: numpy vector or empty list
         """
 
-        if 'photometry' in self.d and len(self.d['photometry'].flatten()) > 0:
+        if self.hasphotometry():
             if tracetype == 'dff':
+                if 'photometry_dff' in self.d:
+                    return self.d['photometry_dff']
                 if self.d['photometry'].ndim == 1 and fiber == 0:
                     return self.d['photometry']
                 elif self.d['photometry'].ndim == 2:
@@ -1263,7 +1266,10 @@ class Trace2P(object):
                 else:
                     return []
             elif tracetype == 'raw':
-                return self.d['photometryraw'].flatten()
+                if 'photometry_raw' in self.d:
+                    return self.d['photometry_raw']
+                else:
+                    return self.d['photometryraw'].flatten()
             else:
                 if self.d['photometrydeconvolved'].ndim == 1 and fiber == 0:
                     return self.d['photometrydeconvolved']
