@@ -6,6 +6,10 @@
 #include <stdio.h>
 #include <stdbool.h>
 
+#if PY_MAJOR_VERSION >= 3
+#define PY3K
+#endif
+
 
 void nb_comparison(PyArrayObject *npsingles, PyArrayObject *npcompare, PyArrayObject *priors,
                      PyArrayObject *likelihood, PyArrayObject *results) {
@@ -424,6 +428,7 @@ static struct PyMethodDef methods[] = {
     {NULL, NULL, 0, NULL}
 };
 
+#ifdef PY3K
 static struct PyModuleDef runclassifier = {
     PyModuleDef_HEAD_INIT,
     "runclassifier", /* name of module */
@@ -435,3 +440,10 @@ static struct PyModuleDef runclassifier = {
 PyMODINIT_FUNC PyInit_runclassifier(void) {
     return PyModule_Create(&runclassifier);
 };
+#else
+PyMODINIT_FUNC
+initrunclassifier (void) {
+    (void) Py_InitModule("runclassifier", methods);
+    import_array();
+}
+#endif
