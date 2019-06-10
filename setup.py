@@ -5,6 +5,9 @@ from glob import glob
 import os
 import platform
 
+import sys
+PY3 = sys.version_info[0] >= 3
+
 # Specify specific compiler on Mac
 # if platform.system() == 'Darwin':
 #     os.environ["CC"] = "gcc-mp-5"
@@ -66,7 +69,7 @@ setup(
     # installed or upgraded on the target machine
     install_requires=[
         'numpy>=1.8',
-        'matplotlib>=3.0.2',
+        'matplotlib>=3.0.2' if PY3 else 'matplotlib',
         'scipy>=0.19.0',
         'pandas>=0.21.1',
         'seaborn',
