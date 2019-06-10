@@ -128,6 +128,19 @@ def meta(
     if photometry is not None and not isinstance(photometry, list):
         photometry = [photometry]
 
+    # Had to do this to solve command-line issues
+    if dates is not None:
+        for i, v in enumerate(dates):
+            if not isinstance(v, int):
+                dates[i] = int(dates[i])
+                print('WARNING: Converting date value to int')
+
+    if runs is not None:
+        for i, v in enumerate(runs):
+            if not isinstance(v, int):
+                runs[i] = int(runs[i])
+                print('WARNING: Converting run value to int')
+
     # Load all data
     df = parser.meta_df(reload_=reload_)
 
