@@ -528,6 +528,8 @@ def _get_traces(
                         out['other-running'].append(
                             trs[:, start:start + length_fr])
                     else:
+                        if 'other' not in out:
+                            out['other'] = []
                         out['other'].append(
                             trs[:, start:start + length_fr])
 
