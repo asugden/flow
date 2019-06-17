@@ -88,14 +88,26 @@ class Trace2P(object):
                     int(round(2*self.framerate + 0.5))
         return self._offsets
 
+    # @property
+    # def orientations(self):
+    #     """Return dict of trial number to name mapping."""
+    #     if self._orientations is None:
+    #         self._orientations = \
+    #             {str(v): k for k, v in self.d['orientations'].items()} \
+    #             if 'orientations' in self.d else {}
+    #     return copy(self._orientations)
+
     @property
     def orientations(self):
-        """Return dict of trial number to name mapping."""
+        """Return the orientation displayed for each trial."""
         if self._orientations is None:
-            self._orientations = \
-                {str(v): k for k, v in self.d['orientations'].items()} \
-                if 'orientations' in self.d else {}
-        return copy(self._orientations)
+            if 'orientations' in self.d:
+                oris = self.d['orientations']
+                self._orientations = \
+                    [oris[c] for c in self.conditions(return_as_strings=True)]
+            else:
+                self._orientations = []
+        return self._orientations
 
     @property
     def stimulus_length(self):
