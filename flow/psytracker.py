@@ -1,11 +1,11 @@
 from copy import deepcopy
 import numpy as np
 import os.path as opath
+from psytrack.helper.helperFunctions import read_input
 import yaml
 
 from . import config, paths
 from .misc import loadmat, matlabifypars, mkdir_p, savemat, timestamp
-
 from .psytrack.train import train
 
 VERSION = 0
@@ -46,6 +46,41 @@ class PsyTracker(object):
         """Repr."""
         return "PsyTracker(path={})".format(self.path)
 
+    def data(self):
+        """Return the data used to fit the model."""
+        return self.d['data']
+
+    def fits(self):
+        """Return the fit weights for all parameters."""
+        return self.d['results']['model_weights']
+
+    def inputs(self):
+        """Return the input data formatted for the model."""
+        return read_input(self.data(), self.weight_dict())
+
+    def weight_dict(self):
+        """Return the dictionary of weights that were fit."""
+        return self.pars['weights']
+
+    def weight_labels(self):
+        """The names of each fit weight, order matched to results.
+
+        If a label is repeated, the first instance is the closest in time to
+        the current trial, and they step back 1 trial from there.
+
+        """
+        labels = []
+        for weight in sorted(self.weight_dict().keys()):
+            labels += [weight] * self.weight_dict()[weight]
+        return labels
+
+    def predict(self):
+        """Return predicted lick probability for every trial."""
+        g = self.inputs()
+        X = np.sum(g.T * self.fits(), axis=0)
+
+        return 1 / (1 + np.exp(-X))
+
     def _load_or_train(self, verbose=False, force=False):
         if not force:
             try:
@@ -56,7 +91,7 @@ class PsyTracker(object):
                 if verbose:
                     print('No PsyTracker found, re-calculating.')
             else:
-                if False or self.d['version'] < 1:  # Disable version checking for now
+                if False and self.d['version'] < 1:  # Disable version checking for now
                     found = False
                     if verbose:
                         print('Old PsyTracker found, re-calculating.')

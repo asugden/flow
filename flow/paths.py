@@ -378,7 +378,7 @@ def psytrack(mouse, pars):
     word = wordhash.word(pars, use_new=True)
 
     path = opath.join(
-        outd, 'psytrack', mouse, word, '{}-{}.psy'.format(mouse, word))
+        outd, 'psytrack', mouse, word, '{}_{}.psy'.format(mouse, word))
 
     return path
 

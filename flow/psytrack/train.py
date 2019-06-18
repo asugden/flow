@@ -1,7 +1,7 @@
 import numpy as np
 from pprint import pprint
 
-from psytrack.aux.invBlkTriDiag import getCredibleInterval
+from psytrack.helper.invBlkTriDiag import getCredibleInterval
 from psytrack.hyperOpt import hyperOpt
 
 
@@ -25,7 +25,7 @@ def train(
 
     k = np.sum([weights[i] for i in weights.keys()])
     if verbose:
-        print('* Beginning training for: {} *'.format(mouse))
+        print('* Beginning training for {} *'.format(mouse))
         print(' Fitting weights:')
         pprint(weights)
         print(' Fitting {} total hyper-parameters'.format(k))
@@ -154,7 +154,7 @@ def _gather_data(
             if 'cum_punish' in weights:
                 cum_punish.extend(np.cumsum(date_punish))
 
-    out = {'mouse': mouse.mouse}
+    out = {'name': mouse.mouse}
     out['dayLength'] = np.array(day_length)
     out['days'] = np.array(days)
     out['y'] = np.array([2 if val else 1 for val in y])
@@ -165,25 +165,25 @@ def _gather_data(
     for ori in oris:
         key = 'ori_{}'.format(ori)
         ori_arr = np.array(oris[ori])
-        out['inputs'][key] = np.ones((len(oris[ori]), 2))
+        out['inputs'][key] = np.zeros((len(oris[ori]), 2))
         out['inputs'][key][:, 0] += ori_arr
         out['inputs'][key][1:, 1] += ori_arr[:-1]
 
     if 'prev_choice' in weights:
-        out['inputs']['prev_choice'] = np.ones((len(out['y']), 2))
+        out['inputs']['prev_choice'] = np.zeros((len(out['y']), 2))
         out['inputs']['prev_choice'][1:, 0] = out['y'][:-1]
         out['inputs']['prev_choice'][2:, 1] = out['y'][:-2]
     if 'prev_answer' in weights:
-        out['inputs']['prev_answer'] = np.ones((len(out['answer']), 2))
+        out['inputs']['prev_answer'] = np.zeros((len(out['answer']), 2))
         out['inputs']['prev_answer'][1:, 0] = out['answer'][:-1]
         out['inputs']['prev_answer'][2:, 1] = out['answer'][:-2]
 
     if 'prev_reward' in weights:
-        out['inputs']['prev_reward'] = np.ones((len(reward), 2))
+        out['inputs']['prev_reward'] = np.zeros((len(reward), 2))
         out['inputs']['prev_reward'][1:, 0] += reward[:-1]
         out['inputs']['prev_reward'][2:, 1] += reward[:-2]
     if 'prev_punish' in weights:
-        out['inputs']['prev_punish'] = np.ones((len(punish), 2))
+        out['inputs']['prev_punish'] = np.zeros((len(punish), 2))
         out['inputs']['prev_punish'][1:, 0] += punish[:-1]
         out['inputs']['prev_punish'][2:, 1] += punish[:-2]
 
