@@ -95,6 +95,22 @@ _settings = {
     }
 }
 
+_psytrack_defaults = {
+    'run_types': ['training'],
+    'tags': ['hungry'],
+    'exclude_tags': ['bad'],
+    'weights': {
+        'bias': 1,
+        'ori_0': 1,
+        'ori_135': 1,
+        'ori_270': 1,
+        'prev_choice': 1,
+        'prev_reward': 1,
+        'prev_punish': 1},
+    'include_pavlovian': True,
+    'separate_day_var': True
+}
+
 
 _params = None
 
@@ -190,7 +206,9 @@ def _load_config():
     config_path = _find_config()
     with open(config_path, 'r') as f:
         loaded_config = json.load(f)
-        config = {'defaults': copy.copy(_settings)}
+        config = {
+            'defaults': copy.copy(_settings),
+            'psytrack_defaults': copy.copy(_psytrack_defaults)}
         for key in loaded_config:
             # Just add keys in the config file other than 'defaults'
             if key not in config:
