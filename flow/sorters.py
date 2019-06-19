@@ -14,7 +14,8 @@ from pandas import IndexSlice as Idx
 
 from .metadata import metadata
 from .misc import timestamp
-from . import classify2p, config, glm, paths, psytracker, xday
+from .psytrack import psytracker
+from . import classify2p, config, glm, paths, xday
 
 
 class Mouse(object):

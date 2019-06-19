@@ -1,12 +1,16 @@
 from copy import deepcopy
 import numpy as np
 import os.path as opath
-from psytrack.helper.helperFunctions import read_input
 import yaml
 
-from . import config, paths
-from .misc import loadmat, matlabifypars, mkdir_p, savemat, timestamp
-from .psytrack.train import train
+from .. import config, paths
+from ..misc import loadmat, matlabifypars, mkdir_p, savemat, timestamp
+try:
+    from .train import train
+except ImportError:
+    # Won't be able to train without psytrack installed, but should be able
+    # to work with saved .psy files fine.
+    pass
 
 VERSION = 0
 
@@ -56,6 +60,7 @@ class PsyTracker(object):
 
     def inputs(self):
         """Return the input data formatted for the model."""
+        from psytrack.helper.helperFunctions import read_input
         return read_input(self.data(), self.weight_dict())
 
     def weight_dict(self):
