@@ -74,9 +74,27 @@ class PsyTracker(object):
             labels += [weight] * self.weight_dict()[weight]
         return labels
 
-    def predict(self):
-        """Return predicted lick probability for every trial."""
-        g = self.inputs()
+    def predict(self, data=None):
+        """Return predicted lick probability for every trial.
+
+        Parameters
+        ----------
+        data : np.ndarray, optional
+            If not None, the input data to make predictions from. Should be
+            (ntrials x nweights), with the order matching weight_labels(). If
+            a bias term was fit, the values should be all 1's.
+
+        Returns
+        -------
+        prediction : np.ndarray
+            A length ntrials array of values on (0, 1) that corresponds to the
+            predicted probability of licking on each trial.
+
+        """
+        if data is None:
+            g = self.inputs()
+        else:
+            g = data
         X = np.sum(g.T * self.fits(), axis=0)
 
         return 1 / (1 + np.exp(-X))
@@ -104,9 +122,7 @@ class PsyTracker(object):
                     if 'missing_trials' in self.d['data'] and \
                             np.isnan(self.d['data']['missing_trials']):
                         self.d['data']['missing_trials'] = None
-                    # Pop off matlab junk keys
-                    for key in ['__header__', '__version__', '__globals__']:
-                        self.d.pop(key, None)
+
         if force or not found:
             data, results = train(
                 self.mouse, verbose=verbose, **self.pars)

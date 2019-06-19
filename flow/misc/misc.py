@@ -238,6 +238,11 @@ def loadmat(filename):
 
     data = spio.loadmat(
         filename, struct_as_record=False, squeeze_me=True, appendmat=False)
+
+    # Pop off Matlab junk keys
+    for key in ['__header__', '__version__', '__globals__']:
+        data.pop(key, None)
+
     return check_keys(data)
 
 
