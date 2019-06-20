@@ -1,8 +1,11 @@
 import numpy as np
 from pprint import pprint
+import time
 
 from psytrack.helper.invBlkTriDiag import getCredibleInterval
 from psytrack.hyperOpt import hyperOpt
+
+updated = 190620
 
 
 def train(
@@ -54,9 +57,13 @@ def train(
     # Fit model
     if verbose:
         print('- Fitting model')
+        start_t = time.time()
     hyp, evd, wMode, hess = hyperOpt(
         data, hyper, weights, opt_list,
         showOpt=0 if not verbose else int(verbose) - 1)
+    if verbose:
+        stop_t = time.time()
+        print(' Model fit in {:.2f} minutes.'.format((stop_t - start_t) / 60.))
 
     # Calculate confidence intervals
     if verbose:
@@ -86,9 +93,8 @@ def _gather_data(
         mouse, weights, run_types, tags=None, exclude_tags=('bad',),
         include_pavlovian=True):
     orientations = _parse_weights(weights)
-    day_length = []  # Number of trials for each day
-    run_length = []  # NUmber of trials for each run
-    days, runs = [], []
+    day_length, run_length = [], []  # Number of trials for each day/run
+    days, runs = [], []  # Dates/run numbers for all days/runs
     y = []  # 2 for lick, 1 for no lick
     correct = []  # correct trials, boolean
     answer = []  # The correct choice, 2 for lick, 1 for no lick
@@ -110,7 +116,8 @@ def _gather_data(
             t2p = run.trace2p()
             ntrials = t2p.ntrials
             if not include_pavlovian:
-                raise NotImplementedError
+                pav_trials = ['pavlovian' in x for x in
+                              t2p.conditions(return_as_strings=True)]
             if not ntrials > 0:
                 continue
             date_ntrials += ntrials
@@ -159,7 +166,9 @@ def _gather_data(
 
     out = {'name': mouse.mouse}
     out['dayLength'] = np.array(day_length)
+    out['runLength'] = np.array(run_length)
     out['days'] = np.array(days)
+    out['runs'] = np.array(runs)
     out['y'] = np.array([2 if val else 1 for val in y])
     out['correct'] = np.array(correct)
     out['answer'] = np.array([2 if val else 1 for val in answer])

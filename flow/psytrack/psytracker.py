@@ -7,13 +7,11 @@ from .. import config, paths
 from ..misc import loadmat, matlabifypars, mkdir_p, savemat, timestamp
 from ..misc import wordhash
 try:
-    from .train import train
+    from .train import train, updated
 except ImportError:
     # Won't be able to train without psytrack installed, but should be able
     # to work with saved .psy files fine.
     pass
-
-VERSION = 0
 
 
 class PsyTracker(object):
@@ -27,13 +25,13 @@ class PsyTracker(object):
             pars = {}
         self._pars = config.params()['psytrack_defaults']
         self._pars.update(pars)
+        self._pars_word = None
 
-        self._path = paths.psytrack(mouse.mouse, self.pars)
+        self._path = paths.psytrack(mouse.mouse, self.pars_word)
 
         self._load_or_train(verbose=verbose, force=force)
 
         self._weight_labels = None
-        self._param_word = None
 
     def __repr__(self):
         """Repr."""
@@ -68,10 +66,10 @@ class PsyTracker(object):
     def inputs(self):
         """Return the input data formatted for the model."""
         from psytrack.helper.helperFunctions import read_input
-        return read_input(self.data, self.weight_dict)
+        return read_input(self.data, self.weights_dict)
 
     @property
-    def weight_dict(self):
+    def weights_dict(self):
         """Return the dictionary of weights that were fit."""
         return self.pars['weights']
 
@@ -85,17 +83,18 @@ class PsyTracker(object):
         """
         if self._weight_labels is None:
             labels = []
-            for weight in sorted(self.weight_dict.keys()):
-                labels += [weight] * self.weight_dict[weight]
+            for weight in sorted(self.weights_dict.keys()):
+                labels += [weight] * self.weights_dict[weight]
             self._weight_labels = labels
         return deepcopy(self._weight_labels)
 
     @property
-    def param_word(self):
-        if self._param_word is None:
-            self._param_word = wordhash.word(self.pars, use_new=True)
-        return self._param_word
-    
+    def pars_word(self):
+        if self._pars_word is None:
+            pars = self.pars
+            pars['updated'] = updated
+            self._pars_word = wordhash.word(pars, use_new=True)
+        return self._pars_word
 
     def predict(self, data=None):
         """Return predicted lick probability for every trial.
@@ -115,10 +114,10 @@ class PsyTracker(object):
 
         """
         if data is None:
-            g = self.inputs()
+            g = self.inputs
         else:
             g = data
-        X = np.sum(g.T * self.fits(), axis=0)
+        X = np.sum(g.T * self.fits, axis=0)
 
         return 1 / (1 + np.exp(-X))
 
@@ -132,28 +131,22 @@ class PsyTracker(object):
                 if verbose:
                     print('No PsyTracker found, re-calculating.')
             else:
-                if False and self.d['version'] < 1:  # Disable version checking for now
-                    found = False
-                    if verbose:
-                        print('Old PsyTracker found, re-calculating.')
-                else:
-                    # Matfiles can't store None, so they have to be converted
-                    # when saved to disk. I think this is the only place it
-                    # should be necessary.
-                    if verbose:
-                        print('Saved PsyTracker found, loading: ' + self.path)
-                    if 'missing_trials' in self.d['data'] and \
-                            np.isnan(self.d['data']['missing_trials']):
-                        self.d['data']['missing_trials'] = None
+                # Matfiles can't store None, so they have to be converted
+                # when saved to disk. I think this is the only place it
+                # should be necessary.
+                if verbose:
+                    print('Saved PsyTracker found, loading: ' + self.path)
+                if 'missing_trials' in self.d['data'] and \
+                        np.isnan(self.d['data']['missing_trials']):
+                    self.d['data']['missing_trials'] = None
 
         if force or not found:
-            data, results = train(
-                self.mouse, verbose=verbose, **self.pars)
+            data, results = train(self.mouse, verbose=verbose, **self.pars)
             self.d = {
                 'data': data,
                 'pars': self.pars,
                 'results': results,
-                'version': VERSION,
+                'updated': updated,
                 'timestamp': timestamp()}
             mkdir_p(opath.dirname(self.path))
 

@@ -373,9 +373,8 @@ def ctraindump(pars):
     return path
 
 
-def psytrack(mouse, pars):
+def psytrack(mouse, word):
     """Path to psytrack file."""
-    word = wordhash.word(pars, use_new=True)
 
     path = opath.join(
         outd, 'psytrack', mouse, word, '{}_{}.psy'.format(mouse, word))
