@@ -5,6 +5,7 @@ import yaml
 
 from .. import config, paths
 from ..misc import loadmat, matlabifypars, mkdir_p, savemat, timestamp
+from ..misc import wordhash
 try:
     from .train import train
 except ImportError:
@@ -31,6 +32,13 @@ class PsyTracker(object):
 
         self._load_or_train(verbose=verbose, force=force)
 
+        self._weight_labels = None
+        self._param_word = None
+
+    def __repr__(self):
+        """Repr."""
+        return "PsyTracker(path={})".format(self.path)
+
     @property
     def mouse(self):
         """Return the mouse object."""
@@ -46,27 +54,28 @@ class PsyTracker(object):
         """The path to the saved location of the data."""
         return self._path
 
-    def __repr__(self):
-        """Repr."""
-        return "PsyTracker(path={})".format(self.path)
-
+    @property
     def data(self):
         """Return the data used to fit the model."""
-        return self.d['data']
+        return deepcopy(self.d['data'])
 
+    @property
     def fits(self):
         """Return the fit weights for all parameters."""
-        return self.d['results']['model_weights']
+        return deepcopy(self.d['results']['model_weights'])
 
+    @property
     def inputs(self):
         """Return the input data formatted for the model."""
         from psytrack.helper.helperFunctions import read_input
-        return read_input(self.data(), self.weight_dict())
+        return read_input(self.data, self.weight_dict)
 
+    @property
     def weight_dict(self):
         """Return the dictionary of weights that were fit."""
         return self.pars['weights']
 
+    @property
     def weight_labels(self):
         """The names of each fit weight, order matched to results.
 
@@ -74,10 +83,19 @@ class PsyTracker(object):
         the current trial, and they step back 1 trial from there.
 
         """
-        labels = []
-        for weight in sorted(self.weight_dict().keys()):
-            labels += [weight] * self.weight_dict()[weight]
-        return labels
+        if self._weight_labels is None:
+            labels = []
+            for weight in sorted(self.weight_dict.keys()):
+                labels += [weight] * self.weight_dict[weight]
+            self._weight_labels = labels
+        return deepcopy(self._weight_labels)
+
+    @property
+    def param_word(self):
+        if self._param_word is None:
+            self._param_word = wordhash.word(self.pars, use_new=True)
+        return self._param_word
+    
 
     def predict(self, data=None):
         """Return predicted lick probability for every trial.

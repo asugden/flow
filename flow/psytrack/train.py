@@ -87,7 +87,8 @@ def _gather_data(
         include_pavlovian=True):
     orientations = _parse_weights(weights)
     day_length = []  # Number of trials for each day
-    days = []
+    run_length = []  # NUmber of trials for each run
+    days, runs = [], []
     y = []  # 2 for lick, 1 for no lick
     correct = []  # correct trials, boolean
     answer = []  # The correct choice, 2 for lick, 1 for no lick
@@ -113,6 +114,8 @@ def _gather_data(
             if not ntrials > 0:
                 continue
             date_ntrials += ntrials
+            run_length.append(ntrials)
+            runs.append(run.run)
 
             run_choice = t2p.choice()
             assert(len(run_choice) == ntrials)
