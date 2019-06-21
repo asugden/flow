@@ -7,7 +7,7 @@ from .. import config, paths
 from ..misc import loadmat, matlabifypars, mkdir_p, savemat, timestamp
 from ..misc import wordhash
 try:
-    from .train import train, updated
+    from .train import train
 except ImportError:
     # Won't be able to train without psytrack installed, but should be able
     # to work with saved .psy files fine.
@@ -90,9 +90,9 @@ class PsyTracker(object):
 
     @property
     def pars_word(self):
+        """Return the hash word of the current parameters."""
         if self._pars_word is None:
             pars = self.pars
-            pars['updated'] = updated
             self._pars_word = wordhash.word(pars, use_new=True)
         return self._pars_word
 
@@ -129,7 +129,8 @@ class PsyTracker(object):
             except IOError:
                 found = False
                 if verbose:
-                    print('No PsyTracker found, re-calculating.')
+                    print('No PsyTracker found, re-calculating (word=' +
+                          self.pars_word + ').')
             else:
                 # Matfiles can't store None, so they have to be converted
                 # when saved to disk. I think this is the only place it
@@ -141,12 +142,18 @@ class PsyTracker(object):
                     self.d['data']['missing_trials'] = None
 
         if force or not found:
-            data, results = train(self.mouse, verbose=verbose, **self.pars)
+            if self.pars['updated'] != \
+                    config.params()['psytrack_defaults']['updated']:
+                raise ValueError(
+                    'Unable to re-calculate old PsyTracker version: {}'.format(
+                        self.pars['updated']))
+            pars = self.pars
+            pars.pop('updated')
+            data, results = train(self.mouse, verbose=verbose, **pars)
             self.d = {
                 'data': data,
                 'pars': self.pars,
                 'results': results,
-                'updated': updated,
                 'timestamp': timestamp()}
             mkdir_p(opath.dirname(self.path))
 

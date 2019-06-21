@@ -5,8 +5,6 @@ import time
 from psytrack.helper.invBlkTriDiag import getCredibleInterval
 from psytrack.hyperOpt import hyperOpt
 
-updated = 190620
-
 
 def train(
         mouse, weights,

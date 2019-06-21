@@ -134,12 +134,12 @@ class Mouse(object):
 
         return DateSorter(date_objs, name=name)
 
-    def psytracker(self, newpars=None, verbose=False, force=False):
+    def psytracker(self, pars=None, verbose=False, force=False):
         """Load or calculate a PsyTracker for this mouse.
 
         Parameters
         ----------
-        newpars : dict, optional
+        pars : dict, optional
             Override default parameters for the PsyTracker. See
             flow.psytrack.train.train for options.
         verbose : bool
@@ -149,7 +149,7 @@ class Mouse(object):
 
         """
         return psytracker.PsyTracker(
-            self, pars=newpars, verbose=verbose, force=force)
+            self, pars=pars, verbose=verbose, force=force)
 
 
 class Date(object):
