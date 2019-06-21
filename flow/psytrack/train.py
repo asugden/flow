@@ -9,22 +9,11 @@ updated = 190620
 
 
 def train(
-        mouse,
+        mouse, weights,
         run_types=('training',), tags=('hungry',), exclude_tags=('bad',),
-        weights=None,
         include_pavlovian=True,
         separate_day_var=True, verbose=False):
     """Main function use to train the PsyTracker."""
-
-    if weights is None:
-        weights = {
-            'bias': 1,
-            'ori_0': 1,
-            'ori_135': 1,
-            'ori_270': 1,
-            'prev_choice': 1,
-            'prev_reward': 1,
-            'prev_punish': 1}
 
     k = np.sum([weights[i] for i in weights.keys()])
     if verbose:
@@ -94,11 +83,15 @@ def _gather_data(
         include_pavlovian=True):
     orientations = _parse_weights(weights)
     day_length, run_length = [], []  # Number of trials for each day/run
-    days, runs = [], []  # Dates/run numbers for all days/runs
+    days = []  # Dates for all days
+    dateRuns = []  # (date, run) for all runs
     y = []  # 2 for lick, 1 for no lick
     correct = []  # correct trials, boolean
     answer = []  # The correct choice, 2 for lick, 1 for no lick
 
+    if not include_pavlovian:
+        # All the pavlovian trials, so they can be excluded at the end
+        pav_trials = []
     if 'prev_reward' in weights or 'cum_reward' in weights:
         reward = []  # rewarded trials, boolean
     if 'prev_punish' in weights or 'cum_punish' in weights:
@@ -115,14 +108,27 @@ def _gather_data(
                 run_types=run_types, tags=tags, exclude_tags=exclude_tags):
             t2p = run.trace2p()
             ntrials = t2p.ntrials
+            # If dropping pavlovian trials, still need to keep them around
+            # for all of the trial history parameters, then drop at very end.
             if not include_pavlovian:
-                pav_trials = ['pavlovian' in x for x in
-                              t2p.conditions(return_as_strings=True)]
-            if not ntrials > 0:
-                continue
-            date_ntrials += ntrials
-            run_length.append(ntrials)
-            runs.append(run.run)
+                run_pav_trials = ['pavlovian' in x for x in
+                                  t2p.conditions(return_as_strings=True)]
+                n_run_pav_trials = sum(run_pav_trials)
+
+                if not (ntrials - n_run_pav_trials > 0):
+                    continue
+
+                pav_trials.extend(run_pav_trials)
+                date_ntrials += ntrials - n_run_pav_trials
+                run_length.append(ntrials - n_run_pav_trials)
+            else:
+                if not ntrials > 0:
+                    continue
+
+                date_ntrials += ntrials
+                run_length.append(ntrials)
+
+            dateRuns.append((run.date, run.run))
 
             run_choice = t2p.choice()
             assert(len(run_choice) == ntrials)
@@ -168,7 +174,7 @@ def _gather_data(
     out['dayLength'] = np.array(day_length)
     out['runLength'] = np.array(run_length)
     out['days'] = np.array(days)
-    out['runs'] = np.array(runs)
+    out['dateRuns'] = np.array(dateRuns)
     out['y'] = np.array([2 if val else 1 for val in y])
     out['correct'] = np.array(correct)
     out['answer'] = np.array([2 if val else 1 for val in answer])
@@ -203,5 +209,12 @@ def _gather_data(
         out['inputs']['cum_reward'] = cum_reward
     if 'cum_punish' in weights:
         out['inputs']['cum_punish'] = cum_punish
+
+    if not include_pavlovian:
+        pav_trials = np.array(pav_trials)
+        for key in ['y', 'correct', 'answer']:
+            out[key] = out[key][~pav_trials]
+        for key in out['inputs']:
+            out['inputs'][key] = out['inputs'][key][~pav_trials]
 
     return out
