@@ -204,9 +204,10 @@ def _gather_data(
         out['inputs']['prev_punish'][2:, 1] += punish[:-2]
 
     if 'cum_reward' in weights:
-        out['inputs']['cum_reward'] = cum_reward
+        # Convert to array and add a second dimension
+        out['inputs']['cum_reward'] = np.array(cum_reward)[:, None]
     if 'cum_punish' in weights:
-        out['inputs']['cum_punish'] = cum_punish
+        out['inputs']['cum_punish'] = np.array(cum_punish)[:, None]
 
     if not include_pavlovian:
         pav_trials = np.array(pav_trials)
