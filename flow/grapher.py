@@ -15,6 +15,8 @@ import os.path as opath
 from re import match as rematch
 from scipy.optimize import curve_fit
 import statsmodels.api as sm
+import sklearn.mixture
+import matplotlib.mlab
 
 # =============================================================================================== #
 # Ancillary useful functions
@@ -576,6 +578,140 @@ class Grapher(object):
         if args['legend']:
             legend = plt.legend(fontsize=12, title=args['legend-title'])
             plt.setp(legend.get_title(), fontsize=12)
+        self._end_graph(fig, ax, args)
+        return self
+
+    def histogram(self, **kwargs):
+        """
+        Plot a histogram of each of the y-axis values and smooth if desired
+
+        Parameters
+        ----------
+        nbins : int
+            Number of bins for the histogram. Defaults to n points/8 over the range
+        xmin : float
+            minimum x-value, used to compute bins
+        xmax : float
+            maximum x-value, used to compute bins
+        ymin : float
+            minimum plotted y-value
+        ymax : float
+            maximum plotted y-value
+        smooth : bool
+            If true, smooth using Gaussian kernel density estimation with bandwidth defined below
+        kernel_bandwidth : float
+            How much to smooth, low is very little (i.e. 0.1), high is heavily (i.e. 1).
+
+        Returns
+        -------
+        self
+
+        """
+
+        defaults = {
+            'nbins': None,
+            'xmin': None,
+            'xmax': None,
+            'ymin': 0,
+            'ymax': None,
+
+            'smooth': False,
+            'kernel_bandwidth': 0.5,
+            'fit-gaussian-n': -1,  # If > 1, fit gaussian mixture model of n components
+
+            'normalize_sum': False,  # If true, force the sum to be 1 rather than the integral
+
+            'cdf': False,
+
+            'legend': False,
+            'legend-title': '',
+        }
+
+        # Generate arguments by combining general graph defaults,
+        # specific graph defaults, and kwargs
+        args = setargs(dict(self.graph_defaults, **defaults), kwargs)
+        fig, ax = self._init_graph()
+
+        # Simplify the axis, keynote style
+        ax = self._simpleaxis(ax)
+
+        # Loop through all saved data and plot
+        for x, y, err, clr, xyargs in self._data:
+            if args['nbins'] is None:
+                nbins = max(6, len(y)/8)
+                yran = min(args['xmax'], np.max(y)) - max(args['xmin'], np.min(y))
+                nbins = int(round(nbins*((args['xmax'] - args['xmin'])/yran)))
+            else:
+                nbins = args['nbins']
+
+            # Set the weights and density
+            weights, density = None, True
+            if args['normalize_sum']:
+                weights = np.ones(len(y))/len(y)
+                density = False
+
+            if not args['cdf'] or not args['smooth']:
+                ax.hist(y, nbins, range=(args['xmin'], args['xmax']), linewidth=xyargs['line-width'],
+                        alpha=xyargs['opacity'], edgecolor=clr,
+                        label=xyargs['label'], density=density, histtype='step', cumulative=args['cdf'],
+                        weights=weights)
+
+            if args['smooth']:
+                kde = sm.nonparametric.KDEUnivariate(y)
+                kde.fit(gridsize=min(len(y), 1000))  # Estimate the densities
+                ax.fill(kde.support, kde.density, fc=clr, alpha=xyargs['opacity']/2.0)
+
+        if args['cdf'] and args['smooth']:
+            ax2 = ax.twinx()
+            ax2 = self._simpleaxis(ax2)
+
+            for x, y, err, clr, xyargs in self._data:
+                if args['nbins'] is None:
+                    nbins = max(6, len(y)/8)
+                    yran = min(args['xmax'], np.max(y)) - max(args['xmin'], np.min(y))
+                    nbins = int(round(nbins*((args['xmax'] - args['xmin'])/yran)))
+                else:
+                    nbins = args['nbins']
+
+                # Set the weights and density
+                weights, density = None, True
+                if args['normalize_sum']:
+                    weights = np.ones(len(y))/len(y)
+                    density = False
+
+                ax2.hist(y, len(y), range=(args['xmin'], args['xmax']), linewidth=xyargs['line-width'],
+                         alpha=xyargs['opacity'], edgecolor=clr, weights=weights,
+                         label=xyargs['label'], density=density, histtype='step', cumulative=True)
+
+            self.setaxes(ax2, args, True)
+            ax2.set_ylim([0, 1])
+            ax2.set_yticks([0, 1])
+
+        if args['fit-gaussian-n'] > 0:
+            for x, y, err, clr, xyargs in self._data:
+                y = np.array([y[np.isfinite(y)]]).T
+
+                model = sklearn.mixture.GaussianMixture(n_components=args['fit-gaussian-n'])
+                model.fit(y)
+
+                mu = model.means_
+                sigma = model.covariances_
+                w = model.weights_
+                x = np.linspace(args['xmin'], args['xmax'], 1000)
+
+                comb = 0
+                for i in range(len(w)):
+                    import pdb;pdb.set_trace()
+                    Z = w[i]*matplotlib.mlab.normpdf(x, mu[i], np.sqrt(sigma[i])).flatten()
+                    comb += Z
+                    ax.plot(x, Z, color=clr, lw=2)
+
+                ax.plot(x, comb, color='#000000', lw=2)
+
+        if args['legend']:
+            legend = plt.legend(fontsize=12, title=args['legend-title'])
+            plt.setp(legend.get_title(), fontsize=12)
+
         self._end_graph(fig, ax, args)
         return self
 
