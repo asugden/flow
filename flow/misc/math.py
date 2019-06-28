@@ -123,7 +123,7 @@ def smooth(x, window_len=5, window='flat'):
         w = eval('np.' + window + '(window_len)')
 
     y = np.convolve(w/w.sum(), s, mode='valid')
-    return y[(window_len/2-1):-(window_len/2)]
+    return y[(window_len//2-1):-(window_len//2)]
 
 
 # ----------------------------------------------------------
