@@ -171,7 +171,6 @@ def mixed_effects_model(df, y, x=(), random_effects=(), categorical=(),
             model = afex.mixed(formula=formula, data=rdf)
 
         print(base.summary(model))
-        # print(model)
 
     return model
 
