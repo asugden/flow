@@ -954,6 +954,9 @@ class DatePairSorter(UserList):
                 rev = metadata.reversal(mouse)
                 meta.loc[Idx[mouse, rev:], 'reversal'] = 1
 
+        if isinstance(day_distance, int):
+            day_distance = (0, day_distance)
+
         # Iterate over pair-able dates
         pairs = []
         for (mouse, rev), ddf in meta.groupby(['mouse', 'reversal']):
