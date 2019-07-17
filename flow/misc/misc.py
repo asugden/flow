@@ -13,6 +13,7 @@ import numpy as np
 import os
 import pprint
 import scipy.io as spio
+import h5py
 from scipy.sparse import issparse
 import subprocess
 import time
@@ -127,8 +128,8 @@ def save_figs(save_path, figs):
             pp.close()
         else:
             assert len(figs) == 1
-            fig.savefig(temp_save_path)
-            plt.close(fig)
+            figs.savefig(temp_save_path)
+            plt.close(figs)
     except:
         raise
     else:
@@ -236,12 +237,29 @@ def loadmat(filename):
                 data[strg] = elem
         return check_keys(data)
 
-    data = spio.loadmat(
-        filename, struct_as_record=False, squeeze_me=True, appendmat=False)
+    def hdf5_to_py(obj):
+        out = {}
+        for key in obj.keys():
+            if hasattr(obj[key], 'dtype') and obj[key].dtype != 'O':
+                out[key] = np.array(obj[key])
+            elif hasattr(obj[key], 'dtype') and obj[key].dtype == 'O':
+                out[key] = str(obj[key])
+            else:
+                out[key] = hdf5_to_py(obj[key])
+        return out
 
-    # Pop off Matlab junk keys
-    for key in ['__header__', '__version__', '__globals__']:
-        data.pop(key, None)
+    try:
+        data = spio.loadmat(
+            filename, struct_as_record=False, squeeze_me=True, appendmat=False)
+
+        # Pop off Matlab junk keys
+        for key in ['__header__', '__version__', '__globals__']:
+            data.pop(key, None)
+    except NotImplementedError:
+        # Handle Matlab v7.3
+        data = {}
+        with h5py.File(filename, 'r') as f:
+            data = hdf5_to_py(f)
 
     return check_keys(data)
 
