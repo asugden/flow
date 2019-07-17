@@ -390,7 +390,7 @@ class Trace2P(object):
         cutoff_frame = int(round(cutoff_before_lick_ms/1000.0*self.framerate))
 
         # Get lick times and onsets
-        licks = self.d['licking'].flatten()
+        licks = self.licking()
         ons = self.csonsets(cs, errortrials=errortrials)
         out = np.empty((self.ncells, end_frame - start_frame, len(ons)))
         out.fill(np.nan)
@@ -626,7 +626,7 @@ class Trace2P(object):
         """
 
         ons = self.csonsets(cs, errortrials=errortrials)
-        licks = self.d['licking'].flatten()
+        licks = self.licking()
         ntrialframes = int(round(8*self.framerate))
         if maxframes < 0:
             maxframes = ntrialframes
@@ -668,7 +668,7 @@ class Trace2P(object):
         """
 
         ons = self.csonsets(cs, errortrials=errortrials)
-        licks = self.d['licking'].flatten()
+        licks = self.licking()
         ntrialframes = int(round(8*self.framerate))
         out = []
 
