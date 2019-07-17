@@ -1,6 +1,7 @@
 """Miscellaneous helper functions."""
 from builtins import str
 from past.builtins import basestring
+
 import argparse
 import collections
 import datetime
@@ -8,9 +9,11 @@ import errno
 from getpass import getuser
 import hashlib
 import matplotlib.pyplot as plt
+import numpy as np
 import os
 import pprint
 import scipy.io as spio
+from scipy.sparse import issparse
 import subprocess
 import time
 
@@ -215,6 +218,7 @@ def loadmat(filename):
                 data[key] = todict(data[key])
             elif isinstance(data[key], collections.Iterable) and \
                     not isinstance(data[key], basestring) and \
+                    not issparse(data[key]) and \
                     len(data[key]) and \
                     isinstance(data[key][0],
                                spio.matlab.mio5_params.mat_struct):
@@ -234,15 +238,20 @@ def loadmat(filename):
 
     data = spio.loadmat(
         filename, struct_as_record=False, squeeze_me=True, appendmat=False)
+
+    # Pop off Matlab junk keys
+    for key in ['__header__', '__version__', '__globals__']:
+        data.pop(key, None)
+
     return check_keys(data)
 
 
-def savemat(filename, data):
+def savemat(filename, data, appendmat=False):
     """Save a dictionary to a mat file."""
     # Eventually this should cleanup the input dict, specifically making sure
     # that the py2/3 newstr is converted to an actual strings since
     # spio.savemat doesn't know how to handle them.
-    spio.savemat(filename, data)
+    spio.savemat(filename, data, appendmat=appendmat)
 
 
 def parse_date(datestr):
@@ -344,11 +353,9 @@ def matlabifypars(pars):
     for p in pars:
         mlname = p[:31].replace('-', '_')
         if isinstance(pars[p], dict):
-            mldict = {}
-            for pp in pars[p]:
-                mlname2 = pp[:31].replace('-', '_')
-                mldict[mlname2] = pars[p][pp]
-            out[mlname] = mldict
+            out[mlname] = matlabifypars(pars[p])
+        elif pars[p] is None:
+            out[mlname] = np.nan
         else:
             out[mlname] = pars[p]
     return out

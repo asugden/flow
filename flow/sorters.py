@@ -14,7 +14,8 @@ from pandas import IndexSlice as Idx
 
 from .metadata import metadata
 from .misc import timestamp
-from . import config, glm, paths, xday, classify2p
+from .psytrack import psytracker
+from . import classify2p, config, glm, paths, xday
 
 
 class Mouse(object):
@@ -132,6 +133,23 @@ class Mouse(object):
         date_objs = (Date(mouse=self.mouse, date=date) for date in meta_dates)
 
         return DateSorter(date_objs, name=name)
+
+    def psytracker(self, pars=None, verbose=False, force=False):
+        """Load or calculate a PsyTracker for this mouse.
+
+        Parameters
+        ----------
+        pars : dict, optional
+            Override default parameters for the PsyTracker. See
+            flow.psytrack.train.train for options.
+        verbose : bool
+            Be verbose.
+        force : bool
+            If True, ignore saved PsyTracker and re-calculate.
+
+        """
+        return psytracker.PsyTracker(
+            self, pars=pars, verbose=verbose, force=force)
 
 
 class Date(object):

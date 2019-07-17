@@ -372,6 +372,16 @@ def ctraindump(pars):
 
     return path
 
+
+def psytrack(mouse, word):
+    """Path to psytrack file."""
+
+    path = opath.join(
+        outd, 'psytrack', mouse, word, '{}_{}.psy'.format(mouse, word))
+
+    return path
+
+
 def pupilpos(mouse, date, run):
     """
     Get the ancillary pupil position
