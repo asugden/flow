@@ -79,7 +79,7 @@ sleep = {
 
 def meta(
         mice=None, dates=None, runs=None, run_types=None, photometry=None,
-        tags=None, exclude_tags='bad', reload_=False):
+        tags=None, exclude_tags=None, reload_=False):
     """Return metadata as a DataFrame, optionally filtering on any columns.
 
     All parameters are optional and if passed will be used to filter the
@@ -100,7 +100,9 @@ def meta(
     tags : list of str, optional
         List of tags to filter on. Can also be a single tag.
     exclude_tags : list of str, optional
-        List of tags to exclude. Can also be a single tag.
+        List of tags to exclude. If None, defaults to excluding 'bad' and
+        'disengaged' tags, can be overridden by passing an empty list. Can also
+        be a single tag.
     reload_ : bool
         If True, reload the DataFrame from disk, otherwise the entire
         un-filtered DataFrame is kept in memory.
@@ -112,6 +114,9 @@ def meta(
         Columns=('run_type', 'tags', 'photometry')
 
     """
+    if exclude_tags is None:
+        exclude_tags = ['bad', 'disengaged']
+
     # Convert single argument to a list
     if mice is not None and not isinstance(mice, list):
         mice = [mice]
@@ -123,7 +128,7 @@ def meta(
         run_types = [run_types]
     if tags is not None and not isinstance(tags, list):
         tags = [tags]
-    if exclude_tags is not None and not isinstance(exclude_tags, list):
+    if not isinstance(exclude_tags, list):
         exclude_tags = [exclude_tags]
     if photometry is not None and not isinstance(photometry, list):
         photometry = [photometry]

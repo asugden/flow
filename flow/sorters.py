@@ -101,7 +101,7 @@ class Mouse(object):
         """Not equal."""
         return not self.__eq__(other)
 
-    def dates(self, dates=None, tags=None, exclude_tags='bad', name=None):
+    def dates(self, dates=None, tags=None, exclude_tags=None, name=None):
         """Return a DateSorter of associated Dates.
 
         Can optionally filter Dates by tags.
@@ -113,7 +113,8 @@ class Mouse(object):
         tags : list of str, optional
             List of tags to filter on. Can also be a single tag.
         exclude_tags : list of str, optional
-            List of tags to exclude. Can also be a single tag.
+            List of tags to exclude. See flow.metadata.metadata.meta() for
+            default excluded tags. Can also be a single tag.
         name : str, optional
             Name of resulting DateSorter.
 
@@ -313,7 +314,7 @@ class Date(object):
         return not self.__eq__(other)
 
     def runs(self, run_types=None, runs=None, tags=None,
-             exclude_tags='bad', name=None):
+             exclude_tags=None, name=None):
         """Return a RunSorter of associated runs.
 
         Can optionally filter runs by runtype or other tags.
@@ -327,7 +328,8 @@ class Date(object):
         tags : list of str, optional
             List of tags to filter on. Can also be a single tag.
         exclude_tags : list of str, optional
-            List of tags to exclude. Can also be a single tag.
+            List of tags to exclude. See flow.metadata.metadata.meta() for
+            default excluded tags. Can also be a single tag.
         name : str, optional
             Name of resulting RunSorter.
 
@@ -340,7 +342,8 @@ class Date(object):
             name = str(self) + ' runs'
 
         if self._runs is None:
-            meta_all = metadata.meta(mice=[self.mouse], dates=[self.date])
+            meta_all = metadata.meta(
+                mice=[self.mouse], dates=[self.date], exclude_tags=[])
             meta_all_runs = meta_all.index.get_level_values('run')
             self._runs = {run: Run(mouse=self.mouse, date=self.date, run=run,
                                    cells=self.cells)
@@ -648,6 +651,7 @@ class MouseSorter(UserList):
             self._name = str(name)
 
     def __repr__(self):
+        """Repr."""
         return "MouseSorter([{} {}], name={})".format(
             len(self), 'Mouse' if len(self) == 1 else 'Mice', self.name)
 
@@ -660,7 +664,7 @@ class MouseSorter(UserList):
             return self._name
 
     @classmethod
-    def frommeta(cls, mice=None, tags=None, exclude_tags='bad', name=None):
+    def frommeta(cls, mice=None, tags=None, exclude_tags=None, name=None):
         """Initialize a MouseSorter from metadata.
 
         Parameters
@@ -670,7 +674,8 @@ class MouseSorter(UserList):
         tags : list of str, optional
             List of tags to filter on. Can also be a single tag.
         exclude_tags : list of str, optional
-            List of tags to exclude. Can also be a single tag.
+            List of tags to exclude. See flow.metadata.metadata.meta() for
+            default excluded tags. Can also be a single tag.
         name : str, optional
             A name to label the sorter, optional.
 
@@ -690,7 +695,7 @@ class MouseSorter(UserList):
 
         mouse_objs = (Mouse(mouse=mouse) for mouse in meta_mice)
 
-        return cls(date_objs, name=cls._create_name(mice, tags, name))
+        return cls(mouse_objs, name=cls._create_name(mice, tags, name))
 
     @staticmethod
     def _create_name(mice, tags, name):
@@ -789,7 +794,7 @@ class DateSorter(UserList):
     @classmethod
     def frommeta(
             cls, mice=None, dates=None, photometry=None, tags=None,
-            exclude_tags='bad', name=None):
+            exclude_tags=None, name=None):
         """Initialize a DateSorter from metadata.
 
         Parameters
@@ -803,7 +808,8 @@ class DateSorter(UserList):
         tags : list of str, optional
             List of tags to filter on. Can also be a single tag.
         exclude_tags : list of str, optional
-            List of tags to exclude. Can also be a single tag.
+            List of tags to exclude. See flow.metadata.metadata.meta() for
+            default excluded tags. Can also be a single tag.
         name : str, optional
             A name to label the sorter, optional.
 
@@ -914,6 +920,7 @@ class DatePairSorter(UserList):
             self._name = str(name)
 
     def __repr__(self):
+        """Repr."""
         return "DatePairSorter([{} {}], name={})".format(
             len(self), 'Date pair' if len(self) == 1 else 'Date pairs',
             self.name)
@@ -929,7 +936,7 @@ class DatePairSorter(UserList):
     @classmethod
     def frommeta(
             cls, mice=None, dates=None, photometry=None, tags=None,
-            exclude_tags='bad', day_distance=None, sequential=True,
+            exclude_tags=None, day_distance=None, sequential=True,
             cross_reversal=False, name=None):
         """Initialize a DatePairSorter from metadata.
 
@@ -942,7 +949,8 @@ class DatePairSorter(UserList):
         tags : list of str, optional
             List of tags to filter on. Can also be a single tag.
         exclude_tags : list of str, optional
-            List of tags to exclude. Can also be a single tag.
+            List of tags to exclude. See flow.metadata.metadata.meta() for
+            default excluded tags. Can also be a single tag.
         photometry : list of str, optional
             List of photometry labels to include. Can also be a single label.
         day_distance : tuple of ints, optional
@@ -1125,7 +1133,7 @@ class RunSorter(UserList):
     @classmethod
     def frommeta(
             cls, mice=None, dates=None, runs=None, run_types=None,
-            photometry=None, tags=None, exclude_tags='bad', name=None):
+            photometry=None, tags=None, exclude_tags=None, name=None):
         """Initialize a RunSorter from metadata.
 
         Parameters
@@ -1143,7 +1151,8 @@ class RunSorter(UserList):
         tags : list of str, optional
             List of tags to filter on. Can also be a single tag.
         exclude_tags : list of str, optional
-            List of tags to exclude. Can also be a single tag.
+            List of tags to exclude. See flow.metadata.metadata.meta() for
+            default excluded tags. Can also be a single tag.
         name : str, optional
             A name to label the sorter, optional.
 
