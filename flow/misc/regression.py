@@ -47,7 +47,7 @@ def _mixed_keys(y, x, random_effects, categorical, continuous_random_effects, of
 
 def mixed_effects_model(df, y, x=(), random_effects=(), categorical=(),
                         continuous_random_effects=(), family='gaussian',
-                        dropzeros=False, nonlinear=False, offset=(), R=False):
+                        dropzeros=False, nonlinear=False, offset=(), R=False, check_contrasts=False):
     """
     Create and run a mixed-effects general(ized) linear model.
 
@@ -100,7 +100,7 @@ def mixed_effects_model(df, y, x=(), random_effects=(), categorical=(),
     sub.dropna(inplace=True)
 
     for key in offset:
-        sub[key] = np.log(sub[key])
+       sub[key] = np.log(sub[key])
 
     # Convert columns of strings to integer factors
     for reff in random_effects:
@@ -118,8 +118,8 @@ def mixed_effects_model(df, y, x=(), random_effects=(), categorical=(),
     # Make formula
     form_pieces = ([v for v in x] + [v for v in categorical]
                    + ['(1|%s)'%s for s in random_effects if len(s) > 0]
-                   + ['(%s)'%s for s in continuous_random_effects if len(s) > 0]
-                   + ['offset(%s)'%s for s in offset if len(offset) > 0 and use_R])
+                   + ['(%s)'%s for s in continuous_random_effects if len(s) > 0])
+                   #+ ['offset(%s)'%s for s in offset if len(offset) > 0 and use_R])
     formula = '%s ~ %s' % (y, ' + '.join(form_pieces))
     print(formula)
 
@@ -139,39 +139,33 @@ def mixed_effects_model(df, y, x=(), random_effects=(), categorical=(),
         model = sm.GLM(y, X, family=family, offset=None if len(offset) == 0 else sub[offset[0]])
         glm_results = model.fit()
         print(glm_results.summary2())
-    elif len(random_effects) == 0 and len(continuous_random_effects) == 0:
-        rdf = pandas2ri.py2ri(sub)
-        pandas2ri.activate()
-        base = importr('base')
-        # stats = importr('stats')
-        lme4 = importr('lme4')
-
-        if family == 'gamma':
-            family = 'Gamma'
-
-        if nonlinear or family.lower() != 'gaussian':
-            model = lme4.glm(formula=formula, data=rdf, method='PB', family=family)
-        else:
-            model = lme4.glm(formula=formula, data=rdf)
-
-        print(base.summary(model))
     else:
         rdf = pandas2ri.py2ri(sub)
         pandas2ri.activate()
         base = importr('base')
         # stats = importr('stats')
         afex = importr('afex')
+        # multcomp = importr('multcomp')
 
         if family == 'gamma':
             family = 'Gamma'
 
+        #print(sub)
+
         if nonlinear or family.lower() != 'gaussian':
-            model = afex.mixed(formula=formula, data=rdf, method='PB', family=family)
+            if offset != ():
+                rdfoff = pandas2ri.py2ri(sub[offset[0]])
+
+                model = afex.mixed(formula=formula, data=rdf, method='PB', family=family, offset=rdfoff, check_contrasts=False)
+                # print(base.summary(multcomp.glht(model)))
+
+            else:
+                model = afex.mixed(formula=formula, data=rdf, method='PB', family=family)
         else:
             model = afex.mixed(formula=formula, data=rdf)
 
         print(base.summary(model))
-        # print(model)
+        print(model)
 
     return model
 
