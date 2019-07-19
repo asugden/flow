@@ -149,9 +149,11 @@ class PsyTracker(object):
                         self.pars['updated']))
             pars = self.pars
             pars.pop('updated')
-            data, results = train(self.mouse, verbose=verbose, **pars)
+            data, results, initialization = \
+                train(self.mouse, verbose=verbose, **pars)
             self.d = {
                 'data': data,
+                'initialization': initialization,
                 'pars': self.pars,
                 'results': results,
                 'timestamp': timestamp()}

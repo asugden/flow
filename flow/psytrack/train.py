@@ -63,7 +63,9 @@ def train(
                'hessian': hess,
                'credible_intervals': credible_int}
 
-    return data, results
+    init = {'hyper': hyper, 'opt_list': opt_list}
+
+    return data, results, init
 
 
 def _parse_weights(weights):
