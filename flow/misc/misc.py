@@ -7,13 +7,13 @@ import collections
 import datetime
 import errno
 from getpass import getuser
+import h5py
 import hashlib
 import matplotlib.pyplot as plt
 import numpy as np
 import os
 import pprint
 import scipy.io as spio
-import h5py
 from scipy.sparse import issparse
 import subprocess
 import time
@@ -295,7 +295,7 @@ def parse_date(datestr):
 
 
 def notebook_word():
-    """Converts a Jupyter notebook runtime connection file to a simple word.
+    """Convert a Jupyter notebook runtime connection file to a simple word.
 
     Must be called within a Jupyter notebook. Combined with 'notebook_file',
     these functions allow you to connect to an active Jupyter notebook at the
@@ -315,7 +315,7 @@ def notebook_word():
 
 
 def notebook_file(word, path=None):
-    """Converts a word from 'notebook_word' back to a filename.
+    """Convert a word from 'notebook_word' back to a filename.
 
     Used to connect to an active Jupyter notebook from the command line.
 
