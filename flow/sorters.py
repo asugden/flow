@@ -490,7 +490,7 @@ class Run(object):
     def _get_metadata(self):
         """Query the metadata and set necessary properties."""
         meta = metadata.meta(
-            mice=[self.mouse], dates=[self.date], runs=[self.run])
+            mice=[self.mouse], dates=[self.date], runs=[self.run], exclude_tags=[])
         assert len(meta) == 1
         tags = meta['tags'].iloc[0]
         run_type = meta['run_type'].iloc[0]
