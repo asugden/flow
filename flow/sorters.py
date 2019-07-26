@@ -56,7 +56,7 @@ class Mouse(object):
 
     def _get_metadata(self):
         """Query the metadata and set necessary properties."""
-        meta = metadata.meta(mice=[self.mouse])
+        meta = metadata.meta(mice=[self.mouse], exclude_tags=[])
         mouse_tags = set(meta['tags'].iloc[0])
         for tags in meta['tags']:
             mouse_tags.intersection_update(tags)
@@ -261,7 +261,8 @@ class Date(object):
 
     def _get_metadata(self):
         """Query the metadata and set necessary properties."""
-        meta = metadata.meta(mice=[self.mouse], dates=[self.date])
+        meta = metadata.meta(mice=[self.mouse], dates=[self.date],
+                             exclude_tags=[])
         date_tags = set(meta['tags'].iloc[0])
         for tags in meta['tags']:
             date_tags.intersection_update(tags)
@@ -490,7 +491,8 @@ class Run(object):
     def _get_metadata(self):
         """Query the metadata and set necessary properties."""
         meta = metadata.meta(
-            mice=[self.mouse], dates=[self.date], runs=[self.run], exclude_tags=[])
+            mice=[self.mouse], dates=[self.date], runs=[self.run],
+            exclude_tags=[])
         assert len(meta) == 1
         tags = meta['tags'].iloc[0]
         run_type = meta['run_type'].iloc[0]
