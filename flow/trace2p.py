@@ -103,11 +103,11 @@ class Trace2P(object):
         if self._orientations is None:
             if 'orientations' in self.d:
                 oris = self.d['orientations']
-                self._orientations = \
-                    [oris[c] for c in self.conditions(return_as_strings=True)]
+                self._orientations = np.array(
+                    [oris[c] for c in self.conditions(return_as_strings=True)])
             else:
-                self._orientations = []
-        return self._orientations
+                self._orientations = np.array([])
+        return copy(self._orientations)
 
     @property
     def stimulus_length(self):
@@ -1354,11 +1354,12 @@ class Trace2P(object):
            or cs == '225' or cs == '270' or cs == '315' or cs == '360':
             if cs not in self.orientations:
                 return []
-            else:
-                cs = self.orientations[cs]
-
-        # Account for all trial types
-        if len(cs) == 0:
+            trial_mask = self.orientations == int(cs)
+            if errortrials > -1:
+                err_mask = (self.d['trialerror']%2 == errortrials)
+                trial_mask = trial_mask & err_mask
+            out = np.copy(self.d['onsets'])[trial_mask]
+        elif len(cs) == 0:
             out = np.copy(self.d['onsets'])
             if errortrials > -1:
                 out = out[self.d['trialerror']%2 == errortrials]
