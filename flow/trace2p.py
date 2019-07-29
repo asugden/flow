@@ -1352,7 +1352,7 @@ class Trace2P(object):
 
         if cs == '0' or cs == '45' or cs == '90' or cs == '135' \
            or cs == '225' or cs == '270' or cs == '315' or cs == '360':
-            if cs not in self.orientations:
+            if int(cs) not in self.orientations:
                 return []
             trial_mask = self.orientations == int(cs)
             if errortrials > -1:
