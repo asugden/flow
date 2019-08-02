@@ -116,11 +116,11 @@ class Mouse(object):
             List of tags to exclude. See flow.metadata.metadata.meta() for
             default excluded tags. Can also be a single tag.
         name : str, optional
-            Name of resulting DateSorter.
+            Name of resulting MouseDateSorter.
 
         Returns
         -------
-        DateSorter
+        MouseDateSorter
 
         """
         if name is None:
@@ -133,13 +133,68 @@ class Mouse(object):
 
         date_objs = (Date(mouse=self.mouse, date=date) for date in meta_dates)
 
-        return DateSorter(date_objs, name=name)
+        return MouseDateSorter(date_objs, name=name)
 
-    def psytracker(self, pars=None, verbose=False, force=False):
+    def runs(self, dates=None, run_types=None, runs=None, tags=None,
+             exclude_tags=None, name=None):
+        """Return a RunSorter of associated runs.
+
+        Can optionally filter runs by run_type or other tags.
+
+        Parameters
+        ----------
+        dates : list of int, optional
+            List of dates to include. Can also be a single date.
+        run_types : list of str, optional
+            List of run_types to include. Can also be a single type.
+        runs : list of int, optional
+            List of run indices to include. Can also be a single index.
+        tags : list of str, optional
+            List of tags to filter on. Can also be a single tag.
+        exclude_tags : list of str, optional
+            List of tags to exclude. See flow.metadata.metadata.meta() for
+            default excluded tags. Can also be a single tag.
+        name : str, optional
+            Name of resulting MouseRunSorter.
+
+        Returns
+        -------
+        MouseRunSorter
+
+        """
+        if name is None:
+            name = str(self) + ' runs'
+
+        meta = metadata.meta(
+            mice=[self.mouse], dates=dates, runs=runs,
+            run_types=run_types, tags=tags, exclude_tags=exclude_tags)
+
+        meta_runs = meta.reset_index()[['date', 'run']]
+
+        run_objs = (Run(mouse=self.mouse, date=date, run=run)
+                    for _, (date, run) in meta_runs.iterrows())
+
+        return MouseRunSorter(run_objs, name=name)
+
+    def psytracker(
+            self, dates=None, run_types=('training',), runs=None,
+            tags=('hungry',), exclude_tags=None, pars=None, verbose=False,
+            force=False):
         """Load or calculate a PsyTracker for this mouse.
 
         Parameters
         ----------
+        dates : list of int, optional
+            List of dates to include. Can also be a single date.
+        run_types : list of str, optional
+            List of run_types to include. Can also be a single type.
+        runs : list of int, optional
+            List of run indices to include. Can also be a single index.
+        tags : list of str, optional
+            List of tags to filter on. Can also be a single tag.
+        exclude_tags : list of str, optional
+            List of tags to exclude. See flow.metadata.metadata.meta() for
+            default excluded tags. Can also be a single tag.
         pars : dict, optional
             Override default parameters for the PsyTracker. See
             flow.psytrack.train.train for options.
@@ -149,8 +204,10 @@ class Mouse(object):
             If True, ignore saved PsyTracker and re-calculate.
 
         """
-        return psytracker.PsyTracker(
-            self, pars=pars, verbose=verbose, force=force)
+        mouse_runs = self.runs(
+            dates=dates, run_types=run_types, runs=runs, tags=tags,
+            exclude_tags=exclude_tags)
+        return mouse_runs.psytracker(pars=pars, verbose=verbose, force=force)
 
 
 class Date(object):
@@ -198,7 +255,7 @@ class Date(object):
 
     @property
     def mouse(self):
-        """Name of mouse as string."""
+        """Mouse name as string."""
         return copy(self._mouse)
 
     @property
@@ -385,7 +442,7 @@ class Date(object):
             for run in self._runs.values():
                 run.clearcache()
             self._runs = None
-        self._glm = None
+        self._glm = {}
 
 
 class Run(object):
@@ -435,12 +492,12 @@ class Run(object):
 
     @property
     def mouse(self):
-        """Name of mouse as string."""
+        """Mouse name as string."""
         return copy(self._mouse)
 
     @property
     def date(self):
-        """Date of Run as integer."""
+        """Date as integer."""
         return copy(self._date)
 
     @property
@@ -776,8 +833,8 @@ class DateSorter(UserList):
 
     def __repr__(self):
         """Repr."""
-        return "DateSorter([{} {}], name={})".format(
-            len(self), 'Date' if len(self) == 1 else 'Dates', self.name)
+        return "{}([{} {}], name={})".format(
+            self.__class__.__name__, len(self), 'Date' if len(self) == 1 else 'Dates', self.name)
 
     def __iter__(self):
         """Iter."""
@@ -1058,6 +1115,33 @@ class DatePairSorter(UserList):
         return out
 
 
+class MouseDateSorter(DateSorter):
+    """A DateSorter where all of the Dates are from the same Mouse."""
+
+    def __init__(self, *args, **kwargs):
+        """Init."""
+        DateSorter.__init__(self, *args, **kwargs)
+        # Make sure that all the Runs are from the same Date
+        if len(self):
+            for date in self:
+                assert(date.mouse == self[0].mouse)
+            self._mouse = self[0].mouse
+            self._parent = Mouse(mouse=self.mouse)
+        else:
+            self._mouse = None
+            self._parent = None
+
+    @property
+    def mouse(self):
+        """Mouse name as string."""
+        return copy(self._mouse)
+
+    @property
+    def parent(self):
+        """Parent Mouse object."""
+        return self._parent
+
+
 class RunSorter(UserList):
     """Iterator of Run objects.
 
@@ -1258,17 +1342,92 @@ class RunSorter(UserList):
 
 class DateRunSorter(RunSorter):
     """
-    A RunSorter that does not clear cache after each iteration.
+    A RunSorter where all of the runs are from a single Date.
 
-    Cache clearing is handled instead by a the DateSorter, allowing for data
-    to remain cached through multiple iterations of child Run objects.
+    The Run cache is not cleared after each iteration. Cache clearing is
+    handled instead by the DateSorter, allowing for data to remain cached
+    through multiple iterations of child Run objects.
 
     """
+
+    def __init__(self, *args, **kwargs):
+        """Init."""
+        RunSorter.__init__(self, *args, **kwargs)
+        # Make sure that all the Runs are from the same Date
+        if len(self):
+            for run in self:
+                assert(run.date == self[0].date)
+            self._mouse = self[0].mouse
+            self._date = self[0].date
+            self._parent = Date(mouse=self[0].mouse, date=self[0].date)
+        else:
+            self._mouse = None
+            self._date = None
+            self._parent = None
+
+    @property
+    def mouse(self):
+        """Mouse name as string."""
+        return copy(self._mouse)
+
+    @property
+    def date(self):
+        """Date as integer."""
+        return copy(self._date)
+
+    @property
+    def parent(self):
+        """Parent Date."""
+        return self._parent
 
     def __iter__(self):
         """Iter."""
         for run in self.data:
             yield run
+
+
+class MouseRunSorter(RunSorter):
+    """A RunSorter where all of the runs come from a single Mouse."""
+
+    def __init__(self, *args, **kwargs):
+        """Init."""
+        RunSorter.__init__(self, *args, **kwargs)
+        # Make sure that all the Runs are from the same Mouse
+        if len(self):
+            for run in self:
+                assert(run.mouse == self[0].mouse)
+            self._mouse = self[0].mouse
+            self._parent = Mouse(mouse=self[0].mouse)
+        else:
+            self._mouse = None
+            self._parent = None
+
+    @property
+    def mouse(self):
+        """Mouse name as string."""
+        return copy(self._mouse)
+
+    @property
+    def parent(self):
+        """Parent Mouse."""
+        return self._parent
+
+    def psytracker(self, pars=None, verbose=False, force=False):
+        """Load or calculate a PsyTracker for this set of runs.
+
+        Parameters
+        ----------
+        pars : dict, optional
+            Override default parameters for the PsyTracker. See
+            flow.psytrack.train.train for options.
+        verbose : bool
+            Be verbose.
+        force : bool
+            If True, ignore saved PsyTracker and re-calculate.
+
+        """
+        return psytracker.PsyTracker(
+            self, pars=pars, verbose=verbose, force=force)
 
 
 def parse_name(args, cs=False):
