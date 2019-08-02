@@ -118,19 +118,19 @@ def meta(
         exclude_tags = ['bad', 'disengaged']
 
     # Convert single argument to a list
-    if mice is not None and not isinstance(mice, list):
+    if mice is not None and not isinstance(mice, (list, tuple)):
         mice = [mice]
-    if dates is not None and not isinstance(dates, list):
+    if dates is not None and not isinstance(dates, (list, tuple)):
         dates = [dates]
-    if runs is not None and not isinstance(runs, list):
+    if runs is not None and not isinstance(runs, (list, tuple)):
         runs = [runs]
-    if run_types is not None and not isinstance(run_types, list):
+    if run_types is not None and not isinstance(run_types, (list, tuple)):
         run_types = [run_types]
-    if tags is not None and not isinstance(tags, list):
+    if tags is not None and not isinstance(tags, (list, tuple)):
         tags = [tags]
-    if not isinstance(exclude_tags, list):
+    if not isinstance(exclude_tags, (list, tuple)):
         exclude_tags = [exclude_tags]
-    if photometry is not None and not isinstance(photometry, list):
+    if photometry is not None and not isinstance(photometry, (list, tuple)):
         photometry = [photometry]
 
     # Had to do this to solve command-line issues
