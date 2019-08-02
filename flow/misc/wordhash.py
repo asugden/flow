@@ -38,8 +38,8 @@ def sortlist(obj):
     :return:
     """
 
-    if isinstance(obj, list):
-        return sorted(list)
+    if isinstance(obj, (list, tuple)):
+        return sorted(obj)
     elif isinstance(obj, dict):
         flat = flattendict(obj)
         keys = sorted([key for key in flat])
