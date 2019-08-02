@@ -7,15 +7,13 @@ from psytrack.hyperOpt import hyperOpt
 
 
 def train(
-        mouse, weights,
-        run_types=('training',), tags=('hungry',), exclude_tags=('bad',),
-        include_pavlovian=True,
-        separate_day_var=True, verbose=False):
+        runs, weights, include_pavlovian=True, separate_day_var=True,
+        verbose=False):
     """Main function use to train the PsyTracker."""
 
     k = np.sum([weights[i] for i in weights.keys()])
     if verbose:
-        print('* Beginning training for {} *'.format(mouse))
+        print('* Beginning training for {} *'.format(runs.mouse))
         print(' Fitting weights:')
         pprint(weights)
         print(' Fitting {} total hyper-parameters'.format(k))
@@ -34,8 +32,7 @@ def train(
     if verbose:
         print('- Collecting data')
     data = _gather_data(
-        mouse, run_types=run_types, tags=tags, exclude_tags=exclude_tags,
-        include_pavlovian=include_pavlovian, weights=weights)
+        runs, include_pavlovian=include_pavlovian, weights=weights)
     if verbose:
         print(' Data keys:\n  {}'.format(sorted(data.keys())))
         print(' Inputs:\n  {}'.format(sorted(data['inputs'].keys())))
@@ -78,9 +75,7 @@ def _parse_weights(weights):
     return oris
 
 
-def _gather_data(
-        mouse, weights, run_types, tags=None, exclude_tags=('bad',),
-        include_pavlovian=True):
+def _gather_data(runs, weights, include_pavlovian=True):
     orientations = _parse_weights(weights)
     day_length, run_length = [], []  # Number of trials for each day/run
     days = []  # Dates for all days
@@ -101,76 +96,92 @@ def _gather_data(
     if 'cum_punish' in weights:
         cum_punish = []  # cumulative number of punish trials per day
     oris = {ori: [] for ori in orientations}
-    for date in mouse.dates():
-        date_ntrials = 0
-        date_reward, date_punish = [], []
-        for run in date.runs(
-                run_types=run_types, tags=tags, exclude_tags=exclude_tags):
-            t2p = run.trace2p()
-            ntrials = t2p.ntrials
-            # If dropping pavlovian trials, still need to keep them around
-            # for all of the trial history parameters, then drop at very end.
-            if not include_pavlovian:
-                run_pav_trials = ['pavlovian' in x for x in
-                                  t2p.conditions(return_as_strings=True)]
-                n_run_pav_trials = sum(run_pav_trials)
+    last_date = runs[0].date
+    date_ntrials = 0
+    date_reward, date_punish = [], []
+    for run in runs:
+        if run.date != last_date:
+            if date_ntrials > 0:
+                day_length.append(date_ntrials)
+                days.append(last_date)
 
-                if not (ntrials - n_run_pav_trials > 0):
-                    continue
+                reward.extend(date_reward)
+                punish.extend(date_punish)
 
-                pav_trials.extend(run_pav_trials)
-                date_ntrials += ntrials - n_run_pav_trials
-                run_length.append(ntrials - n_run_pav_trials)
-            else:
-                if not ntrials > 0:
-                    continue
+                if 'cum_reward' in weights:
+                    cum_reward.extend(np.cumsum(date_reward))
+                if 'cum_punish' in weights:
+                    cum_punish.extend(np.cumsum(date_punish))
 
-                date_ntrials += ntrials
-                run_length.append(ntrials)
+            last_date = run.date
+            date_ntrials = 0
+            date_reward, date_punish = [], []
 
-            dateRuns.append((run.date, run.run))
+        t2p = run.trace2p()
+        ntrials = t2p.ntrials
+        # If dropping pavlovian trials, still need to keep them around
+        # for all of the trial history parameters, then drop at very end.
+        if not include_pavlovian:
+            run_pav_trials = ['pavlovian' in x for x in
+                              t2p.conditions(return_as_strings=True)]
+            n_run_pav_trials = sum(run_pav_trials)
 
-            run_choice = t2p.choice()
-            assert(len(run_choice) == ntrials)
-            y.extend(run_choice)
+            if not (ntrials - n_run_pav_trials > 0):
+                continue
 
-            run_errs = t2p.errors()
-            assert(len(~run_errs) == ntrials)
-            correct.extend(~run_errs)
+            pav_trials.extend(run_pav_trials)
+            date_ntrials += ntrials - n_run_pav_trials
+            run_length.append(ntrials - n_run_pav_trials)
+        else:
+            if not ntrials > 0:
+                continue
 
-            run_answer = np.logical_xor(
-                run_choice, run_errs)  # This should be the correct action
-            assert(len(run_answer) == ntrials)
-            answer.extend(run_answer)
+            date_ntrials += ntrials
+            run_length.append(ntrials)
 
-            if 'prev_reward' in weights or 'cum_reward' in weights:
-                run_rew = t2p.reward() > 0
-                assert(len(run_rew) == ntrials)
-                date_reward.extend(run_rew)
+        dateRuns.append((run.date, run.run))
 
-            if 'prev_punish' in weights or 'cum_punish' in weights:
-                run_punish = t2p.punishment() > 0
-                assert(len(run_punish) == ntrials)
-                date_punish.extend(run_punish)
+        run_choice = t2p.choice()
+        assert(len(run_choice) == ntrials)
+        y.extend(run_choice)
 
-            for ori in oris:
-                ori_trials = [o == ori for o in t2p.orientations]
-                assert(len(ori_trials) == ntrials)
-                oris[ori].extend(ori_trials)
+        run_errs = t2p.errors()
+        assert(len(~run_errs) == ntrials)
+        correct.extend(~run_errs)
 
-        if date_ntrials > 0:
-            day_length.append(date_ntrials)
-            days.append(date.date)
+        run_answer = np.logical_xor(
+            run_choice, run_errs)  # This should be the correct action
+        assert(len(run_answer) == ntrials)
+        answer.extend(run_answer)
 
-            reward.extend(date_reward)
-            punish.extend(date_punish)
+        if 'prev_reward' in weights or 'cum_reward' in weights:
+            run_rew = t2p.reward() > 0
+            assert(len(run_rew) == ntrials)
+            date_reward.extend(run_rew)
 
-            if 'cum_reward' in weights:
-                cum_reward.extend(np.cumsum(date_reward))
-            if 'cum_punish' in weights:
-                cum_punish.extend(np.cumsum(date_punish))
+        if 'prev_punish' in weights or 'cum_punish' in weights:
+            run_punish = t2p.punishment() > 0
+            assert(len(run_punish) == ntrials)
+            date_punish.extend(run_punish)
 
-    out = {'name': mouse.mouse}
+        for ori in oris:
+            ori_trials = [o == ori for o in t2p.orientations]
+            assert(len(ori_trials) == ntrials)
+            oris[ori].extend(ori_trials)
+
+    if date_ntrials > 0:
+        day_length.append(date_ntrials)
+        days.append(last_date)
+
+        reward.extend(date_reward)
+        punish.extend(date_punish)
+
+        if 'cum_reward' in weights:
+            cum_reward.extend(np.cumsum(date_reward))
+        if 'cum_punish' in weights:
+            cum_punish.extend(np.cumsum(date_punish))
+
+    out = {'name': runs.mouse}
     out['dayLength'] = np.array(day_length)
     out['runLength'] = np.array(run_length)
     out['days'] = np.array(days)
