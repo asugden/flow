@@ -178,6 +178,8 @@ class Trace2P(object):
             # No trial structure to this recording
             return [] if return_as_strings else [], {}
 
+        condition_ids = condition_ids[:self.ntrials]
+
         if return_as_strings:
             # Invert dictionary, so you can also index it by value
             codes_inverted = {val: key for key, val in self.codes.items()}
@@ -185,7 +187,7 @@ class Trace2P(object):
             return [codes_inverted[c] if c in codes_inverted else '#UNK#'
                     for c in condition_ids]
         else:
-            return self.d['condition'][:self.ntrials].astype(np.int16), self.codes
+            return condition_ids.astype(np.int16), self.codes
 
     def csonsets(
             self, cs='', errortrials=-1, lickcutoff=-1, lickwindow=(-1, 0)):
