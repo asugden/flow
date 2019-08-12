@@ -80,6 +80,7 @@ def _gather_data(runs, weights, include_pavlovian=True):
     day_length, run_length = [], []  # Number of trials for each day/run
     days = []  # Dates for all days
     dateRuns = []  # (date, run) for all runs
+    dateRunTrials = []  # (date, run, trial_idx) for all trials
     y = []  # 2 for lick, 1 for no lick
     correct = []  # correct trials, boolean
     answer = []  # The correct choice, 2 for lick, 1 for no lick
@@ -140,6 +141,8 @@ def _gather_data(runs, weights, include_pavlovian=True):
             run_length.append(ntrials)
 
         dateRuns.append((run.date, run.run))
+        dateRunTrials.extend(
+            zip([run.date]*ntrials, [run.run]*ntrials, range(ntrials)))
 
         run_choice = t2p.choice()
         assert(len(run_choice) == ntrials)
@@ -186,7 +189,9 @@ def _gather_data(runs, weights, include_pavlovian=True):
     out['runLength'] = np.array(run_length)
     out['days'] = np.array(days)
     out['dateRuns'] = np.array(dateRuns)
+    out['dateRunTrials'] = np.array(dateRunTrials)
     out['y'] = np.array([2 if val else 1 for val in y])
+    assert(len(out['dateRunTrials']) == len(out['y']))
     out['correct'] = np.array(correct)
     out['answer'] = np.array([2 if val else 1 for val in answer])
 
@@ -224,7 +229,7 @@ def _gather_data(runs, weights, include_pavlovian=True):
 
     if not include_pavlovian:
         pav_trials = np.array(pav_trials)
-        for key in ['y', 'correct', 'answer']:
+        for key in ['y', 'correct', 'answer', 'dateRunTrials']:
             out[key] = out[key][~pav_trials]
         for key in out['inputs']:
             out['inputs'][key] = out['inputs'][key][~pav_trials]
