@@ -160,6 +160,16 @@ def ids(mouse, date):
     if opath.isfile(path): return path
     else: return ''
 
+def cell_scores(mouse, date):
+    """
+    Return the crossday cell IDs if they exist, otherwise return an
+    empty path.
+    """
+
+    path = opath.join(datad, '%s/%s/%s_%s_crossday-cell-scores.txt' % (mouse, date, mouse, date))
+    if opath.isfile(path): return path
+    else: return ''
+
 def pairids(mouse, day1, day2):
     """
     Return the paired ids of cells
