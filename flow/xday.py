@@ -56,3 +56,28 @@ def _read_crossday_ids(mouse, date):
         out = allids
 
     return out
+
+def _read_crossday_scores(mouse, date):
+    """
+    Read ID file.
+    """
+
+    idf = paths.cell_scores(mouse, str(date))
+    if len(idf) == 0 or not opath.exists(idf):
+        return []
+
+    out = []
+    if len(idf) > 0:
+        fp = open(idf, 'r')
+        allids = fp.read()
+        fp.close()
+
+        # Analyze each ID
+        allids = allids.split('\n')
+        if allids[-1] == '':
+            allids = allids[:-1]
+
+        # Convert to ints
+        out = allids
+
+    return out
