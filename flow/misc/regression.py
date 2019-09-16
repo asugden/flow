@@ -205,6 +205,8 @@ def glm(formula, df, family='gaussian', link='identity', dropzeros=True, r=False
 
         if link.lower() == 'log':
             linkfn = sm.families.links.log
+        elif link.lower() == 'inverse':
+            linkfn = sm.families.links.inverse_power
         else:
             linkfn = sm.families.links.identity
 
