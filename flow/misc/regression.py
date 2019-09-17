@@ -207,11 +207,15 @@ def glm(formula, df, family='gaussian', link='identity', dropzeros=True, r=False
             linkfn = sm.families.links.log
         elif link.lower() == 'inverse':
             linkfn = sm.families.links.inverse_power
+        elif link.lower() == 'inverse_squared':
+            linkfn = sm.families.links.inverse_squared
         else:
             linkfn = sm.families.links.identity
 
         if family.lower() == 'gamma':
-            family = sm.families.Gamma()
+            family = sm.families.Gamma(link=linkfn)
+        elif family.lower() == 'inv_gaussian':
+            family = sm.families.InverseGaussian(link=linkfn)
         elif family.lower() == 'gaussian' or family == 'normal':
             family = sm.families.Gaussian(link=linkfn)
         else:
