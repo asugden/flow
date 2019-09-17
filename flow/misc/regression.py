@@ -211,7 +211,7 @@ def glm(formula, df, family='gaussian', link='identity', dropzeros=True, r=False
             linkfn = sm.families.links.identity
 
         if family.lower() == 'gamma':
-            family = sm.families.Gamma(link=linkfn)
+            family = sm.families.Gamma()
         elif family.lower() == 'gaussian' or family == 'normal':
             family = sm.families.Gaussian(link=linkfn)
         else:
