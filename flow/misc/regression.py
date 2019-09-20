@@ -214,6 +214,8 @@ def glm(formula, df, family='gaussian', link='identity', dropzeros=True, r=False
 
         if family.lower() == 'gamma':
             family = sm.families.Gamma(link=linkfn)
+        elif family.lower() == 'tweedie':
+            family = sm.families.T(link=linkfn, var_power=2.0)  # 0 plus gamma
         elif family.lower() == 'inv_gaussian':
             family = sm.families.InverseGaussian(link=linkfn)
         elif family.lower() == 'gaussian' or family == 'normal':
