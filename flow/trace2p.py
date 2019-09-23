@@ -129,11 +129,11 @@ class Trace2P(object):
         if self._orientations is None:
             if 'orientations' in self.d:
                 oris = self.d['orientations']
-                self._orientations = \
-                    [oris[c] for c in self.conditions(return_as_strings=True)]
+                self._orientations = np.array(
+                    [oris[c] for c in self.conditions(return_as_strings=True)])
             else:
-                self._orientations = []
-        return self._orientations
+                self._orientations = np.array([])
+        return copy(self._orientations)
 
     @property
     def stimulus_length(self):
@@ -204,6 +204,8 @@ class Trace2P(object):
             # No trial structure to this recording
             return [] if return_as_strings else [], {}
 
+        condition_ids = condition_ids[:self.ntrials]
+
         if return_as_strings:
             # Invert dictionary, so you can also index it by value
             codes_inverted = {val: key for key, val in self.codes.items()}
@@ -211,7 +213,7 @@ class Trace2P(object):
             return [codes_inverted[c] if c in codes_inverted else '#UNK#'
                     for c in condition_ids]
         else:
-            return self.d['condition'][:self.ntrials].astype(np.int16), self.codes
+            return condition_ids.astype(np.int16), self.codes
 
     def csonsets(
             self, cs='', errortrials=-1, lickcutoff=-1, lickwindow=(-1, 0)):
@@ -359,6 +361,7 @@ class Trace2P(object):
     def lastonset(self, pads=8):
         """
         Return the last stimulus onset, especially useful for days 9-11.
+
         This can be padded by pads seconds. Returns frame number
         """
 
@@ -470,10 +473,12 @@ class Trace2P(object):
 
     def warpcstraces(self, cs, start_s=0, end_s=None, trace_type='deconvolved',
                      cutoff_before_lick_ms=-1, errortrials=-1, baseline=None,
-                     baseline_to_stimulus=True, move_outcome_to=3, warp_offset=False):
+                     baseline_to_stimulus=True, move_outcome_to=3,
+                     warp_offset=False):
         """
-        Return the onsets for a particular cs. Warp the outcome to a
-        particular time point using interpolation.
+        Return the onsets for a particular cs.
+
+        Warp the outcome to a particular time point using interpolation.
 
         Parameters
         ----------
@@ -553,7 +558,7 @@ class Trace2P(object):
 
     def outcomes(self, cs, errortrials=-1, maxdiff=6):
         """
-        Return the outcome times for each trial, i.e. ensure or quinine
+        Return the outcome times for each trial, i.e. ensure or quinine.
 
         :param cs: stimulus type str, plus, neutral or minus
         :param errortrials: -1 is all trials, 0 is correct trials, 1 is error trials
@@ -642,7 +647,8 @@ class Trace2P(object):
 
     def firstlick(self, cs, units='frames', errortrials=-1, maxframes=-1):
         """
-        Return the first lick time for all onsets of type cs
+        Return the first lick time for all onsets of type cs.
+
         NOTE: Assumes trial structure of 6 second ITI
 
         :param cs: stimulus type str: plus, minus, or neutral
@@ -660,7 +666,7 @@ class Trace2P(object):
         out = []
 
         # Iterate through onsets, find the beginning and end, and add
-        # the appropirate trace type to the output
+        # the appropriate trace type to the output
         for onset in ons:
             postlicks = licks[licks > onset]
             if len(postlicks) > 0:
@@ -684,7 +690,8 @@ class Trace2P(object):
 
     def stimlicks(self, cs='', mins=2, maxs=4, errortrials=-1):
         """
-        Return the number of licks for all onsets of type cs
+        Return the number of licks for all onsets of type cs.
+
         NOTE: Assumes trial structure of 6 second ITI
 
         :param cs: stimulus type str: plus, minus, or neutral, or empty string for all types
@@ -703,7 +710,7 @@ class Trace2P(object):
         maxf = int(round(maxs*self.framerate))
 
         # Iterate through onsets, find the beginning and end, and add
-        # the appropirate trace type to the output
+        # the appropriate trace type to the output
         for onset in ons:
             postlicks = licks[(licks >= onset + minf) & (licks < onset + min(maxf, ntrialframes))]
             out.append(len(postlicks))
@@ -801,6 +808,7 @@ class Trace2P(object):
     def pupilmask(self, include_phase=False):
         """
         Return the mask by pupil diameter and if desired, phase.
+
         True outputs are times that should be KEPT, false should be removed
         """
 
@@ -832,7 +840,7 @@ class Trace2P(object):
 
     def lickbout(self, ili=2):
         """
-        Return the time of lickbout onsets
+        Return the time of lickbout onsets.
 
         :param ili: inter-lick interval in seconds
         :return: vector of lickbout onset times
@@ -1026,22 +1034,19 @@ class Trace2P(object):
 
     def haspupilmask(self):
         """
-        Return whether a pupil mask exists (without setting all values to 1
+        Return whether a pupil mask exists (without setting all values to 1).
 
         :return: boolean
         """
 
-        if ('pupil' in self.d
-                and 'pupil_mask' in self.d
-                and len(self.d['pupil'].flatten()) > 0
-                and len(self.d['pupil_mask'].flatten()) > 0):
-            return True
-        else:
-            return False
+        return 'pupil' in self.d and \
+            'pupil_mask' in self.d and \
+            len(self.d['pupil'].flatten()) > 0 and \
+            len(self.d['pupil_mask'].flatten()) > 0
 
     def hasphotometry(self):
         """
-        Return whether the trace file has photometry
+        Return whether the trace file has photometry.
 
         :return: boolean
         """
@@ -1052,7 +1057,7 @@ class Trace2P(object):
 
     def hasripple(self):
         """
-        Return whether the trace file has hippocampal ripple data
+        Return whether the trace file has hippocampal ripple data.
 
         :return: boolean
         """
@@ -1063,7 +1068,7 @@ class Trace2P(object):
 
     def haspupil(self):
         """
-        Return whether the trace file has pupil data
+        Return whether the trace file has pupil data.
 
         :return:
         """
@@ -1270,9 +1275,7 @@ class Trace2P(object):
             return self.d['brainmotion'].flatten()
 
     def pupil(self):
-        """
-        Return the pupil diameter over time.
-        """
+        """Return the pupil diameter over time."""
 
         if 'pupil' not in self.d or len(self.d['pupil']) == 0:
             return []
@@ -1288,7 +1291,7 @@ class Trace2P(object):
 
     def photometry(self, fiber=0, tracetype='dff'):
         """
-        Return the photometry vector
+        Return the photometry vector.
 
         :return: numpy vector or empty list
         """
@@ -1323,7 +1326,7 @@ class Trace2P(object):
         Given a series of onsets and offsets, reset them so that they
         only include running speeds between a certain range. May not be
         able to handle skipping frames. Spread accepts times before the
-        running threshold is reached. This account for premotor activity
+        running threshold is reached. This accounts for pre-motor activity.
         """
 
         if runmin < 0 and runmax == 9999:
@@ -1377,13 +1380,14 @@ class Trace2P(object):
 
         if cs == '0' or cs == '45' or cs == '90' or cs == '135' \
            or cs == '225' or cs == '270' or cs == '315' or cs == '360':
-            if cs not in self.orientations:
+            if int(cs) not in self.orientations:
                 return []
-            else:
-                cs = self.orientations[cs]
-
-        # Account for all trial types
-        if len(cs) == 0:
+            trial_mask = self.orientations == int(cs)
+            if errortrials > -1:
+                err_mask = (self.d['trialerror']%2 == errortrials)
+                trial_mask = trial_mask & err_mask
+            out = np.copy(self.d['onsets'])[trial_mask]
+        elif len(cs) == 0:
             out = np.copy(self.d['onsets'])
             if errortrials > -1:
                 out = out[self.d['trialerror']%2 == errortrials]

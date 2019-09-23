@@ -1,3 +1,4 @@
+"""Object representation of a fit PsyTrack model."""
 from copy import deepcopy
 import numpy as np
 import os.path as opath
@@ -17,21 +18,26 @@ except ImportError:
 class PsyTracker(object):
     """PsyTracker."""
 
-    def __init__(self, mouse, pars=None, verbose=False, force=False):
+    def __init__(self, runs, pars=None, verbose=False, force=False):
         """Init."""
-        self._mouse = mouse
+        self._runs = runs
+        self._mouse = self.runs.parent
 
         if pars is None:
             pars = {}
         self._pars = config.params()['psytrack_defaults']
         self._pars.update(pars)
         self._pars_word = None
+        self._runs_word = None
 
-        self._path = paths.psytrack(mouse.mouse, self.pars_word)
+        self._path = paths.psytrack(
+            self.mouse.mouse, self.pars_word, self.runs_word)
 
         self._load_or_train(verbose=verbose, force=force)
 
         self._weight_labels = None
+
+        self._confusion_matrix = None
 
     def __repr__(self):
         """Repr."""
@@ -39,8 +45,13 @@ class PsyTracker(object):
 
     @property
     def mouse(self):
-        """Return the mouse object."""
+        """Return the Mouse object."""
         return self._mouse
+
+    @property
+    def runs(self):
+        """Return the MouseRunSorter object."""
+        return self._runs
 
     @property
     def pars(self):
@@ -92,9 +103,16 @@ class PsyTracker(object):
     def pars_word(self):
         """Return the hash word of the current parameters."""
         if self._pars_word is None:
-            pars = self.pars
-            self._pars_word = wordhash.word(pars, use_new=True)
+            self._pars_word = wordhash.word(self.pars, use_new=True)
         return self._pars_word
+
+    @property
+    def runs_word(self):
+        """Return the hash word of the dates."""
+        if self._runs_word is None:
+            runs_list = [str(r) for r in self.runs]
+            self._runs_word = wordhash.word(runs_list, use_new=True)
+        return self._runs_word
 
     def predict(self, data=None):
         """Return predicted lick probability for every trial.
@@ -121,6 +139,74 @@ class PsyTracker(object):
 
         return 1 / (1 + np.exp(-X))
 
+    def confusion_matrix(self):
+        """Confusion matrix for the models precision in predicting lick trials.
+
+        See also:
+        https://en.wikipedia.org/wiki/Confusion_matrix
+
+        Returns
+        -------
+        np.array (2x2)
+            [[true negatives, false positives],
+             [false negatives, true positives]]
+
+        """
+        if self._confusion_matrix is None:
+            prediction = (self.predict() > 0.5)
+            licked = (self.data['y'] == 2)
+
+            TP = sum(prediction & licked)
+            FP = sum(prediction & ~licked)
+
+            TN = sum(~prediction & ~licked)
+            FN = sum(~prediction & licked)
+            self._confusion_matrix = np.array([[TN, FP], [FN, TP]])
+            # self._confusion_matrix = sklearn.metrics.confusion_matrix(
+            #     licked, prediction)
+
+        return self._confusion_matrix
+
+    def precision(self):
+        """Precision of the model estimation.
+
+        Fraction of all predicted lick trials where the mouse actually licked.
+
+        """
+        TN, FP, FN, TP = self.confusion_matrix().ravel()
+        return TP / float(TP + FP)
+
+    def recall(self):
+        """Recall of the model estimation.
+
+        Fraction of all real lick trials correctly predicted by the model.
+
+        """
+        TN, FP, FN, TP = self.confusion_matrix().ravel()
+        return TP / float(TP + FN)
+
+    def accuracy(self):
+        """Accuracy of the model estimation.
+
+        Fraction of trials correctly predicted.
+
+        """
+        TN, FP, FN, TP = self.confusion_matrix().ravel()
+        return (TP + TN) / float(TP + FP + TN + FN)
+
+    def f1_score(self):
+        """F_1 score of the model.
+
+        Combined precision and recall to get a single measure of model
+        performance. 1 for a perfect model, 0 for completely wrong.
+
+        See also:
+        https://en.wikipedia.org/wiki/F1_score
+
+        """
+        return 2 * (self.precision() * self.recall()) / \
+            (self.precision() + self.recall())
+
     def _load_or_train(self, verbose=False, force=False):
         if not force:
             try:
@@ -129,8 +215,9 @@ class PsyTracker(object):
             except IOError:
                 found = False
                 if verbose:
-                    print('No PsyTracker found, re-calculating (word=' +
-                          self.pars_word + ').')
+                    print('No PsyTracker found, re-calculating (pars_word=' +
+                          self.pars_word + ', runs_word=' + self.runs_word +
+                          ').')
             else:
                 # Matfiles can't store None, so they have to be converted
                 # when saved to disk. I think this is the only place it
@@ -149,9 +236,11 @@ class PsyTracker(object):
                         self.pars['updated']))
             pars = self.pars
             pars.pop('updated')
-            data, results = train(self.mouse, verbose=verbose, **pars)
+            data, results, initialization = \
+                train(self.runs, verbose=verbose, **pars)
             self.d = {
                 'data': data,
+                'initialization': initialization,
                 'pars': self.pars,
                 'results': results,
                 'timestamp': timestamp()}
