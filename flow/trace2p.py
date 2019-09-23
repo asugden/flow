@@ -27,10 +27,11 @@ class Trace2P(object):
         self.subsetted = False
 
         # Instance variables
-        self.ncells = np.shape(self.d['dff'])[0]
-        self.nframes = np.shape(self.d['dff'])[1]
         self.framerate = 15.49 if 'framerate' not in self.d else self.d['framerate']
         if 'onsets' in self.d:
+            self.trials = np.copy(self.d['onsets']).astype(np.int32)
+        elif 'trialerror' in self.d:
+            self.d['onsets'] = np.arange(len(self.d['trialerror']))
             self.trials = np.copy(self.d['onsets']).astype(np.int32)
         # Jeff, 190131: Renamed to _conditions to avoid conflict with conditions
         # method. Need to cleanup this and the method.
@@ -40,9 +41,12 @@ class Trace2P(object):
 
         # Set some optional variables
         self._addedcses = ['reward', 'punishment']
+        self._trace_datatypes = ['dff', 'raw', 'f0', 'deconvolved']
         self._original_traces = None
 
         self._codes = None
+        self._ncells = None
+        self._nframes = None
         self._offsets = None
         self._orientations = None
         self._stimulus_length = None
@@ -63,6 +67,28 @@ class Trace2P(object):
         if self._codes is None:
             self._codes = self.d['codes'] if 'codes' in self.d else {}
         return copy(self._codes)
+
+    @property
+    def ncells(self):
+        """Determine the number of cells, accounting for weird edge cases."""
+        if self._ncells is None:
+            self._ncells = 0
+            for dtype in self._trace_datatypes:
+                if dtype in self.d:
+                    self._ncells = np.shape(self.d[dtype])[0]
+                    break
+        return self._ncells
+
+    @property
+    def nframes(self):
+        """Return the number of frames in a movie."""
+        if self._nframes is None:
+            self._nframes = 0
+            for dtype in self._trace_datatypes:
+                if dtype in self.d:
+                    self._nframes = np.shape(self.d[dtype])[1]
+                    break
+        return self._nframes
 
     @property
     def ntrials(self):
@@ -276,14 +302,15 @@ class Trace2P(object):
             self.subsetted = True
             if self._original_traces is None:
                 self._original_traces = {}
-                for key in ['dff', 'raw', 'f0', 'deconvolved']:
+                for key in self._trace_datatypes:
                     if key in self.d:
                         self._original_traces[key] = deepcopy(self.d[key])
 
             for key in self._original_traces:
                 self.d[key] = self._original_traces[key][vector]
 
-        self.ncells = np.shape(self.d['dff'])[0]
+        # Reset for calculation
+        self._ncells = None
 
     def trialmask(self, cs='', errortrials=-1, fulltrial=False, padpre=0, padpost=0):
         """
@@ -1167,7 +1194,6 @@ class Trace2P(object):
             conds = [np.ones(self.ntrials, dtype=bool)]
 
         out = self.d['trialerror'].flatten()[:self.ntrials][tuple(conds)] % 2
-        out = [o for o in out.flatten() if o < self.nframes]
 
         return np.array(out) == 1
 
