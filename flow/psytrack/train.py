@@ -8,8 +8,33 @@ from psytrack.hyperOpt import hyperOpt
 
 def train(
         runs, weights, include_pavlovian=True, separate_day_var=True,
-        verbose=False):
-    """Main function use to train the PsyTracker."""
+        fixed_sigma=None, fixed_sigma_day=None, verbose=False):
+    """Main function use to train the PsyTracker.
+
+    Parameters
+    ----------
+    runs : RunSorter
+        Runs to train the model on.
+    weights : dict
+        The weights to fit. Key is the weight name and the value is the n-back
+        to include.
+    include_pavlovian : bool
+        If True, include pavlovian trials. Note: They are only excluded from
+        the current trial, but their outcome (lick/nolick, reward, punish) is
+        included for previous trials.
+    separate_day_var : bool
+        If True, estimate a separate sigma for between days and within days.
+    fixed_sigma : list of float, optional
+        If not None, the fixed sigmas to use for each weight.
+    fixed_sigma_day : list of float, optional
+        If not None, the fixed sigmas to use between days for each weight.
+    verbose : bool
+        If True, be verbose.
+
+    """
+    if fixed_sigma_day is not None and not separate_day_var:
+        raise ValueError(
+            'separate_day_var must be True to use fixed_sigma_day.')
 
     k = np.sum([weights[i] for i in weights.keys()])
     if verbose:
@@ -19,14 +44,21 @@ def train(
         print(' Fitting {} total hyper-parameters'.format(k))
 
     # Initialize hyperparameters
-    hyper = {'sigInit': 2**4.,
-             'sigma': [2**-4.]*k}
-    opt_list = ['sigma']
+    hyper = {'sigInit': 2**4.}
+    opt_list = []
+    if fixed_sigma is None:
+        hyper['sigma'] = [2**-4.]*k
+        opt_list.append('sigma')
+    else:
+        hyper['sigma'] = fixed_sigma
 
     # Add in parameters for each day if needed
     if separate_day_var:
-        hyper['sigDay'] = [2**-4.]*k
-        opt_list.append('sigDay')
+        if fixed_sigma_day is None:
+            hyper['sigDay'] = [2**-4.]*k
+            opt_list.append('sigDay')
+        else:
+            hyper['sigDay'] = fixed_sigma_day
 
     # Extract data from our simpcells and convert to format for PsyTrack
     if verbose:

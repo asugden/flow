@@ -106,6 +106,8 @@ _psytrack_defaults = {
         'prev_punish': 1},
     'include_pavlovian': False,
     'separate_day_var': True,
+    'fixed_sigma': None,
+    'fixed_sigma_day': None,
     'updated': 190812,  # 190802,  # 190715,  # 190620,  # The current update date for the PsyTracker code
 }
 
